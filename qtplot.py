@@ -5,8 +5,7 @@ import time
 from PyQt4 import QtGui, QtCore
 
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.image import NonUniformImage
 
 import numpy as np
@@ -20,7 +19,7 @@ from dat_file import DatFile
 class Window(QtGui.QDialog):
     def __init__(self, lc_window, filename, parent=None):
         super(Window, self).__init__(parent)
-        self.setWindowTitle(filename)
+        self.filename = filename
 
         self.linecut = lc_window
         self.data = DatFile(filename)
@@ -30,11 +29,16 @@ class Window(QtGui.QDialog):
 
         self.ppt = None
         self.slide = None
-        
-        self.canvas = FigureCanvas(self.fig)
-        self.canvas.mpl_connect('button_press_event', self.onclick)
-        self.canvas.mpl_connect('motion_notify_event', self.mousemotion)
-        self.toolbar = NavigationToolbar(self.canvas, self)
+
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle(self.filename)
+
+        self.canvas = FigureCanvasQTAgg(self.fig)
+        self.canvas.mpl_connect('button_press_event', self.on_mouse_click)
+        self.canvas.mpl_connect('motion_notify_event', self.on_mouse_motion)
+        self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
         self.x_lbl = QtGui.QLabel("X", self)
         self.x_combo = QtGui.QComboBox(self)
@@ -52,7 +56,7 @@ class Window(QtGui.QDialog):
         self.d_combo.setCurrentIndex(3)
 
         self.button = QtGui.QPushButton('Plot')
-        self.button.clicked.connect(self.plot2d)
+        self.button.clicked.connect(self.plot_2d_data)
 
         self.le_lbl = QtGui.QLabel("PPT File", self)
         self.ppt_browse = QtGui.QPushButton("Browse", self)
@@ -98,9 +102,8 @@ class Window(QtGui.QDialog):
 
         self.setLayout(vbox)
 
-    def plot2d(self):
+    def plot_2d_data(self):
         df = self.data.df
-        meta = self.data.meta
         columns = self.data.columns
 
         # Get the column names to use for the x, y and data
@@ -109,73 +112,50 @@ class Window(QtGui.QDialog):
         self.data_lbl = str(self.d_combo.currentText())
 
         # Average the measurement columns which are related to the DAC values
-        dac1 = columns[1]
-        df['I_meas_EMI (A)'] =     df.groupby(dac1)['I_meas_EMI (A)'].transform(np.average)
-        df['V_meas_EMI raw (V)'] = df.groupby(dac1)['V_meas_EMI raw (V)'].transform(np.average)
-        df['V_bias_EMI (V)'] =     df.groupby(dac1)['V_bias_EMI (V)'].transform(np.average)
-        df['V_bias_EMI raw (V)'] = df.groupby(dac1)['V_bias_EMI raw (V)'].transform(np.average)
+        for i in range(3, 7):
+            df[columns[i]] =     df.groupby(columns[1])[columns[i]].transform(np.average)
 
-        dac2 = columns[0]
-        df['I_meas_DET (A)'] =     df.groupby(dac2)['I_meas_DET (A)'].transform(np.average)
-        df['V_meas_DET raw (V)'] = df.groupby(dac2)['V_meas_DET raw (V)'].transform(np.average)
-        df['V_bias_DET (V)'] =     df.groupby(dac2)['V_bias_DET (V)'].transform(np.average)
-        df['V_bias_DET raw (V)'] = df.groupby(dac2)['V_bias_DET raw (V)'].transform(np.average)
+        for i in range(7, 11):
+            df[columns[i]] =     df.groupby(columns[0])[columns[i]].transform(np.average)
 
         # Pivot the data into an x and y axis, and values
-        self.piv = df.pivot(index=self.y_lbl, columns=self.x_lbl, values=self.data_lbl)
-
-        # Reverse y axis data because figures have lower numbers at the bottom
-        #self.piv.sort_index(axis=0, ascending=False, inplace=True)
-
-        #writer = pd.ExcelWriter("out.xlsx")
-        #self.piv.to_excel(writer, 'Sheet1')
-        #writer.save()
+        self.piv = df.pivot(self.y_lbl, self.x_lbl, self.data_lbl)
 
         # Calculate half of the data step size
         hstepx = abs(self.piv.columns[1] - self.piv.columns[0]) / 2
         hstepy = abs(self.piv.index[1] - self.piv.index[0]) / 2
 
-        # The range of the x and y axes, from the first and last values of the index and columns
-        # Half step sizes are added to make the data fit nicely
-        extent = [self.piv.columns[0] - hstepx, self.piv.columns[-1] + hstepx, self.piv.index[0] - hstepy, self.piv.index[-1] + hstepy]
-        #extent = [self.piv.columns[0], self.piv.columns[-1], self.piv.index[0], self.piv.index[-1]]
-        
         # Clear the figure
         self.ax.clear()
 
-        # Image object from the data that is to be shown
-        #img = self.ax.imshow(self.piv, extent=extent, interpolation='nearest', cmap='seismic')
-        #img = NonUniformImage(self.ax, interpolation='nearest', extent=extent, cmap='seismic')
-        #img.set_data(self.piv.columns, self.piv.index, self.piv.values)
-
-        #self.ax.set_xlim(extent[0], extent[1])
-        #self.ax.set_ylim(extent[2], extent[3])
-        #self.ax.images.append(img)
-
-        qm = self.ax.pcolormesh(np.array(self.piv.columns), np.array(self.piv.index), self.piv.values, cmap='seismic')
+        quadmesh = self.ax.pcolormesh(np.array(self.piv.columns), np.array(self.piv.index), self.piv.values, cmap='seismic')
         #self.ax.axis(extent)
         self.ax.axis('tight')
 
         # Create a colorbar, if there is already one draw it in the existing place
         if self.cb:
             self.cb.ax.clear()
-            self.cb = self.fig.colorbar(qm, cax=self.cb.ax)
+            self.cb = self.fig.colorbar(quadmesh, cax=self.cb.ax)
         else:
-            self.cb = self.fig.colorbar(qm)
+            self.cb = self.fig.colorbar(quadmesh)
+
         self.cb.set_label(self.data_lbl)
 
         # Set the various labels
         self.ax.set_title(self.data.filename)
         self.ax.set_xlabel(self.x_lbl)
         self.ax.set_ylabel(self.y_lbl)
-        self.ax.ticklabel_format(style='sci')
+        self.ax.ticklabel_format(style='sci', scilimits=(-3, 3))
         self.ax.set_aspect('auto')
         self.fig.tight_layout()
         
         self.canvas.draw()
-        #plt.close()
 
-    def onclick(self, event):
+    def on_mouse_motion(self, event):
+        if event.button != None:
+            self.on_mouse_click(event)
+
+    def on_mouse_click(self, event):
         # Don't do anything if we are not within the axes of the figure
         if not event.inaxes:
             return
@@ -210,19 +190,16 @@ class Window(QtGui.QDialog):
 
         lc.ax.set_title(self.data.filename)
         lc.ax.set_ylabel(self.data_lbl)
-        lc.ax.ticklabel_format(style='sci')
+        lc.ax.ticklabel_format(style='sci', scilimits=(-3, 3))
 
         # Make the figure fit the data
         lc.ax.relim()
         lc.ax.autoscale_view()
-        
+        lc.fig.tight_layout()
+
         # Redraw both plots to update them
         self.canvas.draw()
         lc.canvas.draw()
-
-    def mousemotion(self, event):
-        if event.button != None:
-            self.onclick(event)
 
     def add_2d_data(self, event):
         if self.ppt is None:
@@ -259,38 +236,42 @@ class Window(QtGui.QDialog):
                 print new
                 self.ppt.save(new)
 
-
-
 class Linecut(QtGui.QDialog):
     def __init__(self, parent=None):
         super(Linecut, self).__init__(parent)
-        self.setWindowTitle("Linecut")
 
         self.fig, self.ax = plt.subplots()
 
-        self.canvas = FigureCanvas(self.fig)
-        self.toolbar = NavigationToolbar(self.canvas, self)
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle("Linecut")
+
+        self.canvas = FigureCanvasQTAgg(self.fig)
+        self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
         self.setLayout(layout)
 
-
-
 class Operations:
     def __init__(self, parent=None):
         pass
-
-
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
 
     linecut = Linecut()
     main = Window(linecut, "test_data/Dev1_28.dat")
-    
-    main.show()
+
+    if len(sys.argv) > 1:
+        main = Window(linecut, sys.argv[1])
+    else:
+        filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
+        main = Window(linecut, filename)
+
     linecut.show()
+    main.show()
 
     sys.exit(app.exec_())
