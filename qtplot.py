@@ -36,7 +36,9 @@ class Window(QtGui.QDialog):
         self.init_ui()
 
         if filename is not None:
+            print "BLA"
             self.load_file(filename)
+            self.update_ui()
 
     def init_ui(self):
         self.setWindowTitle('qtplot')
@@ -47,7 +49,7 @@ class Window(QtGui.QDialog):
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
         self.b_load = QtGui.QPushButton('Load DAT')
-        self.b_load.clicked.connect(self.load_file)
+        self.b_load.clicked.connect(self.load_dat)
 
         self.lbl_x = QtGui.QLabel("X", self)
         self.cb_x = QtGui.QComboBox(self)
@@ -133,15 +135,18 @@ class Window(QtGui.QDialog):
         self.b_ppt1.setEnabled(True)
         self.b_ppt2.setEnabled(True)
 
-    def load_file(self, event):
-        self.filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
-
-        if self.filename != "":
-            self.data_file = DatFile(self.filename)
+    def load_file(self, filename):
+        if filename != "":
+            self.data_file = DatFile(filename)
 
             path, self.name = os.path.split(self.data_file.filename)
 
             self.update_ui()
+
+    def load_dat(self, event):
+        self.filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
+
+        self.load_file(self.filename)
 
     def plot_2d_data(self):
         data = self.data_file.df.copy()
@@ -333,7 +338,7 @@ if __name__ == '__main__':
     operations.main = main
 
     if len(sys.argv) > 1:
-        main = Window(linecut, sys.argv[1])
+        main = Window(linecut, operations, filename=sys.argv[1])
 
     linecut.show()
     main.show()
