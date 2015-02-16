@@ -18,14 +18,11 @@ from dat_file import DatFile
 from operations import Operations
 
 class Window(QtGui.QDialog):
-    def __init__(self, lc_window, op_window, filename, parent=None):
+    def __init__(self, lc_window, op_window, filename=None, parent=None):
         super(Window, self).__init__(parent)
         
         self.linecut = lc_window
         self.operations = op_window
-        self.data_file = DatFile(filename)
-        self.filename = filename
-        path, self.name = os.path.split(self.data_file.filename)
 
         self.fig, self.ax = plt.subplots()
         self.cb = None
@@ -38,35 +35,35 @@ class Window(QtGui.QDialog):
 
         self.init_ui()
 
+        if filename is not None:
+            self.load_file(filename)
+
     def init_ui(self):
-        self.setWindowTitle(self.filename)
+        self.setWindowTitle('qtplot')
 
         self.canvas = FigureCanvasQTAgg(self.fig)
         self.canvas.mpl_connect('button_press_event', self.on_mouse_click)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_motion)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
-        self.x_lbl = QtGui.QLabel("X", self)
-        self.x_combo = QtGui.QComboBox(self)
-        self.x_combo.addItems(self.data_file.columns)
-        self.x_combo.setCurrentIndex(5)
+        self.b_load = QtGui.QPushButton('Load DAT')
+        self.b_load.clicked.connect(self.load_file)
 
-        self.y_lbl = QtGui.QLabel("Y", self)
-        self.y_combo = QtGui.QComboBox(self)
-        self.y_combo.addItems(self.data_file.columns)
-        self.y_combo.setCurrentIndex(9)
+        self.lbl_x = QtGui.QLabel("X", self)
+        self.cb_x = QtGui.QComboBox(self)
 
-        self.d_lbl = QtGui.QLabel("Data", self)
-        self.d_combo = QtGui.QComboBox(self)
-        self.d_combo.addItems(self.data_file.columns)
-        self.d_combo.setCurrentIndex(7)
+        self.lbl_y = QtGui.QLabel("Y", self)
+        self.cb_y = QtGui.QComboBox(self)
 
-        self.button = QtGui.QPushButton('Plot')
-        self.button.clicked.connect(self.plot_2d_data)
+        self.lbl_d = QtGui.QLabel("Data", self)
+        self.cb_z = QtGui.QComboBox(self)
 
-        self.le_lbl = QtGui.QLabel("PPT File", self)
-        self.ppt_browse = QtGui.QPushButton("Browse", self)
-        self.ppt_browse.clicked.connect(self.browse_ppt)
+        self.b_plot = QtGui.QPushButton('Plot')
+        self.b_plot.clicked.connect(self.plot_2d_data)
+
+        self.lbl_ppt = QtGui.QLabel("PPT File", self)
+        self.b_ppt = QtGui.QPushButton("Browse", self)
+        self.b_ppt.clicked.connect(self.browse_ppt)
         self.le_ppt = QtGui.QLineEdit("data.pptx", self)
 
         self.b_ppt1 = QtGui.QPushButton('Add 2D Data to PPT')
@@ -76,20 +73,20 @@ class Window(QtGui.QDialog):
         self.b_ppt2.clicked.connect(self.add_linecut)
 
         hbox1 = QtGui.QHBoxLayout()
-        hbox1.addWidget(self.x_lbl)
-        hbox1.addWidget(self.x_combo)
+        hbox1.addWidget(self.lbl_x)
+        hbox1.addWidget(self.cb_x)
 
         hbox2 = QtGui.QHBoxLayout()
-        hbox2.addWidget(self.y_lbl)
-        hbox2.addWidget(self.y_combo)
+        hbox2.addWidget(self.lbl_y)
+        hbox2.addWidget(self.cb_y)
 
         hbox3 = QtGui.QHBoxLayout()
-        hbox3.addWidget(self.d_lbl)
-        hbox3.addWidget(self.d_combo)
+        hbox3.addWidget(self.lbl_d)
+        hbox3.addWidget(self.cb_z)
 
         hbox4 = QtGui.QHBoxLayout()
-        hbox4.addWidget(self.le_lbl)
-        hbox4.addWidget(self.ppt_browse)
+        hbox4.addWidget(self.lbl_ppt)
+        hbox4.addWidget(self.b_ppt)
         hbox4.addWidget(self.le_ppt)
 
         hbox5 = QtGui.QHBoxLayout()
@@ -99,10 +96,11 @@ class Window(QtGui.QDialog):
         vbox = QtGui.QVBoxLayout()
         vbox.addWidget(self.toolbar)
         vbox.addWidget(self.canvas)
+        vbox.addWidget(self.b_load)
         vbox.addLayout(hbox1)
         vbox.addLayout(hbox2)
         vbox.addLayout(hbox3)
-        vbox.addWidget(self.button)
+        vbox.addWidget(self.b_plot)
         vbox.addLayout(hbox4)
         vbox.addLayout(hbox5)
 
@@ -110,18 +108,37 @@ class Window(QtGui.QDialog):
 
         self.move(100, 100)
 
+    def update_ui(self):
+        self.setWindowTitle(self.name)
+        self.cb_x.addItems(self.data_file.columns)
+        self.cb_x.setCurrentIndex(5)
+        self.cb_y.addItems(self.data_file.columns)
+        self.cb_y.setCurrentIndex(9)
+        self.cb_z.addItems(self.data_file.columns)
+        self.cb_z.setCurrentIndex(7)
+
+    def load_file(self, event):
+        self.filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
+
+        if self.filename != "":
+            self.data_file = DatFile(self.filename)
+
+            path, self.name = os.path.split(self.data_file.filename)
+
+            self.update_ui()
+
     def plot_2d_data(self):
         data = self.data_file.df.copy()
         columns = self.data_file.columns
 
         # Get the column names to use for the x, y and data
-        self.x_lbl = str(self.x_combo.currentText())
-        self.y_lbl = str(self.y_combo.currentText())
-        self.data_lbl = str(self.d_combo.currentText())
+        self.lbl_x = str(self.cb_x.currentText())
+        self.lbl_y = str(self.cb_y.currentText())
+        self.data_lbl = str(self.cb_z.currentText())
 
         # Average the measurement columns which are related to the DAC values
         for col in columns:
-            if self.x_lbl == col or self.y_lbl == col:
+            if self.lbl_x == col or self.lbl_y == col:
                 if col in columns[3:7]:
                     data[col] = data.groupby(columns[1])[col].transform(np.average)
 
@@ -129,7 +146,7 @@ class Window(QtGui.QDialog):
                     data[col] = data.groupby(columns[0])[col].transform(np.average)
 
         # Pivot the data into an x and y axis, and values
-        data = data.pivot(self.y_lbl, self.x_lbl, self.data_lbl)
+        data = data.pivot(self.lbl_y, self.lbl_x, self.data_lbl)
 
         self.data = self.operations.perform_operation(data)
 
@@ -143,6 +160,7 @@ class Window(QtGui.QDialog):
         xc = x[:-1] + np.diff(x) / 2.0
         yc = y[:-1] + np.diff(y) / 2.0
 
+        # Add a first and last coordinate so all datapoints get plotted
         xc = np.append(xc[0] - (x[1] - x[0]), xc)
         xc = np.append(xc, xc[-1] + (x[-1] - x[-2]))
 
@@ -166,8 +184,8 @@ class Window(QtGui.QDialog):
 
         # Set the various labels
         self.ax.set_title(self.name)
-        self.ax.set_xlabel(self.x_lbl)
-        self.ax.set_ylabel(self.y_lbl)
+        self.ax.set_xlabel(self.lbl_x)
+        self.ax.set_ylabel(self.lbl_y)
         self.ax.ticklabel_format(style='sci', scilimits=(-3, 3))
         self.ax.set_aspect('auto')
 
@@ -204,7 +222,7 @@ class Window(QtGui.QDialog):
             self.ax.axhline(y=self.linecut_coord, color='red')
 
             lc.ax.plot(self.data.columns, self.data.loc[self.linecut_coord], color='red')
-            lc.ax.set_xlabel(self.x_lbl)
+            lc.ax.set_xlabel(self.lbl_x)
         elif event.button == 2:
             # Get the column closest to the mouse X
             self.linecut_coord = min(self.data.columns, key=lambda x:abs(x - event.xdata))
@@ -214,7 +232,7 @@ class Window(QtGui.QDialog):
             self.ax.axvline(x=self.linecut_coord, color='red')
 
             lc.ax.plot(self.data.index, self.data[self.linecut_coord], color='red')
-            lc.ax.set_xlabel(self.y_lbl)
+            lc.ax.set_xlabel(self.lbl_y)
 
         lc.ax.set_title(self.name)
         lc.ax.set_ylabel(self.data_lbl)
@@ -294,7 +312,8 @@ if __name__ == '__main__':
     main = None
     linecut = Linecut()
     operations = Operations()
-    main = Window(linecut, operations, "test_data/Dev1_42.dat")
+    #main = Window(linecut, operations, filename="test_data/Dev1_42.dat")
+    main = Window(linecut, operations)
     
     linecut.main = main
     operations.main = main

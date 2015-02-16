@@ -109,10 +109,9 @@ class Operations(QtGui.QDialog):
 
     def perform_operation(self, data):
         ops = []
+        
         for i in xrange(self.queue.count()):
-            ops.append(str(self.queue.item(i).text()))
-
-        for op in ops:
-            data = self.items[op](data)
+            name = str(self.queue.item(i).text())
+            data = self.items[name](data)
 
         return data
