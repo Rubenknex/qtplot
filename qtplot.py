@@ -19,10 +19,11 @@ from dat_file import DatFile
 class Window(QtGui.QDialog):
     def __init__(self, lc_window, filename, parent=None):
         super(Window, self).__init__(parent)
-        self.filename = filename
-
+        
         self.linecut = lc_window
         self.data = DatFile(filename)
+        self.filename = filename
+        path, self.name = os.path.split(self.data.filename)
 
         self.fig, self.ax = plt.subplots()
         self.cb = None
@@ -112,11 +113,24 @@ class Window(QtGui.QDialog):
         self.data_lbl = str(self.d_combo.currentText())
 
         # Average the measurement columns which are related to the DAC values
-        for i in range(3, 7):
-            df[columns[i]] =     df.groupby(columns[1])[columns[i]].transform(np.average)
 
-        for i in range(7, 11):
-            df[columns[i]] =     df.groupby(columns[0])[columns[i]].transform(np.average)
+        for col in columns:
+            if self.x_lbl == col or self.y_lbl == col:
+                if col in columns[3:7]:
+                    df[col] = df.groupby(columns[1])[col].transform(np.average)
+
+                if col in columns[7:11]:
+                    df[col] = df.groupby(columns[0])[col].transform(np.average)
+
+        """
+        for col in columns:
+            if col in columns[3:7]:
+                df[col] = df.groupby(columns[1])[col].transform(np.average)
+
+        for col in columns:
+            if col in columns[7:11]:
+                df[col] = df.groupby(columns[0])[col].transform(np.average)
+        """
 
         # Pivot the data into an x and y axis, and values
         self.piv = df.pivot(self.y_lbl, self.x_lbl, self.data_lbl)
@@ -128,7 +142,9 @@ class Window(QtGui.QDialog):
         # Clear the figure
         self.ax.clear()
 
-        quadmesh = self.ax.pcolormesh(np.array(self.piv.columns), np.array(self.piv.index), self.piv.values, cmap='seismic')
+        masked = np.ma.masked_where(np.isnan(self.piv.values), self.piv.values)
+        quadmesh = self.ax.pcolormesh(np.array(self.piv.columns), np.array(self.piv.index), masked, cmap='seismic')
+        
         #self.ax.axis(extent)
         self.ax.axis('tight')
 
@@ -142,7 +158,7 @@ class Window(QtGui.QDialog):
         self.cb.set_label(self.data_lbl)
 
         # Set the various labels
-        self.ax.set_title(self.data.filename)
+        self.ax.set_title(self.name)
         self.ax.set_xlabel(self.x_lbl)
         self.ax.set_ylabel(self.y_lbl)
         self.ax.ticklabel_format(style='sci', scilimits=(-3, 3))
@@ -188,7 +204,7 @@ class Window(QtGui.QDialog):
             lc.ax.plot(self.piv.index, self.piv[column], color='red')
             lc.ax.set_xlabel(self.y_lbl)
 
-        lc.ax.set_title(self.data.filename)
+        lc.ax.set_title(self.name)
         lc.ax.set_ylabel(self.data_lbl)
         lc.ax.ticklabel_format(style='sci', scilimits=(-3, 3))
 
@@ -263,7 +279,8 @@ if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
 
     linecut = Linecut()
-    main = Window(linecut, "test_data/Dev1_28.dat")
+    main = None
+    #main = Window(linecut, "test_data/Dev1_28.dat")
 
     if len(sys.argv) > 1:
         main = Window(linecut, sys.argv[1])
