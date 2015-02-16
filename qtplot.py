@@ -54,12 +54,12 @@ class Window(QtGui.QDialog):
         self.y_lbl = QtGui.QLabel("Y", self)
         self.y_combo = QtGui.QComboBox(self)
         self.y_combo.addItems(self.data_file.columns)
-        self.y_combo.setCurrentIndex(8)
+        self.y_combo.setCurrentIndex(9)
 
         self.d_lbl = QtGui.QLabel("Data", self)
         self.d_combo = QtGui.QComboBox(self)
         self.d_combo.addItems(self.data_file.columns)
-        self.d_combo.setCurrentIndex(3)
+        self.d_combo.setCurrentIndex(7)
 
         self.button = QtGui.QPushButton('Plot')
         self.button.clicked.connect(self.plot_2d_data)
@@ -108,6 +108,8 @@ class Window(QtGui.QDialog):
 
         self.setLayout(vbox)
 
+        self.move(100, 100)
+
     def plot_2d_data(self):
         data = self.data_file.df.copy()
         columns = self.data_file.columns
@@ -129,14 +131,15 @@ class Window(QtGui.QDialog):
         # Pivot the data into an x and y axis, and values
         data = data.pivot(self.y_lbl, self.x_lbl, self.data_lbl)
 
-        data = self.operations.perform_operation(data)
+        self.data = self.operations.perform_operation(data)
 
         # Clear the figure
         self.ax.clear()
 
-        x = np.array(data.columns)
-        y = np.array(data.index)
+        x = np.array(self.data.columns)
+        y = np.array(self.data.index)
 
+        # Calculate the centers of the data bins to use as coordinates
         xc = x[:-1] + np.diff(x) / 2.0
         yc = y[:-1] + np.diff(y) / 2.0
 
@@ -146,7 +149,8 @@ class Window(QtGui.QDialog):
         yc = np.append(yc[0] - (x[1] - x[0]), yc)
         yc = np.append(yc, yc[-1] + (x[-1] - x[-2]))
 
-        masked = np.ma.masked_where(np.isnan(data.values), data.values)
+        # Mask NaN values so they will not be plotted
+        masked = np.ma.masked_where(np.isnan(self.data.values), self.data.values)
         quadmesh = self.ax.pcolormesh(xc, yc, masked, cmap='seismic')
         
         self.ax.axis('tight')
@@ -193,23 +197,23 @@ class Window(QtGui.QDialog):
 
         if event.button == 1:
             # Get the row closest to the mouse Y
-            self.linecut_coord = min(self.piv.index, key=lambda x:abs(x - event.ydata))
+            self.linecut_coord = min(self.data.index, key=lambda x:abs(x - event.ydata))
             self.linecut_type = 'horizontal'
 
             # Draw a horizontal line
             self.ax.axhline(y=self.linecut_coord, color='red')
 
-            lc.ax.plot(self.piv.columns, self.piv.loc[self.linecut_coord], color='red')
+            lc.ax.plot(self.data.columns, self.data.loc[self.linecut_coord], color='red')
             lc.ax.set_xlabel(self.x_lbl)
         elif event.button == 2:
             # Get the column closest to the mouse X
-            self.linecut_coord = min(self.piv.columns, key=lambda x:abs(x - event.xdata))
+            self.linecut_coord = min(self.data.columns, key=lambda x:abs(x - event.xdata))
             self.linecut_type = 'vertical'
 
             # Draw a vertical line
             self.ax.axvline(x=self.linecut_coord, color='red')
 
-            lc.ax.plot(self.piv.index, self.piv[self.linecut_coord], color='red')
+            lc.ax.plot(self.data.index, self.data[self.linecut_coord], color='red')
             lc.ax.set_xlabel(self.y_lbl)
 
         lc.ax.set_title(self.name)
@@ -260,6 +264,9 @@ class Window(QtGui.QDialog):
                 print new
                 self.ppt.save(new)
 
+        self.linecut.close()
+        self.operations.close()
+
 class Linecut(QtGui.QDialog):
     def __init__(self, parent=None):
         super(Linecut, self).__init__(parent)
@@ -278,6 +285,8 @@ class Linecut(QtGui.QDialog):
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
         self.setLayout(layout)
+
+        self.move(800, 100)
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)

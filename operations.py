@@ -11,10 +11,16 @@ class Operations(QtGui.QDialog):
     def init_ui(self):
         self.setWindowTitle("Operations")
 
-        items = ['abs', 'autoflip', 'crop', 'sub linecut', 'sub plane', 'xderiv', 'yderiv']
+        self.items = {
+            'abs': self.abs,
+            'crop': self.crop,
+            'sub linecut': self.sub_linecut,
+            'xderiv': self.xderiv,
+            'yderiv': self.yderiv,
+        }
 
         self.options = QtGui.QListWidget(self)
-        self.options.addItems(items)
+        self.options.addItems(sorted(self.items.keys()))
 
         self.b_add = QtGui.QPushButton('Add')
         self.b_add.clicked.connect(self.add)
@@ -47,6 +53,8 @@ class Operations(QtGui.QDialog):
         hbox.addWidget(self.queue)
         
         self.setLayout(hbox)
+
+        self.setGeometry(800, 700, 300, 200)
         
     def add(self):
         if self.options.currentItem():
@@ -70,8 +78,41 @@ class Operations(QtGui.QDialog):
     def clear(self):
         self.queue.clear()
 
+    def abs(self, data):
+        return data.applymap(np.absolute)
+
+    def crop(self, data):
+        return data
+
     def sub_linecut(self, data):
-        pass
+        if self.main.linecut_type == None:
+            return data
+
+        values = data.values
+        lc_data = None
+
+        if self.main.linecut_type == 'horizontal':
+            lc_data = np.array(data.loc[self.main.linecut_coord])
+        elif self.main.linecut_type == 'vertical':
+            lc_data = np.array(data[self.main.linecut_coord])
+            lc_data = lc_data[:,np.newaxis]
+
+        values -= lc_data
+
+        return pd.DataFrame(values, index=data.index, columns=data.columns)
+
+    def xderiv(self, data):
+        return data
+
+    def yderiv(self, data):
+        return data
 
     def perform_operation(self, data):
+        ops = []
+        for i in xrange(self.queue.count()):
+            ops.append(str(self.queue.item(i).text()))
+
+        for op in ops:
+            data = self.items[op](data)
+
         return data
