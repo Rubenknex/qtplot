@@ -331,14 +331,15 @@ if __name__ == '__main__':
 
     linecut = Linecut()
     operations = Operations()
-    #main = Window(linecut, operations, filename="test_data/Dev1_42.dat")
     main = Window(linecut, operations)
     
-    linecut.main = main
-    operations.main = main
-
     if len(sys.argv) > 1:
         main = Window(linecut, operations, filename=sys.argv[1])
+
+    #main = Window(linecut, operations, filename="test_data/Dev1_42.dat")
+
+    linecut.main = main
+    operations.main = main
 
     linecut.show()
     main.show()
