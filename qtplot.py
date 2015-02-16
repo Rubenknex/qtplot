@@ -15,18 +15,23 @@ from pptx import Presentation
 from pptx.util import Inches
 
 from dat_file import DatFile
+from operations import Operations
 
 class Window(QtGui.QDialog):
-    def __init__(self, lc_window, filename, parent=None):
+    def __init__(self, lc_window, op_window, filename, parent=None):
         super(Window, self).__init__(parent)
         
         self.linecut = lc_window
-        self.data = DatFile(filename)
+        self.operations = op_window
+        self.data_file = DatFile(filename)
         self.filename = filename
-        path, self.name = os.path.split(self.data.filename)
+        path, self.name = os.path.split(self.data_file.filename)
 
         self.fig, self.ax = plt.subplots()
         self.cb = None
+
+        self.linecut_type = None
+        self.linecut_coord = None
 
         self.ppt = None
         self.slide = None
@@ -43,17 +48,17 @@ class Window(QtGui.QDialog):
 
         self.x_lbl = QtGui.QLabel("X", self)
         self.x_combo = QtGui.QComboBox(self)
-        self.x_combo.addItems(self.data.columns)
+        self.x_combo.addItems(self.data_file.columns)
         self.x_combo.setCurrentIndex(5)
 
         self.y_lbl = QtGui.QLabel("Y", self)
         self.y_combo = QtGui.QComboBox(self)
-        self.y_combo.addItems(self.data.columns)
+        self.y_combo.addItems(self.data_file.columns)
         self.y_combo.setCurrentIndex(8)
 
         self.d_lbl = QtGui.QLabel("Data", self)
         self.d_combo = QtGui.QComboBox(self)
-        self.d_combo.addItems(self.data.columns)
+        self.d_combo.addItems(self.data_file.columns)
         self.d_combo.setCurrentIndex(3)
 
         self.button = QtGui.QPushButton('Plot')
@@ -104,8 +109,8 @@ class Window(QtGui.QDialog):
         self.setLayout(vbox)
 
     def plot_2d_data(self):
-        df = self.data.df
-        columns = self.data.columns
+        data = self.data_file.df.copy()
+        columns = self.data_file.columns
 
         # Get the column names to use for the x, y and data
         self.x_lbl = str(self.x_combo.currentText())
@@ -113,39 +118,37 @@ class Window(QtGui.QDialog):
         self.data_lbl = str(self.d_combo.currentText())
 
         # Average the measurement columns which are related to the DAC values
-
         for col in columns:
             if self.x_lbl == col or self.y_lbl == col:
                 if col in columns[3:7]:
-                    df[col] = df.groupby(columns[1])[col].transform(np.average)
+                    data[col] = data.groupby(columns[1])[col].transform(np.average)
 
                 if col in columns[7:11]:
-                    df[col] = df.groupby(columns[0])[col].transform(np.average)
-
-        """
-        for col in columns:
-            if col in columns[3:7]:
-                df[col] = df.groupby(columns[1])[col].transform(np.average)
-
-        for col in columns:
-            if col in columns[7:11]:
-                df[col] = df.groupby(columns[0])[col].transform(np.average)
-        """
+                    data[col] = data.groupby(columns[0])[col].transform(np.average)
 
         # Pivot the data into an x and y axis, and values
-        self.piv = df.pivot(self.y_lbl, self.x_lbl, self.data_lbl)
+        data = data.pivot(self.y_lbl, self.x_lbl, self.data_lbl)
 
-        # Calculate half of the data step size
-        hstepx = abs(self.piv.columns[1] - self.piv.columns[0]) / 2
-        hstepy = abs(self.piv.index[1] - self.piv.index[0]) / 2
+        data = self.operations.perform_operation(data)
 
         # Clear the figure
         self.ax.clear()
 
-        masked = np.ma.masked_where(np.isnan(self.piv.values), self.piv.values)
-        quadmesh = self.ax.pcolormesh(np.array(self.piv.columns), np.array(self.piv.index), masked, cmap='seismic')
+        x = np.array(data.columns)
+        y = np.array(data.index)
+
+        xc = x[:-1] + np.diff(x) / 2.0
+        yc = y[:-1] + np.diff(y) / 2.0
+
+        xc = np.append(xc[0] - (x[1] - x[0]), xc)
+        xc = np.append(xc, xc[-1] + (x[-1] - x[-2]))
+
+        yc = np.append(yc[0] - (x[1] - x[0]), yc)
+        yc = np.append(yc, yc[-1] + (x[-1] - x[-2]))
+
+        masked = np.ma.masked_where(np.isnan(data.values), data.values)
+        quadmesh = self.ax.pcolormesh(xc, yc, masked, cmap='seismic')
         
-        #self.ax.axis(extent)
         self.ax.axis('tight')
 
         # Create a colorbar, if there is already one draw it in the existing place
@@ -163,9 +166,12 @@ class Window(QtGui.QDialog):
         self.ax.set_ylabel(self.y_lbl)
         self.ax.ticklabel_format(style='sci', scilimits=(-3, 3))
         self.ax.set_aspect('auto')
+
         self.fig.tight_layout()
         
         self.canvas.draw()
+
+        del data
 
     def on_mouse_motion(self, event):
         if event.button != None:
@@ -187,21 +193,23 @@ class Window(QtGui.QDialog):
 
         if event.button == 1:
             # Get the row closest to the mouse Y
-            row = min(self.piv.index, key=lambda x:abs(x - event.ydata))
+            self.linecut_coord = min(self.piv.index, key=lambda x:abs(x - event.ydata))
+            self.linecut_type = 'horizontal'
 
             # Draw a horizontal line
-            self.ax.axhline(y=row, color='red')
+            self.ax.axhline(y=self.linecut_coord, color='red')
 
-            lc.ax.plot(self.piv.columns, self.piv.loc[row], color='red')
+            lc.ax.plot(self.piv.columns, self.piv.loc[self.linecut_coord], color='red')
             lc.ax.set_xlabel(self.x_lbl)
         elif event.button == 2:
             # Get the column closest to the mouse X
-            column = min(self.piv.columns, key=lambda x:abs(x - event.xdata))
+            self.linecut_coord = min(self.piv.columns, key=lambda x:abs(x - event.xdata))
+            self.linecut_type = 'vertical'
 
             # Draw a vertical line
-            self.ax.axvline(x=column, color='red')
+            self.ax.axvline(x=self.linecut_coord, color='red')
 
-            lc.ax.plot(self.piv.index, self.piv[column], color='red')
+            lc.ax.plot(self.piv.index, self.piv[self.linecut_coord], color='red')
             lc.ax.set_xlabel(self.y_lbl)
 
         lc.ax.set_title(self.name)
@@ -271,24 +279,27 @@ class Linecut(QtGui.QDialog):
         layout.addWidget(self.canvas)
         self.setLayout(layout)
 
-class Operations:
-    def __init__(self, parent=None):
-        pass
-
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
 
-    linecut = Linecut()
     main = None
-    #main = Window(linecut, "test_data/Dev1_28.dat")
+    linecut = Linecut()
+    operations = Operations()
+    main = Window(linecut, operations, "test_data/Dev1_42.dat")
+    
+    linecut.main = main
+    operations.main = main
 
     if len(sys.argv) > 1:
         main = Window(linecut, sys.argv[1])
     else:
-        filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
-        main = Window(linecut, filename)
+        #filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
+        #main = Window(linecut, filename)
+        pass
 
     linecut.show()
     main.show()
+
+    operations.show()
 
     sys.exit(app.exec_())
