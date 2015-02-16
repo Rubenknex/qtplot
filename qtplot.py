@@ -59,6 +59,7 @@ class Window(QtGui.QDialog):
         self.cb_z = QtGui.QComboBox(self)
 
         self.b_plot = QtGui.QPushButton('Plot')
+        self.b_plot.setEnabled(False)
         self.b_plot.clicked.connect(self.plot_2d_data)
 
         self.lbl_ppt = QtGui.QLabel("PPT File", self)
@@ -66,10 +67,16 @@ class Window(QtGui.QDialog):
         self.b_ppt.clicked.connect(self.browse_ppt)
         self.le_ppt = QtGui.QLineEdit("data.pptx", self)
 
-        self.b_ppt1 = QtGui.QPushButton('Add 2D Data to PPT')
+        self.b_slide = QtGui.QPushButton('Add slide')
+        self.b_slide.setEnabled(False)
+        self.b_slide.clicked.connect(self.add_slide)
+
+        self.b_ppt1 = QtGui.QPushButton('Add 2D data Figure')
+        self.b_ppt1.setEnabled(False)
         self.b_ppt1.clicked.connect(self.add_2d_data)
 
-        self.b_ppt2 = QtGui.QPushButton('Add Linecut to PPT')
+        self.b_ppt2 = QtGui.QPushButton('Add linecut figure')
+        self.b_ppt2.setEnabled(False)
         self.b_ppt2.clicked.connect(self.add_linecut)
 
         hbox1 = QtGui.QHBoxLayout()
@@ -90,6 +97,7 @@ class Window(QtGui.QDialog):
         hbox4.addWidget(self.le_ppt)
 
         hbox5 = QtGui.QHBoxLayout()
+        hbox5.addWidget(self.b_slide)
         hbox5.addWidget(self.b_ppt1)
         hbox5.addWidget(self.b_ppt2)
 
@@ -110,12 +118,20 @@ class Window(QtGui.QDialog):
 
     def update_ui(self):
         self.setWindowTitle(self.name)
+
         self.cb_x.addItems(self.data_file.columns)
         self.cb_x.setCurrentIndex(5)
+
         self.cb_y.addItems(self.data_file.columns)
         self.cb_y.setCurrentIndex(9)
+
         self.cb_z.addItems(self.data_file.columns)
         self.cb_z.setCurrentIndex(7)
+
+        self.b_plot.setEnabled(True)
+        self.b_slide.setEnabled(True)
+        self.b_ppt1.setEnabled(True)
+        self.b_ppt2.setEnabled(True)
 
     def load_file(self, event):
         self.filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
@@ -148,7 +164,7 @@ class Window(QtGui.QDialog):
         # Pivot the data into an x and y axis, and values
         data = data.pivot(self.lbl_y, self.lbl_x, self.data_lbl)
 
-        self.data = self.operations.perform_operation(data)
+        self.data = self.operations.apply_operations(data)
 
         # Clear the figure
         self.ax.clear()
@@ -249,25 +265,22 @@ class Window(QtGui.QDialog):
         self.canvas.draw()
         lc.canvas.draw()
 
-    def add_2d_data(self, event):
+    def add_slide(self, event):
         if self.ppt is None:
             self.ppt = Presentation(str(self.le_ppt.text()))
 
             title_slide_layout = self.ppt.slide_layouts[6]
             self.slide = self.ppt.slides.add_slide(title_slide_layout)
 
-        self.fig.savefig("test.png")
-        self.slide.shapes.add_picture("test.png", Inches(1), Inches(1))
+    def add_2d_data(self, event):
+        if self.slide is not None:
+            self.fig.savefig("test.png")
+            self.slide.shapes.add_picture("test.png", Inches(1), Inches(1))
 
     def add_linecut(self, event):
-        if self.ppt is None:
-            self.ppt = Presentation(str(self.le_ppt.text()))
-
-            title_slide_layout = self.ppt.slide_layouts[6]
-            self.slide = self.ppt.slides.add_slide(title_slide_layout)
-
-        self.linecut.fig.savefig("test.png")
-        self.slide.shapes.add_picture("test.png", Inches(1), Inches(1))
+        if self.slide is not None:
+            self.linecut.fig.savefig("test.png")
+            self.slide.shapes.add_picture("test.png", Inches(1), Inches(1))
 
     def browse_ppt(self, event):
         filename = QtGui.QFileDialog.getOpenFileName(self)
@@ -311,7 +324,6 @@ class Linecut(QtGui.QDialog):
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
 
-    main = None
     linecut = Linecut()
     operations = Operations()
     #main = Window(linecut, operations, filename="test_data/Dev1_42.dat")
@@ -322,10 +334,6 @@ if __name__ == '__main__':
 
     if len(sys.argv) > 1:
         main = Window(linecut, sys.argv[1])
-    else:
-        #filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
-        #main = Window(linecut, filename)
-        pass
 
     linecut.show()
     main.show()

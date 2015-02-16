@@ -55,26 +55,38 @@ class Operations(QtGui.QDialog):
         self.setLayout(hbox)
 
         self.setGeometry(800, 700, 300, 200)
-        
+
+    def update_plot(func):
+        def wrapper(self):
+            func(self)
+            self.main.plot_2d_data()
+
+        return wrapper
+    
+    @update_plot
     def add(self):
         if self.options.currentItem():
             self.queue.addItem(self.options.currentItem().text())
 
+    @update_plot
     def up(self):
         selected_row = self.queue.currentRow()
         current = self.queue.takeItem(selected_row)
         self.queue.insertItem(selected_row - 1, current)
         self.queue.setCurrentRow(selected_row - 1)
 
+    @update_plot
     def down(self):
         selected_row = self.queue.currentRow()
         current = self.queue.takeItem(selected_row)
         self.queue.insertItem(selected_row + 1, current)
         self.queue.setCurrentRow(selected_row + 1)
 
+    @update_plot
     def remove(self):
         self.queue.takeItem(self.queue.currentRow())
 
+    @update_plot
     def clear(self):
         self.queue.clear()
 
@@ -109,7 +121,7 @@ class Operations(QtGui.QDialog):
         values = np.gradient(data.values)[0]
         return pd.DataFrame(values, index=data.index, columns=data.columns)
 
-    def perform_operation(self, data):
+    def apply_operations(self, data):
         ops = []
 
         for i in xrange(self.queue.count()):
