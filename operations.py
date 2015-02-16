@@ -102,14 +102,16 @@ class Operations(QtGui.QDialog):
         return pd.DataFrame(values, index=data.index, columns=data.columns)
 
     def xderiv(self, data):
-        return data
+        values = np.gradient(data.values)[1]
+        return pd.DataFrame(values, index=data.index, columns=data.columns)
 
     def yderiv(self, data):
-        return data
+        values = np.gradient(data.values)[0]
+        return pd.DataFrame(values, index=data.index, columns=data.columns)
 
     def perform_operation(self, data):
         ops = []
-        
+
         for i in xrange(self.queue.count()):
             name = str(self.queue.item(i).text())
             data = self.items[name](data)
