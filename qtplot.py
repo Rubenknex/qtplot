@@ -181,6 +181,8 @@ class Window(QtGui.QDialog):
             self.cb = self.fig.colorbar(quadmesh)
 
         self.cb.set_label(self.data_lbl)
+        self.cb.formatter.set_powerlimits((-3, 3))
+        self.cb.update_ticks()
 
         # Set the various labels
         self.ax.set_title(self.name)
