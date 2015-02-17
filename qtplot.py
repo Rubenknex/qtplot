@@ -1,4 +1,5 @@
 import os
+import math
 import sys
 import time
 
@@ -7,15 +8,46 @@ from PyQt4 import QtGui, QtCore
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.image import NonUniformImage
+from matplotlib.ticker import ScalarFormatter
 
+import matplotlib as mpl
 import numpy as np
 import pandas as pd
 
 from pptx import Presentation
 from pptx.util import Inches
 
+from config import *
 from dat_file import DatFile
 from operations import Operations
+
+"""
+TODO:
+- Config file with defaults
+- Cropping operation
+"""
+
+def exp3(x, pos):
+    if x == 0.0:
+        return '0'
+
+    exp = int(math.floor(math.log10(x)))
+    exp3 = exp - exp % 3
+
+    return '%.0f' % (x / (10 ** exp3))
+
+class FixedOrderFormatter(ScalarFormatter):
+    def __init__(self, useOffset=None, useMathText=None):
+        ScalarFormatter.__init__(self, useOffset=useOffset, useMathText=useMathText)
+
+    def format_data(self, value):
+        return "test"
+
+    def format_data_short(self, value):
+        return "test"
+
+    def _set_orderOfMagnitude(self, range):
+        self.orderOfMagnitude = 10
 
 class Window(QtGui.QDialog):
     def __init__(self, lc_window, op_window, filename=None, parent=None):
@@ -36,7 +68,6 @@ class Window(QtGui.QDialog):
         self.init_ui()
 
         if filename is not None:
-            print "BLA"
             self.load_file(filename)
             self.update_ui()
 
@@ -60,6 +91,12 @@ class Window(QtGui.QDialog):
 
         self.lbl_d = QtGui.QLabel("Data", self)
         self.cb_z = QtGui.QComboBox(self)
+
+        self.s_gamma = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.s_gamma.setMinimum(0)
+        self.s_gamma.setMaximum(100)
+        self.s_gamma.setValue(50)
+        self.s_gamma.valueChanged.connect(self.on_gamma_changed)
 
         self.b_plot = QtGui.QPushButton('Plot')
         self.b_plot.setEnabled(False)
@@ -115,6 +152,7 @@ class Window(QtGui.QDialog):
         vbox.addLayout(hbox1)
         vbox.addLayout(hbox2)
         vbox.addLayout(hbox3)
+        vbox.addWidget(self.s_gamma)
         vbox.addWidget(self.b_plot)
         vbox.addLayout(hbox4)
         vbox.addLayout(hbox5)
@@ -198,9 +236,13 @@ class Window(QtGui.QDialog):
         yc = np.append(yc[0] - (x[1] - x[0]), yc)
         yc = np.append(yc, yc[-1] + (x[-1] - x[-2]))
 
+        cmap = mpl.colors.LinearSegmentedColormap.from_list('seismic', ['r','w','b'], gamma=1.0)
+        cmap = mpl.cm.get_cmap('seismic')
+        cmap.set_gamma((self.s_gamma.value() / 50.0)**4)
+
         # Mask NaN values so they will not be plotted
         masked = np.ma.masked_where(np.isnan(self.data.values), self.data.values)
-        quadmesh = self.ax.pcolormesh(xc, yc, masked, cmap='seismic')
+        quadmesh = self.ax.pcolormesh(xc, yc, masked, cmap=cmap)
         
         self.ax.axis('tight')
 
@@ -220,6 +262,7 @@ class Window(QtGui.QDialog):
         self.ax.set_xlabel(self.lbl_x)
         self.ax.set_ylabel(self.lbl_y)
         self.ax.ticklabel_format(style='sci', scilimits=(-3, 3))
+        self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
         self.ax.set_aspect('auto')
 
         self.fig.tight_layout()
@@ -227,6 +270,9 @@ class Window(QtGui.QDialog):
         self.canvas.draw()
 
         del data
+
+    def on_gamma_changed(self, value):
+        self.plot_2d_data()
 
     def on_mouse_motion(self, event):
         if event.button != None:
@@ -252,9 +298,9 @@ class Window(QtGui.QDialog):
             self.linecut_type = 'horizontal'
 
             # Draw a horizontal line
-            self.ax.axhline(y=self.linecut_coord, color='red', linewidth=0.5)
+            self.ax.axhline(y=self.linecut_coord, color='red')
 
-            lc.ax.plot(self.data.columns, self.data.loc[self.linecut_coord], color='red')
+            lc.ax.plot(self.data.columns, self.data.loc[self.linecut_coord], color='red', linewidth=0.5)
             lc.ax.set_xlabel(self.lbl_x)
         elif event.button == 2:
             # Get the column closest to the mouse X
@@ -264,7 +310,7 @@ class Window(QtGui.QDialog):
             # Draw a vertical line
             self.ax.axvline(x=self.linecut_coord, color='red')
 
-            lc.ax.plot(self.data.index, self.data[self.linecut_coord], color='red')
+            lc.ax.plot(self.data.index, self.data[self.linecut_coord], color='red', linewidth=0.5)
             lc.ax.set_xlabel(self.lbl_y)
 
         lc.ax.set_title(self.name)

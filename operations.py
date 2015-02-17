@@ -39,6 +39,8 @@ class Operations(QtGui.QDialog):
 
         self.queue = QtGui.QListWidget(self)
 
+        self.le_op = QtGui.QLineEdit(self)
+
         hbox = QtGui.QHBoxLayout()
 
         vbox = QtGui.QVBoxLayout()
@@ -48,9 +50,13 @@ class Operations(QtGui.QDialog):
         vbox.addWidget(self.b_remove)
         vbox.addWidget(self.b_clear)
 
+        vbox2 = QtGui.QVBoxLayout()
+        vbox2.addWidget(self.queue)
+        vbox2.addWidget(self.le_op)
+
         hbox.addWidget(self.options)
         hbox.addLayout(vbox)
-        hbox.addWidget(self.queue)
+        hbox.addLayout(vbox2)
         
         self.setLayout(hbox)
 
@@ -94,7 +100,7 @@ class Operations(QtGui.QDialog):
         return data.applymap(np.absolute)
 
     def crop(self, data):
-        return data
+        return data.iloc[1:5, 5:20]
 
     def sub_linecut(self, data):
         if self.main.linecut_type == None:
