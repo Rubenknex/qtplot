@@ -1,5 +1,6 @@
 test_data/
 
+*.pptx
 *.pyc
 Thumbs.db
 *.png

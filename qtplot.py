@@ -50,6 +50,7 @@ class Window(QtGui.QDialog):
 
         self.b_load = QtGui.QPushButton('Load DAT')
         self.b_load.clicked.connect(self.load_dat)
+        self.c_swap = QtGui.QCheckBox('Swap columns', self)
 
         self.lbl_x = QtGui.QLabel("X", self)
         self.cb_x = QtGui.QComboBox(self)
@@ -67,7 +68,7 @@ class Window(QtGui.QDialog):
         self.lbl_ppt = QtGui.QLabel("PPT File", self)
         self.b_ppt = QtGui.QPushButton("Browse", self)
         self.b_ppt.clicked.connect(self.browse_ppt)
-        self.le_ppt = QtGui.QLineEdit("data.pptx", self)
+        self.le_ppt = QtGui.QLineEdit(self)
 
         self.b_slide = QtGui.QPushButton('Add slide')
         self.b_slide.setEnabled(False)
@@ -80,6 +81,10 @@ class Window(QtGui.QDialog):
         self.b_ppt2 = QtGui.QPushButton('Add linecut figure')
         self.b_ppt2.setEnabled(False)
         self.b_ppt2.clicked.connect(self.add_linecut)
+
+        hbox = QtGui.QHBoxLayout()
+        hbox.addWidget(self.b_load)
+        hbox.addWidget(self.c_swap)
 
         hbox1 = QtGui.QHBoxLayout()
         hbox1.addWidget(self.lbl_x)
@@ -106,7 +111,7 @@ class Window(QtGui.QDialog):
         vbox = QtGui.QVBoxLayout()
         vbox.addWidget(self.toolbar)
         vbox.addWidget(self.canvas)
-        vbox.addWidget(self.b_load)
+        vbox.addLayout(hbox)
         vbox.addLayout(hbox1)
         vbox.addLayout(hbox2)
         vbox.addLayout(hbox3)
@@ -160,11 +165,16 @@ class Window(QtGui.QDialog):
         # Average the measurement columns which are related to the DAC values
         for col in columns:
             if self.lbl_x == col or self.lbl_y == col:
+                one, two = 1, 0
+
+                if self.c_swap.isChecked():
+                    one, two = two, one
+
                 if col in columns[3:7]:
-                    data[col] = data.groupby(columns[1])[col].transform(np.average)
+                    data[col] = data.groupby(columns[one])[col].transform(np.average)
 
                 if col in columns[7:11]:
-                    data[col] = data.groupby(columns[0])[col].transform(np.average)
+                    data[col] = data.groupby(columns[two])[col].transform(np.average)
 
         # Pivot the data into an x and y axis, and values
         data = data.pivot(self.lbl_y, self.lbl_x, self.data_lbl)
@@ -242,7 +252,7 @@ class Window(QtGui.QDialog):
             self.linecut_type = 'horizontal'
 
             # Draw a horizontal line
-            self.ax.axhline(y=self.linecut_coord, color='red')
+            self.ax.axhline(y=self.linecut_coord, color='red', linewidth=0.5)
 
             lc.ax.plot(self.data.columns, self.data.loc[self.linecut_coord], color='red')
             lc.ax.set_xlabel(self.lbl_x)
@@ -271,9 +281,7 @@ class Window(QtGui.QDialog):
         lc.canvas.draw()
 
     def add_slide(self, event):
-        if self.ppt is None:
-            self.ppt = Presentation(str(self.le_ppt.text()))
-
+        if self.ppt is not None:
             title_slide_layout = self.ppt.slide_layouts[6]
             self.slide = self.ppt.slides.add_slide(title_slide_layout)
 
@@ -288,13 +296,21 @@ class Window(QtGui.QDialog):
             self.slide.shapes.add_picture("test.png", Inches(1), Inches(1))
 
     def browse_ppt(self, event):
-        filename = QtGui.QFileDialog.getOpenFileName(self)
+        filename = str(QtGui.QFileDialog.getOpenFileName(self))
         self.le_ppt.setText(filename)
+
+        try:
+            self.ppt_file = open(filename, 'rb')
+            self.ppt = Presentation(self.ppt_file)
+        except IOError:
+            print 'Could not open PowerPoint file: ' + filename
+            self.ppt = None
 
     def closeEvent(self, event):
         if self.ppt:
             try:
                 self.ppt.save(str(self.le_ppt.text()))
+                #self.ppt_file.close()
             except IOError as e:
                 path, filename = os.path.split(str(self.le_ppt.text()))
                 name, ext = os.path.splitext(filename)
