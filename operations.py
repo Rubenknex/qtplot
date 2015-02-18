@@ -38,8 +38,11 @@ class Operations(QtGui.QDialog):
         self.b_clear.clicked.connect(self.clear)
 
         self.queue = QtGui.QListWidget(self)
+        self.queue.currentItemChanged.connect(self.selected_changed)
 
         self.le_op = QtGui.QLineEdit(self)
+        self.le_op.textEdited.connect(self.text_changed)
+        self.le_op.editingFinished.connect(self.return_pressed)
 
         hbox = QtGui.QHBoxLayout()
 
@@ -72,8 +75,14 @@ class Operations(QtGui.QDialog):
     @update_plot
     def add(self):
         if self.options.currentItem():
-            item = QtGui.QListWidgetItem(self.options.currentItem().text())
-            item.setData(QtCore.Qt.UserRole, QtCore.QVariant(""))
+            name = self.options.currentItem().text()
+
+            data = ''
+            if name == 'crop':
+                data = 'x1 x2 y1 y2'
+
+            item = QtGui.QListWidgetItem(name)
+            item.setData(QtCore.Qt.UserRole, QtCore.QVariant(data))
             self.queue.addItem(item)
 
     @update_plot
@@ -98,13 +107,27 @@ class Operations(QtGui.QDialog):
     def clear(self):
         self.queue.clear()
 
-    def abs(self, data):
+    def selected_changed(self, current, previous):
+        if current:
+            data = current.data(QtCore.Qt.UserRole).toPyObject()
+            self.le_op.setText(data)
+
+    def text_changed(self, text):
+        if self.queue.currentItem():
+            self.queue.currentItem().setData(QtCore.Qt.UserRole, QtCore.QVariant(str(text)))
+
+    @update_plot
+    def return_pressed(self):
+        pass
+
+    def abs(self, data, item):
         return data.applymap(np.absolute)
 
-    def crop(self, data):
-        return data.iloc[1:5, 5:20]
+    def crop(self, data, item):
+        coords = [int(x) for x in str(item.data(QtCore.Qt.UserRole).toPyObject()).split()]
+        return data.iloc[coords[0]:coords[1], coords[2]:coords[3]]
 
-    def sub_linecut(self, data):
+    def sub_linecut(self, data, item):
         if self.main.linecut_type == None:
             return data
 
@@ -121,11 +144,11 @@ class Operations(QtGui.QDialog):
 
         return pd.DataFrame(values, index=data.index, columns=data.columns)
 
-    def xderiv(self, data):
+    def xderiv(self, data, item):
         values = np.gradient(data.values)[1]
         return pd.DataFrame(values, index=data.index, columns=data.columns)
 
-    def yderiv(self, data):
+    def yderiv(self, data, item):
         values = np.gradient(data.values)[0]
         return pd.DataFrame(values, index=data.index, columns=data.columns)
 
@@ -133,7 +156,8 @@ class Operations(QtGui.QDialog):
         ops = []
 
         for i in xrange(self.queue.count()):
+            item = self.queue.item(i)
             name = str(self.queue.item(i).text())
-            data = self.items[name](data)
+            data = self.items[name](data, item)
 
         return data

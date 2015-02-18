@@ -108,7 +108,7 @@ class Window(QtGui.QMainWindow):
         self.lbl_ppt = QtGui.QLabel("PPT File", self)
         self.b_ppt = QtGui.QPushButton("Browse", self)
         self.b_ppt.clicked.connect(self.browse_ppt)
-        self.le_ppt = QtGui.QLineEdit(self)
+        self.le_ppt = QtGui.QLineEdit(cfg_ppt_file, self)
 
         self.b_slide = QtGui.QPushButton('Add slide')
         self.b_slide.setEnabled(False)
@@ -248,8 +248,8 @@ class Window(QtGui.QMainWindow):
         xc = np.append(xc[0] - (x[1] - x[0]), xc)
         xc = np.append(xc, xc[-1] + (x[-1] - x[-2]))
 
-        yc = np.append(yc[0] - (x[1] - x[0]), yc)
-        yc = np.append(yc, yc[-1] + (x[-1] - x[-2]))
+        yc = np.append(yc[0] - (y[1] - y[0]), yc)
+        yc = np.append(yc, yc[-1] + (y[-1] - y[-2]))
 
         cmap = mpl.cm.get_cmap('seismic')
         cmap.set_gamma((self.s_gamma.value() / 50.0)**4)
@@ -380,7 +380,6 @@ class Window(QtGui.QMainWindow):
         if self.ppt:
             try:
                 self.ppt.save(str(self.le_ppt.text()))
-                #self.ppt_file.close()
             except IOError as e:
                 path, filename = os.path.split(str(self.le_ppt.text()))
                 name, ext = os.path.splitext(filename)
