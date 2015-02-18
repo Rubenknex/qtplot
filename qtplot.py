@@ -1,16 +1,15 @@
-import os
 import math
+import os
 import sys
 import time
 
 from PyQt4 import QtGui, QtCore
 
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
-from matplotlib.image import NonUniformImage
 from matplotlib.ticker import ScalarFormatter
 
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -25,33 +24,32 @@ from operations import Operations
 TODO:
 - Config file with defaults
 - Cropping operation
+
+Open file:
+- Fill ui
+- 
 """
 
-def exp3(x, pos):
-    if x == 0.0:
-        return '0'
-
-    exp = int(math.floor(math.log10(x)))
-    exp3 = exp - exp % 3
-
-    return '%.0f' % (x / (10 ** exp3))
-
 class FixedOrderFormatter(ScalarFormatter):
-    def __init__(self, useOffset=None, useMathText=None):
-        ScalarFormatter.__init__(self, useOffset=useOffset, useMathText=useMathText)
+    def __init__(self, significance=0):
+        ScalarFormatter.__init__(self, useOffset=None, useMathText=None)
+        self.format = '%.' + str(significance) + 'f'
 
-    def format_data(self, value):
-        return "test"
+    def __call__(self, x, pos=None):
+        if x == 0:
+            return '0'
 
-    def format_data_short(self, value):
-        return "test"
+        exp = self.orderOfMagnitude
+
+        return self.format % (x / (10 ** exp))
 
     def _set_orderOfMagnitude(self, range):
-        self.orderOfMagnitude = 10
+        exp = math.floor(math.log10(range))
+        self.orderOfMagnitude = exp - (exp % 3)
 
-class Window(QtGui.QDialog):
-    def __init__(self, lc_window, op_window, filename=None, parent=None):
-        super(Window, self).__init__(parent)
+class Window(QtGui.QMainWindow):
+    def __init__(self, lc_window, op_window, filename=None):
+        QtGui.QMainWindow.__init__(self)
         
         self.linecut = lc_window
         self.operations = op_window
@@ -65,6 +63,10 @@ class Window(QtGui.QDialog):
         self.ppt = None
         self.slide = None
 
+        self.data = None
+        self.data_file = None
+        self.data_changed = True
+
         self.init_ui()
 
         if filename is not None:
@@ -74,23 +76,29 @@ class Window(QtGui.QDialog):
     def init_ui(self):
         self.setWindowTitle('qtplot')
 
+        self.main_widget = QtGui.QWidget(self)
+
         self.canvas = FigureCanvasQTAgg(self.fig)
         self.canvas.mpl_connect('button_press_event', self.on_mouse_click)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_motion)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
         self.b_load = QtGui.QPushButton('Load DAT')
-        self.b_load.clicked.connect(self.load_dat)
+        self.b_load.clicked.connect(self.on_load_dat)
         self.c_swap = QtGui.QCheckBox('Swap columns', self)
+        self.c_swap.stateChanged.connect(self.change_data)
 
         self.lbl_x = QtGui.QLabel("X", self)
         self.cb_x = QtGui.QComboBox(self)
+        self.cb_x.currentIndexChanged.connect(self.change_data)
 
         self.lbl_y = QtGui.QLabel("Y", self)
         self.cb_y = QtGui.QComboBox(self)
+        self.cb_y.currentIndexChanged.connect(self.change_data)
 
         self.lbl_d = QtGui.QLabel("Data", self)
         self.cb_z = QtGui.QComboBox(self)
+        self.cb_z.currentIndexChanged.connect(self.change_data)
 
         self.s_gamma = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.s_gamma.setMinimum(0)
@@ -145,7 +153,7 @@ class Window(QtGui.QDialog):
         hbox5.addWidget(self.b_ppt1)
         hbox5.addWidget(self.b_ppt2)
 
-        vbox = QtGui.QVBoxLayout()
+        vbox = QtGui.QVBoxLayout(self.main_widget)
         vbox.addWidget(self.toolbar)
         vbox.addWidget(self.canvas)
         vbox.addLayout(hbox)
@@ -157,7 +165,8 @@ class Window(QtGui.QDialog):
         vbox.addLayout(hbox4)
         vbox.addLayout(hbox5)
 
-        self.setLayout(vbox)
+        self.main_widget.setFocus()
+        self.setCentralWidget(self.main_widget)
 
         self.move(100, 100)
 
@@ -185,13 +194,19 @@ class Window(QtGui.QDialog):
             path, self.name = os.path.split(self.data_file.filename)
 
             self.update_ui()
+            self.change_data()
 
-    def load_dat(self, event):
+    def on_load_dat(self, event):
         self.filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
 
         self.load_file(self.filename)
 
-    def plot_2d_data(self):
+    def change_data(self):
+        if self.data is not None:
+            self.data_changed = True
+            self.plot_2d_data()
+
+    def manipulate_data(self):
         data = self.data_file.df.copy()
         columns = self.data_file.columns
 
@@ -216,8 +231,14 @@ class Window(QtGui.QDialog):
 
         # Pivot the data into an x and y axis, and values
         data = data.pivot(self.lbl_y, self.lbl_x, self.data_lbl)
-
+        
         self.data = self.operations.apply_operations(data)
+
+        self.data_changed = False
+
+    def plot_2d_data(self):
+        if self.data_changed:
+            self.manipulate_data()
 
         # Clear the figure
         self.ax.clear()
@@ -236,7 +257,6 @@ class Window(QtGui.QDialog):
         yc = np.append(yc[0] - (x[1] - x[0]), yc)
         yc = np.append(yc, yc[-1] + (x[-1] - x[-2]))
 
-        cmap = mpl.colors.LinearSegmentedColormap.from_list('seismic', ['r','w','b'], gamma=1.0)
         cmap = mpl.cm.get_cmap('seismic')
         cmap.set_gamma((self.s_gamma.value() / 50.0)**4)
 
@@ -254,22 +274,20 @@ class Window(QtGui.QDialog):
             self.cb = self.fig.colorbar(quadmesh)
 
         self.cb.set_label(self.data_lbl)
-        self.cb.formatter.set_powerlimits((-3, 3))
+        self.cb.formatter = FixedOrderFormatter(1)
         self.cb.update_ticks()
 
         # Set the various labels
         self.ax.set_title(self.name)
         self.ax.set_xlabel(self.lbl_x)
         self.ax.set_ylabel(self.lbl_y)
-        self.ax.ticklabel_format(style='sci', scilimits=(-3, 3))
         self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
+        self.ax.yaxis.set_major_formatter(FixedOrderFormatter())
         self.ax.set_aspect('auto')
 
         self.fig.tight_layout()
         
         self.canvas.draw()
-
-        del data
 
     def on_gamma_changed(self, value):
         self.plot_2d_data()
@@ -315,7 +333,8 @@ class Window(QtGui.QDialog):
 
         lc.ax.set_title(self.name)
         lc.ax.set_ylabel(self.data_lbl)
-        lc.ax.ticklabel_format(style='sci', scilimits=(-3, 3))
+        lc.ax.xaxis.set_major_formatter(FixedOrderFormatter())
+        lc.ax.yaxis.set_major_formatter(FixedOrderFormatter())
 
         # Make the figure fit the data
         lc.ax.relim()
