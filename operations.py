@@ -72,7 +72,9 @@ class Operations(QtGui.QDialog):
     @update_plot
     def add(self):
         if self.options.currentItem():
-            self.queue.addItem(self.options.currentItem().text())
+            item = QtGui.QListWidgetItem(self.options.currentItem().text())
+            item.setData(QtCore.Qt.UserRole, QtCore.QVariant(""))
+            self.queue.addItem(item)
 
     @update_plot
     def up(self):
