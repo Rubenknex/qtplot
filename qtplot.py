@@ -65,7 +65,6 @@ class Window(QtGui.QMainWindow):
 
         self.data = None
         self.data_file = None
-        self.data_changed = True
 
         self.init_ui()
 
@@ -90,25 +89,21 @@ class Window(QtGui.QMainWindow):
 
         self.lbl_x = QtGui.QLabel("X", self)
         self.cb_x = QtGui.QComboBox(self)
-        self.cb_x.currentIndexChanged.connect(self.change_data)
+        self.cb_x.activated.connect(self.change_data)
 
         self.lbl_y = QtGui.QLabel("Y", self)
         self.cb_y = QtGui.QComboBox(self)
-        self.cb_y.currentIndexChanged.connect(self.change_data)
+        self.cb_y.activated.connect(self.change_data)
 
         self.lbl_d = QtGui.QLabel("Data", self)
         self.cb_z = QtGui.QComboBox(self)
-        self.cb_z.currentIndexChanged.connect(self.change_data)
+        self.cb_z.activated.connect(self.change_data)
 
         self.s_gamma = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.s_gamma.setMinimum(0)
         self.s_gamma.setMaximum(100)
         self.s_gamma.setValue(50)
         self.s_gamma.valueChanged.connect(self.on_gamma_changed)
-
-        self.b_plot = QtGui.QPushButton('Plot')
-        self.b_plot.setEnabled(False)
-        self.b_plot.clicked.connect(self.plot_2d_data)
 
         self.lbl_ppt = QtGui.QLabel("PPT File", self)
         self.b_ppt = QtGui.QPushButton("Browse", self)
@@ -133,7 +128,7 @@ class Window(QtGui.QMainWindow):
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(self.b_load)
         hbox.addWidget(self.c_swap)
-
+        
         hbox1 = QtGui.QHBoxLayout()
         hbox1.addWidget(self.lbl_x)
         hbox1.addWidget(self.cb_x)
@@ -165,7 +160,6 @@ class Window(QtGui.QMainWindow):
         vbox.addLayout(hbox2)
         vbox.addLayout(hbox3)
         vbox.addWidget(self.s_gamma)
-        vbox.addWidget(self.b_plot)
         vbox.addLayout(hbox4)
         vbox.addLayout(hbox5)
 
@@ -186,7 +180,6 @@ class Window(QtGui.QMainWindow):
         self.cb_z.addItems(self.data_file.columns)
         self.cb_z.setCurrentIndex(7)
 
-        self.b_plot.setEnabled(True)
         self.b_slide.setEnabled(True)
         self.b_ppt1.setEnabled(True)
         self.b_ppt2.setEnabled(True)
@@ -206,8 +199,8 @@ class Window(QtGui.QMainWindow):
         self.load_file(self.filename)
 
     def change_data(self):
-        if self.data is not None:
-            self.data_changed = True
+        if self.data_file is not None:
+            self.manipulate_data()
             self.plot_2d_data()
 
     def manipulate_data(self):
@@ -241,9 +234,6 @@ class Window(QtGui.QMainWindow):
         self.data_changed = False
 
     def plot_2d_data(self):
-        if self.data_changed:
-            self.manipulate_data()
-
         # Clear the figure
         self.ax.clear()
 
@@ -431,8 +421,6 @@ if __name__ == '__main__':
     
     if len(sys.argv) > 1:
         main = Window(linecut, operations, filename=sys.argv[1])
-
-    #main = Window(linecut, operations, filename="test_data/Dev1_42.dat")
 
     linecut.main = main
     operations.main = main
