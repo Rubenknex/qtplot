@@ -127,6 +127,9 @@ class Window(QtGui.QMainWindow):
         self.b_ppt2.setEnabled(False)
         self.b_ppt2.clicked.connect(self.add_linecut)
 
+        self.b_refresh = QtGui.QPushButton('Save PPT')
+        self.b_refresh.clicked.connect(self.save_ppt)
+
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(self.b_load)
         hbox.addWidget(self.c_swap)
@@ -152,6 +155,7 @@ class Window(QtGui.QMainWindow):
         hbox5.addWidget(self.b_slide)
         hbox5.addWidget(self.b_ppt1)
         hbox5.addWidget(self.b_ppt2)
+        hbox5.addWidget(self.b_refresh)
 
         vbox = QtGui.QVBoxLayout(self.main_widget)
         vbox.addWidget(self.toolbar)
@@ -352,13 +356,17 @@ class Window(QtGui.QMainWindow):
 
     def add_2d_data(self, event):
         if self.slide is not None:
-            self.fig.savefig("test.png")
-            self.slide.shapes.add_picture("test.png", Inches(1), Inches(1))
+            path = os.path.dirname(os.path.realpath(__file__))
+            path = os.path.join(path, 'test.png')
+            self.fig.savefig(path)
+            self.slide.shapes.add_picture(path, Inches(1), Inches(1))
 
     def add_linecut(self, event):
         if self.slide is not None:
-            self.linecut.fig.savefig("test.png")
-            self.slide.shapes.add_picture("test.png", Inches(1), Inches(1))
+            path = os.path.dirname(os.path.realpath(__file__))
+            path = os.path.join(path, 'test.png')
+            self.linecut.fig.savefig(path)
+            self.slide.shapes.add_picture(path, Inches(1), Inches(1))
 
     def browse_ppt(self, event):
         filename = str(QtGui.QFileDialog.getOpenFileName(self))
@@ -370,6 +378,13 @@ class Window(QtGui.QMainWindow):
         except IOError:
             print 'Could not open PowerPoint file: ' + filename
             self.ppt = None
+
+    def save_ppt(self, event):
+        if self.ppt:
+            try:
+                self.ppt.save(str(self.le_ppt.text()))
+            except IOError as e:
+                print 'Could not save PowerPoint file: '
 
     def closeEvent(self, event):
         if self.ppt:

@@ -1,1 +1,1 @@
-python.exe "%~dp0qtplot.py" %1
+python "%~dp0qtplot.py" %1
