@@ -20,16 +20,6 @@ from config import *
 from dat_file import DatFile
 from operations import Operations
 
-"""
-TODO:
-- Config file with defaults
-- Cropping operation
-
-Open file:
-- Fill ui
-- 
-"""
-
 class FixedOrderFormatter(ScalarFormatter):
     def __init__(self, significance=0):
         ScalarFormatter.__init__(self, useOffset=None, useMathText=None)
@@ -88,6 +78,9 @@ class Window(QtGui.QMainWindow):
         self.b_load.clicked.connect(self.on_load_dat)
         self.c_swap = QtGui.QCheckBox('Swap columns', self)
         self.c_swap.stateChanged.connect(self.change_data)
+        self.c_average = QtGui.QCheckBox('Average Y-Axis', self)
+        self.c_average.setChecked(True)
+        self.c_average.stateChanged.connect(self.change_data)
 
         self.lbl_x = QtGui.QLabel("X", self)
         self.cb_x = QtGui.QComboBox(self)
@@ -136,6 +129,7 @@ class Window(QtGui.QMainWindow):
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(self.b_load)
         hbox.addWidget(self.c_swap)
+        hbox.addWidget(self.c_average)
         
         hbox1 = QtGui.QHBoxLayout()
         hbox1.addWidget(self.lbl_x)
@@ -223,42 +217,60 @@ class Window(QtGui.QMainWindow):
             self.manipulate_data()
             self.plot_2d_data()
 
-    def manipulate_data(self):
-        data = self.data_file.df.copy()
-        columns = self.data_file.columns
+    # Get a matrix of y coordinates for every x coordinate from the data
+    def get_y_coords(self, data, y_column, swap):
+        columns = data.columns
+        y_coords = pd.DataFrame()
+        ind, col = 0, 1
 
+        if swap:
+            ind, col = col, ind
+
+        if y_column in columns[3:7]:
+            y_coords = data.pivot(columns[col], columns[ind], y_column)
+        elif y_column in columns[7:11]:
+            y_coords = data.pivot(columns[ind], columns[col], y_column)
+
+        return y_coords
+
+    # Get a matrix of the data values with x and y axes
+    def get_processed_data(self, data, x, y, z, swap):
+        processed = data.copy()
+        columns = data.columns
+
+        for col in [x, y]:
+            one, two = 1, 0
+
+            if swap:
+                one, two = two, one
+
+            if col in columns[3:7]:
+                processed[col] = processed.groupby(columns[one])[col].transform(np.average)
+
+            if col in columns[7:11]:
+                processed[col] = processed.groupby(columns[two])[col].transform(np.average)
+
+        return processed.pivot(index=y, columns=x, values=z)
+
+    def manipulate_data(self):
         # Get the column names to use for the x, y and data
         self.lbl_x = str(self.cb_x.currentText())
         self.lbl_y = str(self.cb_y.currentText())
         self.data_lbl = str(self.cb_z.currentText())
 
-        # Average the measurement columns which are related to the DAC values
-        for col in columns:
-            if self.lbl_x == col or self.lbl_y == col:
-                one, two = 1, 0
+        swap = self.c_swap.isChecked()
 
-                if self.c_swap.isChecked():
-                    one, two = two, one
-
-                if col in columns[3:7]:
-                    data[col] = data.groupby(columns[one])[col].transform(np.average)
-
-                if col in columns[7:11]:
-                    data[col] = data.groupby(columns[two])[col].transform(np.average)
-
-        # Pivot the data into an x and y axis, and values
-        data = data.pivot(self.lbl_y, self.lbl_x, self.data_lbl)
-        
+        data = self.get_processed_data(self.data_file.df, self.lbl_x, self.lbl_y, self.data_lbl, swap)
         self.data = self.operations.apply_operations(data)
+
+        if not self.c_average.isChecked():
+            self.y_coords = self.get_y_coords(self.data_file.df, self.lbl_y, swap)
 
         self.data_changed = False
 
     def plot_2d_data(self):
         if self.data is None:
             return
-
-        # Clear the figure
-        self.ax.clear()
 
         x = np.array(self.data.columns)
         y = np.array(self.data.index)
@@ -280,7 +292,17 @@ class Window(QtGui.QMainWindow):
 
         # Mask NaN values so they will not be plotted
         masked = np.ma.masked_where(np.isnan(self.data.values), self.data.values)
-        self.quadmesh = self.ax.pcolormesh(xc, yc, masked, cmap=cmap)
+
+        self.ax.clear()
+
+        if self.c_average.isChecked():
+            self.quadmesh = self.ax.pcolormesh(xc, yc, masked, cmap=cmap)
+        else:
+            masked_y = np.ma.masked_where(np.isnan(self.y_coords.values), self.y_coords.values)
+            
+            print masked_y.shape, x.shape
+            self.quadmesh = self.ax.pcolormesh(x, masked_y, masked, cmap=cmap)
+            
 
         if self.le_min.text() == '' or self.le_max.text() == '' or self.axis_changed:
             cm_min, cm_max = self.quadmesh.get_clim()
