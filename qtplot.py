@@ -184,14 +184,17 @@ class Window(QtGui.QMainWindow):
     def update_ui(self):
         self.setWindowTitle(self.name)
 
+        self.cb_x.clear()
         self.cb_x.addItems(self.data_file.columns)
-        self.cb_x.setCurrentIndex(5)
+        self.cb_x.setCurrentIndex(cfg_default_x)
 
+        self.cb_y.clear()
         self.cb_y.addItems(self.data_file.columns)
-        self.cb_y.setCurrentIndex(9)
+        self.cb_y.setCurrentIndex(cfg_default_y)
 
+        self.cb_z.clear()
         self.cb_z.addItems(self.data_file.columns)
-        self.cb_z.setCurrentIndex(7)
+        self.cb_z.setCurrentIndex(cfg_default_data)
 
         self.b_slide.setEnabled(True)
         self.b_ppt1.setEnabled(True)
@@ -281,8 +284,8 @@ class Window(QtGui.QMainWindow):
 
         if self.le_min.text() == '' or self.le_max.text() == '' or self.axis_changed:
             cm_min, cm_max = self.quadmesh.get_clim()
-            self.le_min.setText(str(cm_min))
-            self.le_max.setText(str(cm_max))
+            self.le_min.setText('%.2e' % cm_min)
+            self.le_max.setText('%.2e' % cm_max)
 
             self.s_gamma.setValue(50)
         else:

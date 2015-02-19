@@ -68,7 +68,7 @@ class Operations(QtGui.QDialog):
     def update_plot(func):
         def wrapper(self):
             func(self)
-            self.main.change_data()
+            self.main.on_axis_changed(None)
 
         return wrapper
     
