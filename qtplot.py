@@ -66,6 +66,8 @@ class Window(QtGui.QMainWindow):
         self.data = None
         self.data_file = None
 
+        self.axis_changed = False
+
         self.init_ui()
 
         if filename is not None:
@@ -89,21 +91,27 @@ class Window(QtGui.QMainWindow):
 
         self.lbl_x = QtGui.QLabel("X", self)
         self.cb_x = QtGui.QComboBox(self)
-        self.cb_x.activated.connect(self.change_data)
+        self.cb_x.activated.connect(self.on_axis_changed)
 
         self.lbl_y = QtGui.QLabel("Y", self)
         self.cb_y = QtGui.QComboBox(self)
-        self.cb_y.activated.connect(self.change_data)
+        self.cb_y.activated.connect(self.on_axis_changed)
 
         self.lbl_d = QtGui.QLabel("Data", self)
         self.cb_z = QtGui.QComboBox(self)
-        self.cb_z.activated.connect(self.change_data)
+        self.cb_z.activated.connect(self.on_axis_changed)
+
+        self.le_min = QtGui.QLineEdit(self)
+        self.le_min.returnPressed.connect(self.on_cmap_changed)
 
         self.s_gamma = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.s_gamma.setMinimum(0)
         self.s_gamma.setMaximum(100)
         self.s_gamma.setValue(50)
-        self.s_gamma.valueChanged.connect(self.on_gamma_changed)
+        self.s_gamma.valueChanged.connect(self.on_cmap_changed)
+
+        self.le_max = QtGui.QLineEdit(self)
+        self.le_max.returnPressed.connect(self.on_cmap_changed)
 
         self.lbl_ppt = QtGui.QLabel("PPT File", self)
         self.b_ppt = QtGui.QPushButton("Browse", self)
@@ -141,6 +149,11 @@ class Window(QtGui.QMainWindow):
         hbox3.addWidget(self.lbl_d)
         hbox3.addWidget(self.cb_z)
 
+        hbox_gamma = QtGui.QHBoxLayout()
+        hbox_gamma.addWidget(self.le_min)
+        hbox_gamma.addWidget(self.s_gamma)
+        hbox_gamma.addWidget(self.le_max)
+
         hbox4 = QtGui.QHBoxLayout()
         hbox4.addWidget(self.lbl_ppt)
         hbox4.addWidget(self.b_ppt)
@@ -159,7 +172,7 @@ class Window(QtGui.QMainWindow):
         vbox.addLayout(hbox1)
         vbox.addLayout(hbox2)
         vbox.addLayout(hbox3)
-        vbox.addWidget(self.s_gamma)
+        vbox.addLayout(hbox_gamma)
         vbox.addLayout(hbox4)
         vbox.addLayout(hbox5)
 
@@ -197,6 +210,10 @@ class Window(QtGui.QMainWindow):
         self.filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
 
         self.load_file(self.filename)
+
+    def on_axis_changed(self, event):
+        self.axis_changed = True
+        self.change_data()
 
     def change_data(self):
         if self.data_file is not None:
@@ -260,16 +277,25 @@ class Window(QtGui.QMainWindow):
 
         # Mask NaN values so they will not be plotted
         masked = np.ma.masked_where(np.isnan(self.data.values), self.data.values)
-        quadmesh = self.ax.pcolormesh(xc, yc, masked, cmap=cmap)
+        self.quadmesh = self.ax.pcolormesh(xc, yc, masked, cmap=cmap)
+
+        if self.le_min.text() == '' or self.le_max.text() == '' or self.axis_changed:
+            cm_min, cm_max = self.quadmesh.get_clim()
+            self.le_min.setText(str(cm_min))
+            self.le_max.setText(str(cm_max))
+
+            self.s_gamma.setValue(50)
+        else:
+            self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
         
         self.ax.axis('tight')
 
         # Create a colorbar, if there is already one draw it in the existing place
         if self.cb:
             self.cb.ax.clear()
-            self.cb = self.fig.colorbar(quadmesh, cax=self.cb.ax)
+            self.cb = self.fig.colorbar(self.quadmesh, cax=self.cb.ax)
         else:
-            self.cb = self.fig.colorbar(quadmesh)
+            self.cb = self.fig.colorbar(self.quadmesh)
 
         self.cb.set_label(self.data_lbl)
         self.cb.formatter = FixedOrderFormatter(1)
@@ -287,7 +313,9 @@ class Window(QtGui.QMainWindow):
         
         self.canvas.draw()
 
-    def on_gamma_changed(self, value):
+        self.axis_changed = False
+
+    def on_cmap_changed(self):
         self.plot_2d_data()
 
     def on_mouse_motion(self, event):
