@@ -234,6 +234,9 @@ class Window(QtGui.QMainWindow):
         self.data_changed = False
 
     def plot_2d_data(self):
+        if self.data is None:
+            return
+
         # Clear the figure
         self.ax.clear()
 
@@ -252,7 +255,8 @@ class Window(QtGui.QMainWindow):
         yc = np.append(yc, yc[-1] + (y[-1] - y[-2]))
 
         cmap = mpl.cm.get_cmap('seismic')
-        cmap.set_gamma((self.s_gamma.value() / 50.0)**4)
+        value = (self.s_gamma.value() / 100.0)
+        cmap.set_gamma(math.exp(value * 5) / 10.0)
 
         # Mask NaN values so they will not be plotted
         masked = np.ma.masked_where(np.isnan(self.data.values), self.data.values)
