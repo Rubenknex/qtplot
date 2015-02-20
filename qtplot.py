@@ -74,10 +74,10 @@ class Window(QtGui.QMainWindow):
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_motion)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
-        self.b_load = QtGui.QPushButton('Load DAT')
+        self.b_load = QtGui.QPushButton('Load DAT...')
         self.b_load.clicked.connect(self.on_load_dat)
-        self.c_swap = QtGui.QCheckBox('Swap columns', self)
-        self.c_swap.stateChanged.connect(self.change_data)
+        self.b_swap = QtGui.QPushButton('Swap order', self)
+        self.b_swap.clicked.connect(self.swap_order)
         self.c_average = QtGui.QCheckBox('Average Y-Axis', self)
         self.c_average.setChecked(True)
         self.c_average.stateChanged.connect(self.change_data)
@@ -85,10 +85,14 @@ class Window(QtGui.QMainWindow):
         self.lbl_x = QtGui.QLabel("X", self)
         self.cb_x = QtGui.QComboBox(self)
         self.cb_x.activated.connect(self.on_axis_changed)
+        lbl_order_x = QtGui.QLabel('Order: ', self)
+        self.cb_order_x = QtGui.QComboBox(self)
 
         self.lbl_y = QtGui.QLabel("Y", self)
         self.cb_y = QtGui.QComboBox(self)
         self.cb_y.activated.connect(self.on_axis_changed)
+        lbl_order_y = QtGui.QLabel('Order: ', self)
+        self.cb_order_y = QtGui.QComboBox(self)
 
         self.lbl_d = QtGui.QLabel("Data", self)
         self.cb_z = QtGui.QComboBox(self)
@@ -107,7 +111,7 @@ class Window(QtGui.QMainWindow):
         self.le_max.returnPressed.connect(self.on_cmap_changed)
 
         self.lbl_ppt = QtGui.QLabel("PPT File", self)
-        self.b_ppt = QtGui.QPushButton("Browse", self)
+        self.b_ppt = QtGui.QPushButton("Browse...", self)
         self.b_ppt.clicked.connect(self.browse_ppt)
         self.le_ppt = QtGui.QLineEdit(cfg_ppt_file, self)
 
@@ -128,16 +132,20 @@ class Window(QtGui.QMainWindow):
 
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(self.b_load)
-        hbox.addWidget(self.c_swap)
+        hbox.addWidget(self.b_swap)
         hbox.addWidget(self.c_average)
         
         hbox1 = QtGui.QHBoxLayout()
         hbox1.addWidget(self.lbl_x)
         hbox1.addWidget(self.cb_x)
+        hbox1.addWidget(lbl_order_x)
+        hbox1.addWidget(self.cb_order_x)
 
         hbox2 = QtGui.QHBoxLayout()
         hbox2.addWidget(self.lbl_y)
         hbox2.addWidget(self.cb_y)
+        hbox2.addWidget(lbl_order_y)
+        hbox2.addWidget(self.cb_order_y)
 
         hbox3 = QtGui.QHBoxLayout()
         hbox3.addWidget(self.lbl_d)
@@ -181,10 +189,14 @@ class Window(QtGui.QMainWindow):
         self.cb_x.clear()
         self.cb_x.addItems(self.data_file.columns)
         self.cb_x.setCurrentIndex(cfg_default_x)
+        self.cb_order_x.addItems(self.data_file.columns)
+        self.cb_order_x.setCurrentIndex(0)
 
         self.cb_y.clear()
         self.cb_y.addItems(self.data_file.columns)
         self.cb_y.setCurrentIndex(cfg_default_y)
+        self.cb_order_y.addItems(self.data_file.columns)
+        self.cb_order_y.setCurrentIndex(1)
 
         self.cb_z.clear()
         self.cb_z.addItems(self.data_file.columns)
@@ -208,6 +220,13 @@ class Window(QtGui.QMainWindow):
 
         self.load_file(self.filename)
 
+    def swap_order(self, event):
+        x, y = self.cb_order_x.currentIndex(), self.cb_order_y.currentIndex()
+        self.cb_order_x.setCurrentIndex(y)
+        self.cb_order_y.setCurrentIndex(x)
+
+        self.change_data()
+
     def on_axis_changed(self, event):
         self.axis_changed = True
         self.change_data()
@@ -217,38 +236,15 @@ class Window(QtGui.QMainWindow):
             self.manipulate_data()
             self.plot_2d_data()
 
-    # Get a matrix of y coordinates for every x coordinate from the data
-    def get_y_coords(self, data, y_column, swap):
-        columns = data.columns
-        y_coords = pd.DataFrame()
-        ind, col = 0, 1
-
-        if swap:
-            ind, col = col, ind
-
-        if y_column in columns[3:7]:
-            y_coords = data.pivot(columns[col], columns[ind], y_column)
-        elif y_column in columns[7:11]:
-            y_coords = data.pivot(columns[ind], columns[col], y_column)
-
-        return y_coords
-
     # Get a matrix of the data values with x and y axes
-    def get_processed_data(self, data, x, y, z, swap):
+    def get_processed_data(self, data, x, y, z, order_x, order_y):
         processed = data.copy()
-        columns = data.columns
 
-        for col in [x, y]:
-            one, two = 1, 0
+        if x != order_x:
+            processed[x] = processed.groupby(order_x)[x].transform(np.average)
 
-            if swap:
-                one, two = two, one
-
-            if col in columns[3:7]:
-                processed[col] = processed.groupby(columns[one])[col].transform(np.average)
-
-            if col in columns[7:11]:
-                processed[col] = processed.groupby(columns[two])[col].transform(np.average)
+        if y != order_y:
+            processed[y] = processed.groupby(order_y)[y].transform(np.average)
 
         return processed.pivot(index=y, columns=x, values=z)
 
@@ -258,13 +254,14 @@ class Window(QtGui.QMainWindow):
         self.lbl_y = str(self.cb_y.currentText())
         self.data_lbl = str(self.cb_z.currentText())
 
-        swap = self.c_swap.isChecked()
+        order_x, order_y = str(self.cb_order_x.currentText()), str(self.cb_order_y.currentText())
 
-        data = self.get_processed_data(self.data_file.df, self.lbl_x, self.lbl_y, self.data_lbl, swap)
+        data = self.get_processed_data(self.data_file.df, self.lbl_x, self.lbl_y, self.data_lbl, order_x, order_y)
+        
         self.data = self.operations.apply_operations(data)
 
         if not self.c_average.isChecked():
-            self.y_coords = self.get_y_coords(self.data_file.df, self.lbl_y, swap)
+            self.y_coords = self.data_file.df.pivot(index=order_y, columns=order_x, values=self.lbl_y)
 
         self.data_changed = False
 
@@ -299,11 +296,8 @@ class Window(QtGui.QMainWindow):
             self.quadmesh = self.ax.pcolormesh(xc, yc, masked, cmap=cmap)
         else:
             masked_y = np.ma.masked_where(np.isnan(self.y_coords.values), self.y_coords.values)
-            
-            print masked_y.shape, x.shape
             self.quadmesh = self.ax.pcolormesh(x, masked_y, masked, cmap=cmap)
             
-
         if self.le_min.text() == '' or self.le_max.text() == '' or self.axis_changed:
             cm_min, cm_max = self.quadmesh.get_clim()
             self.le_min.setText('%.2e' % cm_min)
