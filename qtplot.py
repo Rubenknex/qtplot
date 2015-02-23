@@ -74,27 +74,27 @@ class Window(QtGui.QMainWindow):
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_motion)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
-        self.b_load = QtGui.QPushButton('Load DAT file...')
+        self.b_load = QtGui.QPushButton('Load DAT...')
         self.b_load.clicked.connect(self.on_load_dat)
-        self.b_swap = QtGui.QPushButton('Swap axis orders', self)
+        self.b_swap = QtGui.QPushButton('Swap order', self)
         self.b_swap.clicked.connect(self.swap_order)
         self.c_average = QtGui.QCheckBox('Average Y-Axis', self)
         self.c_average.setChecked(True)
         self.c_average.stateChanged.connect(self.change_data)
 
-        self.lbl_x = QtGui.QLabel("X-Axis: ", self)
+        self.lbl_x = QtGui.QLabel("X", self)
         self.cb_x = QtGui.QComboBox(self)
         self.cb_x.activated.connect(self.on_axis_changed)
         lbl_order_x = QtGui.QLabel('Order: ', self)
         self.cb_order_x = QtGui.QComboBox(self)
 
-        self.lbl_y = QtGui.QLabel("Y-Axis: ", self)
+        self.lbl_y = QtGui.QLabel("Y", self)
         self.cb_y = QtGui.QComboBox(self)
         self.cb_y.activated.connect(self.on_axis_changed)
         lbl_order_y = QtGui.QLabel('Order: ', self)
         self.cb_order_y = QtGui.QComboBox(self)
 
-        self.lbl_d = QtGui.QLabel("Data: ", self)
+        self.lbl_d = QtGui.QLabel("Data", self)
         self.cb_z = QtGui.QComboBox(self)
         self.cb_z.activated.connect(self.on_axis_changed)
 
@@ -110,7 +110,7 @@ class Window(QtGui.QMainWindow):
         self.le_max = QtGui.QLineEdit(self)
         self.le_max.returnPressed.connect(self.on_cmap_changed)
 
-        self.lbl_ppt = QtGui.QLabel("PPT File: ", self)
+        self.lbl_ppt = QtGui.QLabel("PPT File", self)
         self.b_ppt = QtGui.QPushButton("Browse...", self)
         self.b_ppt.clicked.connect(self.browse_ppt)
         self.le_ppt = QtGui.QLineEdit(cfg_ppt_file, self)
