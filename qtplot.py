@@ -20,6 +20,15 @@ from config import *
 from dat_file import DatFile
 from operations import Operations
 
+"""
+- Data points on center of axis values
+- Axis scaling filters
+- Low pass filter
+- Integration into qtlab as real time plotting
+- Look into plotting performance
+- Use proper axis when plotting linecut and not averaging
+"""
+
 class FixedOrderFormatter(ScalarFormatter):
     def __init__(self, significance=0):
         ScalarFormatter.__init__(self, useOffset=None, useMathText=None)
@@ -335,6 +344,8 @@ class Window(QtGui.QMainWindow):
         
         self.canvas.draw()
 
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+
         self.axis_changed = False
 
     def on_cmap_changed(self):
@@ -350,10 +361,9 @@ class Window(QtGui.QMainWindow):
             return
 
         lc = self.linecut
-        
-        # If there is already a line in the figure, remove it for the new one
-        if len(self.ax.lines) > 0:
-            self.ax.lines.pop(0)
+
+        if len(self.ax.lines) == 0:
+            self.line = self.ax.axvline(color='red')
 
         if len(lc.ax.lines) > 0:
             lc.ax.lines.pop(0)
@@ -363,8 +373,9 @@ class Window(QtGui.QMainWindow):
             self.linecut_coord = min(self.data.index, key=lambda x:abs(x - event.ydata))
             self.linecut_type = 'horizontal'
 
-            # Draw a horizontal line
-            self.ax.axhline(y=self.linecut_coord, color='red')
+            self.line.set_transform(self.ax.get_yaxis_transform())
+            self.line.set_xdata([0, 1])
+            self.line.set_ydata([self.linecut_coord, self.linecut_coord])
 
             lc.ax.plot(self.data.columns, self.data.loc[self.linecut_coord], color='red', linewidth=0.5)
             lc.ax.set_xlabel(self.lbl_x)
@@ -373,12 +384,13 @@ class Window(QtGui.QMainWindow):
             self.linecut_coord = min(self.data.columns, key=lambda x:abs(x - event.xdata))
             self.linecut_type = 'vertical'
 
-            # Draw a vertical line
-            self.ax.axvline(x=self.linecut_coord, color='red')
+            self.line.set_transform(self.ax.get_xaxis_transform())
+            self.line.set_xdata([self.linecut_coord, self.linecut_coord])
+            self.line.set_ydata([0, 1])
 
             lc.ax.plot(self.data.index, self.data[self.linecut_coord], color='red', linewidth=0.5)
             lc.ax.set_xlabel(self.lbl_y)
-
+        
         lc.ax.set_title(self.name)
         lc.ax.set_ylabel(self.data_lbl)
         lc.ax.xaxis.set_major_formatter(FixedOrderFormatter())
@@ -390,7 +402,10 @@ class Window(QtGui.QMainWindow):
         lc.fig.tight_layout()
 
         # Redraw both plots to update them
-        self.canvas.draw()
+        self.canvas.restore_region(self.background)
+        self.ax.draw_artist(self.ax.lines[0])
+        self.canvas.blit(self.ax.bbox)
+
         lc.canvas.draw()
 
     def add_slide(self, event):
@@ -429,6 +444,12 @@ class Window(QtGui.QMainWindow):
                 self.ppt.save(str(self.le_ppt.text()))
             except IOError as e:
                 print 'Could not save PowerPoint file: '
+
+    def resizeEvent(self, event):
+        if len(self.ax.lines) > 0:
+            self.ax.lines.pop(0)
+
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
 
     def closeEvent(self, event):
         if self.ppt:
