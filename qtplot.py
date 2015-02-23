@@ -271,6 +271,7 @@ class Window(QtGui.QMainWindow):
 
         x_coords = np.array(self.data.columns)
         y_coords = np.array(self.data.index).transpose()
+        print y_coords
 
         if not self.c_average.isChecked():
             y_coords = y_coords = self.data_file.df.pivot(index=order_y, columns=order_x, values=self.lbl_y)
