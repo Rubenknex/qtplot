@@ -260,8 +260,8 @@ class Window(QtGui.QMainWindow):
         
         self.data = self.operations.apply_operations(data)
 
-        #if not self.c_average.isChecked():
-        #    self.y_coords = self.data_file.df.pivot(index=order_y, columns=order_x, values=self.lbl_y)
+        if not self.c_average.isChecked():
+            self.y_coords = self.data_file.df.pivot(index=order_y, columns=order_x, values=self.lbl_y)
 
         self.data_changed = False
 
@@ -271,19 +271,20 @@ class Window(QtGui.QMainWindow):
 
         x_coords = np.array(self.data.columns)
         y_coords = np.array(self.data.index).transpose()
-        print y_coords
 
-        if not self.c_average.isChecked():
-            y_coords = y_coords = self.data_file.df.pivot(index=order_y, columns=order_x, values=self.lbl_y)
+        x = np.array(self.data.columns)
+        y = np.array(self.data.index)
 
-        x_coords = x_coords[:-1] + np.diff(x_coords) / 2.0
-        y_coords = y_coords[:-1] + np.diff(y_coords, axis=0) / 2.0
+        # Calculate the centers of the data bins to use as coordinates
+        xc = x[:-1] + np.diff(x) / 2.0
+        yc = y[:-1] + np.diff(y) / 2.0
 
-        x_coords = np.vstack([x_coords[0] - (x_coords[1] - x_coords[0]), x_coords])
-        x_coords = np.vstack([x_coords, x_coords[-1] + (x_coords[-1] - x_coords[-2])])
+        # Add a first and last coordinate so all datapoints get plotted
+        xc = np.append(xc[0] - (x[1] - x[0]), xc)
+        xc = np.append(xc, xc[-1] + (x[-1] - x[-2]))
 
-        y_coords = np.vstack([y_coords[0] - (y_coords[1] - y_coords[0]), y_coords])
-        y_coords = np.vstack([y_coords, y_coords[-1] + (y_coords[-1] - y_coords[-2])])
+        yc = np.append(yc[0] - (y[1] - y[0]), yc)
+        yc = np.append(yc, yc[-1] + (y[-1] - y[-2]))
 
         cmap = mpl.cm.get_cmap('seismic')
         value = (self.s_gamma.value() / 100.0)
@@ -294,14 +295,11 @@ class Window(QtGui.QMainWindow):
 
         self.ax.clear()
 
-        masked_y = np.ma.masked_where(np.isnan(self.y_coords.values), self.y_coords.values)
-        self.quadmesh = self.ax.pcolormesh(x_coords, masked_y, masked, cmap=cmap)
-
-        #if self.c_average.isChecked():
-        #    self.quadmesh = self.ax.pcolormesh(xc, yc.transpose(), masked, cmap=cmap)
-        #else:
-        #    masked_y = np.ma.masked_where(np.isnan(self.y_coords.values), self.y_coords.values)
-        #    self.quadmesh = self.ax.pcolormesh(x, masked_y, masked, cmap=cmap)
+        if self.c_average.isChecked():
+            self.quadmesh = self.ax.pcolormesh(xc, yc, masked, cmap=cmap)
+        else:
+            masked_y = np.ma.masked_where(np.isnan(self.y_coords.values), self.y_coords.values)
+            self.quadmesh = self.ax.pcolormesh(x, masked_y, masked, cmap=cmap)
             
         if self.le_min.text() == '' or self.le_max.text() == '' or self.axis_changed:
             cm_min, cm_max = self.quadmesh.get_clim()
