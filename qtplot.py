@@ -282,9 +282,6 @@ class Window(QtGui.QMainWindow):
 
         self.data = self.operations.apply_operations(data)
 
-        if not self.c_average.isChecked():
-            self.y_coords = self.data_file.df.pivot(index=order_y, columns=order_x, values=self.lbl_y)
-
         self.data_changed = False
 
     # As long as axis coords and values are in the same order

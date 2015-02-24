@@ -34,12 +34,12 @@ class Operations(QtGui.QDialog):
             'lowpass': None,
             'neg': self.neg,
             'offset': None,
-            'offset axes': None,
+            'offset axes': self.offset_axes,
             'power': None,
             'rotate ccw': None,
             'rotate cw': None,
-            'scale axes': None,
-            'scale data': None,
+            'scale axes': self.scale_axes,
+            'scale data': self.scale_data,
             'sub linecut': self.sub_linecut,
             'xderiv': self.xderiv,
             'yderiv': self.yderiv,
@@ -154,15 +154,23 @@ class Operations(QtGui.QDialog):
         return data.iloc[coords[0]:coords[1], coords[2]:coords[3]]
 
     def neg(self, data, item):
-        values = -data.values
-        return pd.DataFrame(values, index=data.index, columns=data.columns)
+        return data.applymap(np.negative)
+
+    def offset_axes(self, data, item):
+        x_off, y_off = [float(x) for x in str(item.data(QtCore.Qt.UserRole).toPyObject()).split()]
+        return pd.DataFrame(data.values, index=data.index + y_off, columns=data.columns + x_off)
+
+    def scale_axes(self, data, item):
+        x_sc, y_sc = [float(x) for x in str(item.data(QtCore.Qt.UserRole).toPyObject()).split()]
+        return pd.DataFrame(data.values, index=data.index * y_sc, columns=data.columns * x_sc)
+
+    def scale_data(self, data, item):
+        factor = float(str(item.data(QtCore.Qt.UserRole).toPyObject()))
+        return pd.DataFrame(data.values * factor, index=data.index, columns=data.columns)
 
     def sub_linecut(self, data, item):
         if self.main.linecut_type == None:
             return data
-
-        values = data.values
-        lc_data = None
 
         if self.main.linecut_type == 'horizontal':
             lc_data = np.array(data.loc[self.main.linecut_coord])
@@ -170,17 +178,13 @@ class Operations(QtGui.QDialog):
             lc_data = np.array(data[self.main.linecut_coord])
             lc_data = lc_data[:,np.newaxis]
 
-        values -= lc_data
-
-        return pd.DataFrame(values, index=data.index, columns=data.columns)
+        return pd.DataFrame(data.values - lc_data, index=data.index, columns=data.columns)
 
     def xderiv(self, data, item):
-        values = np.gradient(data.values)[1]
-        return pd.DataFrame(values, index=data.index, columns=data.columns)
+        return pd.DataFrame(np.gradient(data.values)[1], index=data.index, columns=data.columns)
 
     def yderiv(self, data, item):
-        values = np.gradient(data.values)[0]
-        return pd.DataFrame(values, index=data.index, columns=data.columns)
+        return pd.DataFrame(np.gradient(data.values)[0], index=data.index, columns=data.columns)
 
     def apply_operations(self, data):
         ops = []
