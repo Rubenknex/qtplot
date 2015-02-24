@@ -21,7 +21,6 @@ from dat_file import DatFile
 from operations import Operations
 
 """
-- Data points on center of axis values
 - Axis scaling filters
 - Low pass filter
 - Integration into qtlab as real time plotting
@@ -56,6 +55,7 @@ class Window(QtGui.QMainWindow):
         self.fig, self.ax = plt.subplots()
         self.cb = None
 
+        self.line = None
         self.linecut_type = None
         self.linecut_coord = None
 
@@ -86,10 +86,10 @@ class Window(QtGui.QMainWindow):
         self.b_load = QtGui.QPushButton('Load DAT...')
         self.b_load.clicked.connect(self.on_load_dat)
         self.b_swap = QtGui.QPushButton('Swap order', self)
-        self.b_swap.clicked.connect(self.swap_order)
+        self.b_swap.clicked.connect(self.on_swap_order)
         self.c_average = QtGui.QCheckBox('Average Y-Axis', self)
         self.c_average.setChecked(True)
-        self.c_average.stateChanged.connect(self.change_data)
+        self.c_average.stateChanged.connect(self.on_data_change)
 
         self.lbl_x = QtGui.QLabel("X", self)
         self.cb_x = QtGui.QComboBox(self)
@@ -222,31 +222,44 @@ class Window(QtGui.QMainWindow):
             path, self.name = os.path.split(self.data_file.filename)
 
             self.update_ui()
-            self.change_data()
+            self.on_data_change()
 
     def on_load_dat(self, event):
         self.filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
 
         self.load_file(self.filename)
 
-    def swap_order(self, event):
+    def on_swap_order(self, event):
         x, y = self.cb_order_x.currentIndex(), self.cb_order_y.currentIndex()
         self.cb_order_x.setCurrentIndex(y)
         self.cb_order_y.setCurrentIndex(x)
 
-        self.change_data()
+        self.on_data_change()
 
     def on_axis_changed(self, event):
         self.axis_changed = True
-        self.change_data()
+        self.on_data_change()
 
-    def change_data(self):
+    def on_cmap_changed(self):
+        self.plot_2d_data()
+
+    def on_mouse_click(self, event):
+        if not event.inaxes:
+            return
+
+        self.plot_linecut(event.button, event.xdata, event.ydata)
+
+    def on_mouse_motion(self, event):
+        if event.button != None:
+            self.on_mouse_click(event)
+
+    def on_data_change(self):
         if self.data_file is not None:
             self.manipulate_data()
             self.plot_2d_data()
 
     # Get a matrix of the data values with x and y axes
-    def get_processed_data(self, data, x, y, z, order_x, order_y):
+    def get_averaged_pivot(self, data, x, y, z, order_x, order_y):
         processed = data.copy()
 
         if x != order_x:
@@ -265,8 +278,8 @@ class Window(QtGui.QMainWindow):
 
         order_x, order_y = str(self.cb_order_x.currentText()), str(self.cb_order_y.currentText())
 
-        data = self.get_processed_data(self.data_file.df, self.lbl_x, self.lbl_y, self.data_lbl, order_x, order_y)
-        
+        data = self.get_averaged_pivot(self.data_file.df, self.lbl_x, self.lbl_y, self.data_lbl, order_x, order_y)
+
         self.data = self.operations.apply_operations(data)
 
         if not self.c_average.isChecked():
@@ -274,42 +287,44 @@ class Window(QtGui.QMainWindow):
 
         self.data_changed = False
 
+    # As long as axis coords and values are in the same order
+    def get_quadrilaterals(self, data, order_x, order_y, axis_y, average_y):
+        xc, yc = np.meshgrid(data.columns.values, data.index.values)
+
+        # TODO remove dependency on state
+        if not average_y:
+            yc = self.data_file.df.pivot(index=order_y, columns=order_x, values=axis_y).values
+
+        # Add a column/row on each side with estimated values
+        xc = np.hstack((xc[:,[0]] - (xc[:,[1]] - xc[:,[0]]), xc, xc[:,[-1]] + (xc[:,[-1]] - xc[:,[-2]])))
+        yc = np.vstack([yc[0] - (yc[1] - yc[0]), yc, yc[-1] + (yc[-1] - yc[-2])])
+
+        x = xc[:,:-1] + np.diff(xc, axis=1) / 2.0
+        y = yc[:-1,:] + np.diff(yc, axis=0) / 2.0
+
+        x = np.vstack((x, x[-1]))
+        y = np.hstack([y, y[:,[-1]]])
+
+        return x, y
+
     def plot_2d_data(self):
         if self.data is None:
             return
-
-        x_coords = np.array(self.data.columns)
-        y_coords = np.array(self.data.index).transpose()
-
-        x = np.array(self.data.columns)
-        y = np.array(self.data.index)
-
-        # Calculate the centers of the data bins to use as coordinates
-        xc = x[:-1] + np.diff(x) / 2.0
-        yc = y[:-1] + np.diff(y) / 2.0
-
-        # Add a first and last coordinate so all datapoints get plotted
-        xc = np.append(xc[0] - (x[1] - x[0]), xc)
-        xc = np.append(xc, xc[-1] + (x[-1] - x[-2]))
-
-        yc = np.append(yc[0] - (y[1] - y[0]), yc)
-        yc = np.append(yc, yc[-1] + (y[-1] - y[-2]))
 
         cmap = mpl.cm.get_cmap('seismic')
         value = (self.s_gamma.value() / 100.0)
         cmap.set_gamma(math.exp(value * 5) / 10.0)
 
-        # Mask NaN values so they will not be plotted
-        masked = np.ma.masked_where(np.isnan(self.data.values), self.data.values)
-
         self.ax.clear()
 
-        if self.c_average.isChecked():
-            self.quadmesh = self.ax.pcolormesh(xc, yc, masked, cmap=cmap)
-        else:
-            masked_y = np.ma.masked_where(np.isnan(self.y_coords.values), self.y_coords.values)
-            self.quadmesh = self.ax.pcolormesh(x, masked_y, masked, cmap=cmap)
-            
+        order_x, order_y = str(self.cb_order_x.currentText()), str(self.cb_order_y.currentText())
+        x, y = self.get_quadrilaterals(self.data, order_x, order_y, self.lbl_y, self.c_average.isChecked())
+
+        # Mask NaN values so they will not be plotted
+        masked_y = np.ma.masked_where(np.isnan(y), y)
+        masked = np.ma.masked_where(np.isnan(self.data.values), self.data.values)
+        self.quadmesh = self.ax.pcolormesh(x, masked_y, masked, cmap=cmap)
+
         if self.le_min.text() == '' or self.le_max.text() == '' or self.axis_changed:
             cm_min, cm_max = self.quadmesh.get_clim()
             self.le_min.setText('%.2e' % cm_min)
@@ -348,18 +363,7 @@ class Window(QtGui.QMainWindow):
 
         self.axis_changed = False
 
-    def on_cmap_changed(self):
-        self.plot_2d_data()
-
-    def on_mouse_motion(self, event):
-        if event.button != None:
-            self.on_mouse_click(event)
-
-    def on_mouse_click(self, event):
-        # Don't do anything if we are not within the axes of the figure
-        if not event.inaxes:
-            return
-
+    def plot_linecut(self, button, x_coord, y_coord):
         lc = self.linecut
 
         if len(self.ax.lines) == 0:
@@ -368,9 +372,9 @@ class Window(QtGui.QMainWindow):
         if len(lc.ax.lines) > 0:
             lc.ax.lines.pop(0)
 
-        if event.button == 1:
+        if button == 1:
             # Get the row closest to the mouse Y
-            self.linecut_coord = min(self.data.index, key=lambda x:abs(x - event.ydata))
+            self.linecut_coord = min(self.data.index, key=lambda x:abs(x - y_coord))
             self.linecut_type = 'horizontal'
 
             self.line.set_transform(self.ax.get_yaxis_transform())
@@ -379,9 +383,9 @@ class Window(QtGui.QMainWindow):
 
             lc.ax.plot(self.data.columns, self.data.loc[self.linecut_coord], color='red', linewidth=0.5)
             lc.ax.set_xlabel(self.lbl_x)
-        elif event.button == 2:
+        elif button == 2:
             # Get the column closest to the mouse X
-            self.linecut_coord = min(self.data.columns, key=lambda x:abs(x - event.xdata))
+            self.linecut_coord = min(self.data.columns, key=lambda x:abs(x - x_coord))
             self.linecut_type = 'vertical'
 
             self.line.set_transform(self.ax.get_xaxis_transform())
@@ -403,7 +407,7 @@ class Window(QtGui.QMainWindow):
 
         # Redraw both plots to update them
         self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.ax.lines[0])
+        self.ax.draw_artist(self.line)
         self.canvas.blit(self.ax.bbox)
 
         lc.canvas.draw()
@@ -449,7 +453,9 @@ class Window(QtGui.QMainWindow):
         if len(self.ax.lines) > 0:
             self.ax.lines.pop(0)
 
-        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        # Very slow, maybe search for faster way
+        # http://stackoverflow.com/questions/13552345/how-to-disable-multiple-auto-redrawing-at-resizing-widgets-in-pyqt
+        self.plot_2d_data()
 
     def closeEvent(self, event):
         if self.ppt:

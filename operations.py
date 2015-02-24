@@ -2,6 +2,15 @@ import numpy as np
 import pandas as pd
 from PyQt4 import QtGui, QtCore
 
+"""
+Operation
+
+Parameters:
+- Textboxes
+- Listview
+- Checkboxes
+"""
+
 class Operations(QtGui.QDialog):
     def __init__(self, parent=None):
         super(Operations, self).__init__(parent)
@@ -13,7 +22,24 @@ class Operations(QtGui.QDialog):
 
         self.items = {
             'abs': self.abs,
+            'autoflip': None,
             'crop': self.crop,
+            'dderiv': None,
+            'equalize': None,
+            'flip': None,
+            'gradmag': None,
+            'highpass': None,
+            'hist2d': None,
+            'log': None,
+            'lowpass': None,
+            'neg': self.neg,
+            'offset': None,
+            'offset axes': None,
+            'power': None,
+            'rotate ccw': None,
+            'rotate cw': None,
+            'scale axes': None,
+            'scale data': None,
             'sub linecut': self.sub_linecut,
             'xderiv': self.xderiv,
             'yderiv': self.yderiv,
@@ -126,6 +152,10 @@ class Operations(QtGui.QDialog):
     def crop(self, data, item):
         coords = [int(x) for x in str(item.data(QtCore.Qt.UserRole).toPyObject()).split()]
         return data.iloc[coords[0]:coords[1], coords[2]:coords[3]]
+
+    def neg(self, data, item):
+        values = -data.values
+        return pd.DataFrame(values, index=data.index, columns=data.columns)
 
     def sub_linecut(self, data, item):
         if self.main.linecut_type == None:

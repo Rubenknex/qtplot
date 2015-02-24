@@ -35,8 +35,7 @@ class DatFile:
         for key in metadata:
             self.meta[self.columns[key - 1]] = metadata[key]
 
-        self.df = pd.read_table(filename, sep='\t', comment='#')
-        self.df.columns = self.columns
+        self.df = pd.read_table(filename, sep='\t', comment='#', names=self.columns)
 
     def find_number(self, s):
         return re.findall('[-+]?\d*\.\d+|\d+', s)[0] or None
