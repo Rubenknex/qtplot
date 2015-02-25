@@ -13,9 +13,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from pptx import Presentation
-from pptx.util import Inches
-
 from config import *
 from dat_file import DatFile
 from operations import Operations
@@ -58,9 +55,6 @@ class Window(QtGui.QMainWindow):
         self.line = None
         self.linecut_type = None
         self.linecut_coord = None
-
-        self.ppt = None
-        self.slide = None
 
         self.data = None
         self.data_file = None
@@ -119,25 +113,10 @@ class Window(QtGui.QMainWindow):
         self.le_max = QtGui.QLineEdit(self)
         self.le_max.returnPressed.connect(self.on_cmap_changed)
 
-        self.lbl_ppt = QtGui.QLabel("PPT File", self)
-        self.b_ppt = QtGui.QPushButton("Browse...", self)
-        self.b_ppt.clicked.connect(self.browse_ppt)
-        self.le_ppt = QtGui.QLineEdit(cfg_ppt_file, self)
-
-        self.b_slide = QtGui.QPushButton('Add slide')
-        self.b_slide.setEnabled(False)
-        self.b_slide.clicked.connect(self.add_slide)
-
-        self.b_ppt1 = QtGui.QPushButton('Add 2D data Figure')
-        self.b_ppt1.setEnabled(False)
-        self.b_ppt1.clicked.connect(self.add_2d_data)
-
-        self.b_ppt2 = QtGui.QPushButton('Add linecut figure')
-        self.b_ppt2.setEnabled(False)
-        self.b_ppt2.clicked.connect(self.add_linecut)
-
-        self.b_refresh = QtGui.QPushButton('Save PPT')
-        self.b_refresh.clicked.connect(self.save_ppt)
+        self.b_copy_colorplot = QtGui.QPushButton('Copy colorplot to clipboard', self)
+        self.b_copy_colorplot.clicked.connect(self.on_copy_colorplot)
+        self.b_copy_linecut = QtGui.QPushButton('Copy linecut to clipboard', self)
+        self.b_copy_linecut.clicked.connect(self.on_copy_linecut)
 
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(self.b_load)
@@ -166,15 +145,8 @@ class Window(QtGui.QMainWindow):
         hbox_gamma.addWidget(self.le_max)
 
         hbox4 = QtGui.QHBoxLayout()
-        hbox4.addWidget(self.lbl_ppt)
-        hbox4.addWidget(self.b_ppt)
-        hbox4.addWidget(self.le_ppt)
-
-        hbox5 = QtGui.QHBoxLayout()
-        hbox5.addWidget(self.b_slide)
-        hbox5.addWidget(self.b_ppt1)
-        hbox5.addWidget(self.b_ppt2)
-        hbox5.addWidget(self.b_refresh)
+        hbox4.addWidget(self.b_copy_colorplot)
+        hbox4.addWidget(self.b_copy_linecut)
 
         vbox = QtGui.QVBoxLayout(self.main_widget)
         vbox.addWidget(self.toolbar)
@@ -185,7 +157,6 @@ class Window(QtGui.QMainWindow):
         vbox.addLayout(hbox3)
         vbox.addLayout(hbox_gamma)
         vbox.addLayout(hbox4)
-        vbox.addLayout(hbox5)
 
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
@@ -210,10 +181,6 @@ class Window(QtGui.QMainWindow):
         self.cb_z.clear()
         self.cb_z.addItems(self.data_file.columns)
         self.cb_z.setCurrentIndex(cfg_default_data)
-
-        self.b_slide.setEnabled(True)
-        self.b_ppt1.setEnabled(True)
-        self.b_ppt2.setEnabled(True)
 
     def load_file(self, filename):
         if filename != "":
@@ -257,6 +224,22 @@ class Window(QtGui.QMainWindow):
         if self.data_file is not None:
             self.manipulate_data()
             self.plot_2d_data()
+
+    def on_copy_colorplot(self):
+        path = os.path.dirname(os.path.realpath(__file__))
+        path = os.path.join(path, 'test.png')
+        self.fig.savefig(path)
+
+        img = QtGui.QImage(path)
+        QtGui.QApplication.clipboard().setImage(img)
+
+    def on_copy_linecut(self):
+        path = os.path.dirname(os.path.realpath(__file__))
+        path = os.path.join(path, 'test.png')
+        self.linecut.fig.savefig(path)
+
+        img = QtGui.QImage(path)
+        QtGui.QApplication.clipboard().setImage(img)
 
     # Get a matrix of the data values with x and y axes
     def get_averaged_pivot(self, data, x, y, z, order_x, order_y):
@@ -317,10 +300,18 @@ class Window(QtGui.QMainWindow):
         order_x, order_y = str(self.cb_order_x.currentText()), str(self.cb_order_y.currentText())
         x, y = self.get_quadrilaterals(self.data, order_x, order_y, self.lbl_y, self.c_average.isChecked())
 
+        self.ax.set_xlim(sorted(self.ax.get_xlim()))
+        self.ax.set_ylim(sorted(self.ax.get_ylim()))
+
+        if self.data.columns[0] > self.data.columns[-1]:
+            self.ax.invert_xaxis()
+        if self.data.index[0] > self.data.index[-1]:
+            self.ax.invert_yaxis()
+
         # Mask NaN values so they will not be plotted
         masked_y = np.ma.masked_where(np.isnan(y), y)
         masked = np.ma.masked_where(np.isnan(self.data.values), self.data.values)
-        self.quadmesh = self.ax.pcolormesh(x, masked_y, masked, cmap=cmap)
+        self.quadmesh = self.ax.pcolormesh(x[::-1], masked_y, masked, cmap=cmap)
 
         if self.le_min.text() == '' or self.le_max.text() == '' or self.axis_changed:
             cm_min, cm_max = self.quadmesh.get_clim()
@@ -409,43 +400,6 @@ class Window(QtGui.QMainWindow):
 
         lc.canvas.draw()
 
-    def add_slide(self, event):
-        if self.ppt is not None:
-            title_slide_layout = self.ppt.slide_layouts[6]
-            self.slide = self.ppt.slides.add_slide(title_slide_layout)
-
-    def add_2d_data(self, event):
-        if self.slide is not None:
-            path = os.path.dirname(os.path.realpath(__file__))
-            path = os.path.join(path, 'test.png')
-            self.fig.savefig(path)
-            self.slide.shapes.add_picture(path, Inches(1), Inches(1))
-
-    def add_linecut(self, event):
-        if self.slide is not None:
-            path = os.path.dirname(os.path.realpath(__file__))
-            path = os.path.join(path, 'test.png')
-            self.linecut.fig.savefig(path)
-            self.slide.shapes.add_picture(path, Inches(1), Inches(1))
-
-    def browse_ppt(self, event):
-        filename = str(QtGui.QFileDialog.getOpenFileName(self))
-        self.le_ppt.setText(filename)
-
-        try:
-            self.ppt_file = open(filename, 'rb')
-            self.ppt = Presentation(self.ppt_file)
-        except IOError:
-            print 'Could not open PowerPoint file: ' + filename
-            self.ppt = None
-
-    def save_ppt(self, event):
-        if self.ppt:
-            try:
-                self.ppt.save(str(self.le_ppt.text()))
-            except IOError as e:
-                print 'Could not save PowerPoint file: '
-
     def resizeEvent(self, event):
         if len(self.ax.lines) > 0:
             self.ax.lines.pop(0)
@@ -455,16 +409,6 @@ class Window(QtGui.QMainWindow):
         self.plot_2d_data()
 
     def closeEvent(self, event):
-        if self.ppt:
-            try:
-                self.ppt.save(str(self.le_ppt.text()))
-            except IOError as e:
-                path, filename = os.path.split(str(self.le_ppt.text()))
-                name, ext = os.path.splitext(filename)
-                new = os.path.join(path, (name + time.asctime()) + ext)
-                print new
-                self.ppt.save(new)
-
         self.linecut.close()
         self.operations.close()
 
