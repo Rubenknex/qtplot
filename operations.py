@@ -2,14 +2,78 @@ import numpy as np
 import pandas as pd
 from PyQt4 import QtGui, QtCore
 
-"""
-Operation
+def op_abs(data, op, **kwargs):
+    return data.applymap(np.absolute)
 
-Parameters:
-- Textboxes
-- Listview
-- Checkboxes
-"""
+def op_autoflip(data, op, **kwargs):
+
+    
+    return data
+
+def op_crop(data, op, **kwargs):
+    x1, x2 = op.get_property('Left', int), op.get_property('Right', int)
+    y1, y2 = op.get_property('Bottom', int), op.get_property('Top', int)
+
+    return data.iloc[x1:x2, y1:y2]
+
+def op_flip(data, op, **kwargs):
+    if op.get_property('X Axis'):
+        data = data.reindex(columns=data.columns[::-1])
+
+    if op.get_property('Y Axis'):
+        data = data.reindex(index=data.index[::-1])
+
+    return data
+
+def op_log(data, op, **kwargs):
+    return data
+
+def op_neg(data, op, **kwargs):
+    return data.applymap(np.negative)
+
+def op_offset(data, op, **kwargs):
+    offset = op.get_property('Offset', float)
+
+    return pd.DataFrame(data.values, data.index, data.columns)
+
+def op_offset_axes(data, op, **kwargs):
+    x_off, y_off = op.get_property('X Offset', float), op.get_property('Y Offset', float)
+
+    return pd.DataFrame(data.values, data.index + y_off, data.columns + x_off)
+
+def op_rotate_cw(data, op, **kwargs):
+    return pd.DataFrame(data.values, data.index, data.columns)
+
+def op_scale_axes(data, op, **kwargs):
+    x_sc, y_sc = op.get_property('X Scale', float), op.get_property('Y Scale', float)
+
+    return pd.DataFrame(data.values, data.index * y_sc, data.columns * x_sc)
+
+def op_scale_data(data, op, **kwargs):
+    factor = op.get_property('Factor', float)
+
+    return pd.DataFrame(data.values * factor, data.index, data.columns)
+
+def op_sub_linecut(data, op, **kwargs):
+    linecut_type = kwargs['linecut_type']
+    linecut_coord = kwargs['linecut_coord']
+
+    if linecut_type == None:
+        return data
+
+    if linecut_type == 'horizontal':
+        lc_data = np.array(data.loc[linecut_coord])
+    elif linecut_type == 'vertical':
+        lc_data = np.array(data[linecut_coord])
+        lc_data = lc_data[:,np.newaxis]
+
+    return pd.DataFrame(data.values - lc_data, data.index, data.columns)
+
+def op_xderiv(data, op, **kwargs):
+    return pd.DataFrame(np.gradient(data.values)[1], data.index, data.columns)
+
+def op_yderiv(data, op, **kwargs):
+    return pd.DataFrame(np.gradient(data.values)[0], data.index, data.columns)
 
 class Operation(QtGui.QWidget):
     def __init__(self, func, widgets=[]):
@@ -27,7 +91,7 @@ class Operation(QtGui.QWidget):
             if typ == 'checkbox':
                 checkbox = QtGui.QCheckBox(name)
                 checkbox.setChecked(data)
-                layout.addWidget(QtGui.QCheckBox(name), height, 2)
+                layout.addWidget(checkbox, height, 2)
 
                 self.items[name] = checkbox
             elif typ == 'textbox':
@@ -45,7 +109,7 @@ class Operation(QtGui.QWidget):
 
             height += 1
 
-    def get_property(self, name, cast):
+    def get_property(self, name, cast=None):
         if name in self.items:
             widget = self.items[name]
 
@@ -55,6 +119,8 @@ class Operation(QtGui.QWidget):
                 return cast(str(widget.text()))
             elif type(widget) is QtGui.QComboBox:
                 return str(widget.currentText())
+        else:
+            raise Exception('Operation doesn\'t have the property: ' + name)
 
 class Operations(QtGui.QDialog):
     def __init__(self, parent=None):
@@ -66,28 +132,28 @@ class Operations(QtGui.QDialog):
         self.setWindowTitle("Operations")
 
         self.items = {
-            'abs': (self.abs, []),
-            'autoflip': None,
-            'crop': (self.crop, [('textbox', 'Left', '0'), ('textbox', 'Right', '0'), ('textbox', 'Bottom', '0'), ('textbox', 'Top', '0')]),
+            'abs': (op_abs, []),
+            'autoflip': (op_autoflip, []),
+            'crop': (op_crop, [('textbox', 'Left', '0'), ('textbox', 'Right', '0'), ('textbox', 'Bottom', '0'), ('textbox', 'Top', '0')]),
             'dderiv': None,
             'equalize': None,
-            'flip': None,
+            'flip': (op_flip, [('checkbox', 'X Axis', False), ('checkbox', 'Y Axis', False)]),
             'gradmag': None,
             'highpass': None,
             'hist2d': None,
-            'log': None,
+            'log': (op_log, []),
             'lowpass': None,
-            'neg': (self.neg, []),
-            'offset': None,
-            'offset axes': (self.offset_axes, []),
+            'neg': (op_neg, []),
+            'offset': (op_offset, [('textbox', 'Offset', '0')]),
+            'offset axes': (op_offset_axes, []),
             'power': None,
             'rotate ccw': None,
-            'rotate cw': (self.rotate_cw, []),
-            'scale axes': (self.scale_axes, []),
-            'scale data': (self.scale_data, [('textbox', 'Factor', '1')]),
-            'sub linecut': (self.sub_linecut, []),
-            'xderiv': (self.xderiv, []),
-            'yderiv': (self.yderiv, []),
+            'rotate cw': (op_rotate_cw, []),
+            'scale axes': (op_scale_axes, []),
+            'scale data': (op_scale_data, [('textbox', 'Factor', '1')]),
+            'sub linecut': (op_sub_linecut, []),
+            'xderiv': (op_xderiv, []),
+            'yderiv': (op_yderiv, []),
         }
 
         self.options = QtGui.QListWidget(self)
@@ -198,50 +264,7 @@ class Operations(QtGui.QDialog):
             item = self.queue.item(i)
             operation = item.data(QtCore.Qt.UserRole).toPyObject()
             name = str(self.queue.item(i).text())
-            data = operation.func(data, operation)
+
+            data = operation.func(data, operation, linecut_type=self.main.linecut_type, linecut_coord=self.main.linecut_coord)
 
         return data
-
-    def abs(self, data, item):
-        return data.applymap(np.absolute)
-
-    def crop(self, data, op):
-        x1, x2 = op.get_property('Left', int), op.get_property('Right', int)
-        y1, y2 = op.get_property('Bottom', int), op.get_property('Top', int)
-        return data.iloc[x1:x2, y1:y2]
-
-    def neg(self, data, item):
-        return data.applymap(np.negative)
-
-    def offset_axes(self, data, item):
-        x_off, y_off = [float(x) for x in str(item.data(QtCore.Qt.UserRole).toPyObject()).split()]
-        return pd.DataFrame(data.values, index=data.index + y_off, columns=data.columns + x_off)
-
-    def rotate_cw(self, data, item):
-        return pd.DataFrame(data.values, index=data.index, columns=data.columns)
-
-    def scale_axes(self, data, item):
-        x_sc, y_sc = [float(x) for x in str(item.data(QtCore.Qt.UserRole).toPyObject()).split()]
-        return pd.DataFrame(data.values, index=data.index * y_sc, columns=data.columns * x_sc)
-
-    def scale_data(self, data, op):
-        factor = op.get_property('Factor', float)
-        return pd.DataFrame(data.values * factor, index=data.index, columns=data.columns)
-
-    def sub_linecut(self, data, item):
-        if self.main.linecut_type == None:
-            return data
-
-        if self.main.linecut_type == 'horizontal':
-            lc_data = np.array(data.loc[self.main.linecut_coord])
-        elif self.main.linecut_type == 'vertical':
-            lc_data = np.array(data[self.main.linecut_coord])
-            lc_data = lc_data[:,np.newaxis]
-
-        return pd.DataFrame(data.values - lc_data, index=data.index, columns=data.columns)
-
-    def xderiv(self, data, item):
-        return pd.DataFrame(np.gradient(data.values)[1], index=data.index, columns=data.columns)
-
-    def yderiv(self, data, item):
-        return pd.DataFrame(np.gradient(data.values)[0], index=data.index, columns=data.columns)
