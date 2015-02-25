@@ -11,6 +11,51 @@ Parameters:
 - Checkboxes
 """
 
+class Operation(QtGui.QWidget):
+    def __init__(self, func, widgets=[]):
+        super(Operation, self).__init__(None)
+
+        layout = QtGui.QGridLayout(self)
+        self.func = func
+        self.items = {}
+
+        height = 1
+
+        for widget in widgets:
+            typ, name, data = widget
+
+            if typ == 'checkbox':
+                checkbox = QtGui.QCheckBox(name)
+                checkbox.setChecked(data)
+                layout.addWidget(QtGui.QCheckBox(name), height, 2)
+
+                self.items[name] = checkbox
+            elif typ == 'textbox':
+                lineedit = QtGui.QLineEdit(data)
+                layout.addWidget(QtGui.QLabel(name), height, 1)
+                layout.addWidget(lineedit, height, 2)
+
+                self.items[name] = lineedit
+            elif typ == 'combobox':
+                combobox = QtGui.QComboBox()
+                combobox.addItems(data)
+                layout.addWidget(combobox, height, 2)
+
+                self.items[name] = combobox
+
+            height += 1
+
+    def get_property(self, name, cast):
+        if name in self.items:
+            widget = self.items[name]
+
+            if type(widget) is QtGui.QCheckBox:
+                return widget.isChecked()
+            elif type(widget) is QtGui.QLineEdit:
+                return cast(str(widget.text()))
+            elif type(widget) is QtGui.QComboBox:
+                return str(widget.currentText())
+
 class Operations(QtGui.QDialog):
     def __init__(self, parent=None):
         super(Operations, self).__init__(parent)
@@ -21,9 +66,9 @@ class Operations(QtGui.QDialog):
         self.setWindowTitle("Operations")
 
         self.items = {
-            'abs': self.abs,
+            'abs': (self.abs, []),
             'autoflip': None,
-            'crop': self.crop,
+            'crop': (self.crop, [('textbox', 'Left', '0'), ('textbox', 'Right', '0'), ('textbox', 'Bottom', '0'), ('textbox', 'Top', '0')]),
             'dderiv': None,
             'equalize': None,
             'flip': None,
@@ -32,17 +77,17 @@ class Operations(QtGui.QDialog):
             'hist2d': None,
             'log': None,
             'lowpass': None,
-            'neg': self.neg,
+            'neg': (self.neg, []),
             'offset': None,
-            'offset axes': self.offset_axes,
+            'offset axes': (self.offset_axes, []),
             'power': None,
             'rotate ccw': None,
-            'rotate cw': None,
-            'scale axes': self.scale_axes,
-            'scale data': self.scale_data,
-            'sub linecut': self.sub_linecut,
-            'xderiv': self.xderiv,
-            'yderiv': self.yderiv,
+            'rotate cw': (self.rotate_cw, []),
+            'scale axes': (self.scale_axes, []),
+            'scale data': (self.scale_data, [('textbox', 'Factor', '1')]),
+            'sub linecut': (self.sub_linecut, []),
+            'xderiv': (self.xderiv, []),
+            'yderiv': (self.yderiv, []),
         }
 
         self.options = QtGui.QListWidget(self)
@@ -63,12 +108,11 @@ class Operations(QtGui.QDialog):
         self.b_clear = QtGui.QPushButton('Clear')
         self.b_clear.clicked.connect(self.clear)
 
+        self.b_update = QtGui.QPushButton('Update')
+        self.b_update.clicked.connect(self.update)
+
         self.queue = QtGui.QListWidget(self)
         self.queue.currentItemChanged.connect(self.selected_changed)
-
-        self.le_op = QtGui.QLineEdit(self)
-        self.le_op.textEdited.connect(self.text_changed)
-        self.le_op.editingFinished.connect(self.return_pressed)
 
         hbox = QtGui.QHBoxLayout()
 
@@ -78,10 +122,12 @@ class Operations(QtGui.QDialog):
         vbox.addWidget(self.b_down)
         vbox.addWidget(self.b_remove)
         vbox.addWidget(self.b_clear)
+        vbox.addWidget(self.b_update)
 
         vbox2 = QtGui.QVBoxLayout()
         vbox2.addWidget(self.queue)
-        vbox2.addWidget(self.le_op)
+        self.stack = QtGui.QStackedWidget()
+        vbox2.addWidget(self.stack)
 
         hbox.addWidget(self.options)
         hbox.addLayout(vbox)
@@ -101,14 +147,12 @@ class Operations(QtGui.QDialog):
     @update_plot
     def add(self):
         if self.options.currentItem():
-            name = self.options.currentItem().text()
-
-            data = ''
-            if name == 'crop':
-                data = 'x1 x2 y1 y2'
+            name = str(self.options.currentItem().text())
 
             item = QtGui.QListWidgetItem(name)
-            item.setData(QtCore.Qt.UserRole, QtCore.QVariant(data))
+            operation = Operation(*self.items[name])
+            item.setData(QtCore.Qt.UserRole, QtCore.QVariant(operation))
+            self.stack.addWidget(operation)
             self.queue.addItem(item)
 
     @update_plot
@@ -133,25 +177,38 @@ class Operations(QtGui.QDialog):
     def clear(self):
         self.queue.clear()
 
+    @update_plot
+    def update(self):
+        pass
+
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Return:
+            self.main.on_axis_changed(None)
+
     def selected_changed(self, current, previous):
         if current:
-            data = current.data(QtCore.Qt.UserRole).toPyObject()
-            self.le_op.setText(data)
+            widget = current.data(QtCore.Qt.UserRole).toPyObject()
+            self.stack.addWidget(widget)
+            self.stack.setCurrentWidget(widget)
 
-    def text_changed(self, text):
-        if self.queue.currentItem():
-            self.queue.currentItem().setData(QtCore.Qt.UserRole, QtCore.QVariant(str(text)))
+    def apply_operations(self, data):
+        ops = []
 
-    @update_plot
-    def return_pressed(self):
-        pass
+        for i in xrange(self.queue.count()):
+            item = self.queue.item(i)
+            operation = item.data(QtCore.Qt.UserRole).toPyObject()
+            name = str(self.queue.item(i).text())
+            data = operation.func(data, operation)
+
+        return data
 
     def abs(self, data, item):
         return data.applymap(np.absolute)
 
-    def crop(self, data, item):
-        coords = [int(x) for x in str(item.data(QtCore.Qt.UserRole).toPyObject()).split()]
-        return data.iloc[coords[0]:coords[1], coords[2]:coords[3]]
+    def crop(self, data, op):
+        x1, x2 = op.get_property('Left', int), op.get_property('Right', int)
+        y1, y2 = op.get_property('Bottom', int), op.get_property('Top', int)
+        return data.iloc[x1:x2, y1:y2]
 
     def neg(self, data, item):
         return data.applymap(np.negative)
@@ -160,12 +217,15 @@ class Operations(QtGui.QDialog):
         x_off, y_off = [float(x) for x in str(item.data(QtCore.Qt.UserRole).toPyObject()).split()]
         return pd.DataFrame(data.values, index=data.index + y_off, columns=data.columns + x_off)
 
+    def rotate_cw(self, data, item):
+        return pd.DataFrame(data.values, index=data.index, columns=data.columns)
+
     def scale_axes(self, data, item):
         x_sc, y_sc = [float(x) for x in str(item.data(QtCore.Qt.UserRole).toPyObject()).split()]
         return pd.DataFrame(data.values, index=data.index * y_sc, columns=data.columns * x_sc)
 
-    def scale_data(self, data, item):
-        factor = float(str(item.data(QtCore.Qt.UserRole).toPyObject()))
+    def scale_data(self, data, op):
+        factor = op.get_property('Factor', float)
         return pd.DataFrame(data.values * factor, index=data.index, columns=data.columns)
 
     def sub_linecut(self, data, item):
@@ -185,13 +245,3 @@ class Operations(QtGui.QDialog):
 
     def yderiv(self, data, item):
         return pd.DataFrame(np.gradient(data.values)[0], index=data.index, columns=data.columns)
-
-    def apply_operations(self, data):
-        ops = []
-
-        for i in xrange(self.queue.count()):
-            item = self.queue.item(i)
-            name = str(self.queue.item(i).text())
-            data = self.items[name](data, item)
-
-        return data
