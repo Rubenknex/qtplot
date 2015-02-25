@@ -28,6 +28,9 @@ def op_flip(data, op, **kwargs):
 def op_log(data, op, **kwargs):
     return data
 
+def op_lowpass(data, op, **kwargs):
+    return data
+
 def op_neg(data, op, **kwargs):
     return data.applymap(np.negative)
 
@@ -101,6 +104,7 @@ class Operation(QtGui.QWidget):
 
                 self.items[name] = lineedit
             elif typ == 'combobox':
+                layout.addWidget(QtGui.QLabel(name), height, 1)
                 combobox = QtGui.QComboBox()
                 combobox.addItems(data)
                 layout.addWidget(combobox, height, 2)
@@ -142,7 +146,7 @@ class Operations(QtGui.QDialog):
             'highpass': None,
             'hist2d': None,
             'log': (op_log, []),
-            'lowpass': None,
+            'lowpass': (op_lowpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Width', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]),
             'neg': (op_neg, []),
             'offset': (op_offset, [('textbox', 'Offset', '0')]),
             'offset axes': (op_offset_axes, []),
