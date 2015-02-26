@@ -18,10 +18,9 @@ from dat_file import DatFile
 from operations import Operations
 
 """
-- Axis scaling filters
-- Low pass filter
+- Proper units on y-axis of linecut, now not properly formatted
+
 - Integration into qtlab as real time plotting
-- Look into plotting performance
 - Use proper axis when plotting linecut and not averaging
 """
 
