@@ -39,7 +39,10 @@ def op_flip(data, op, **kwargs):
     return data
 
 def op_gradmag(data, op, **kwargs):
-    return data
+    gradient = np.gradient(data.values)
+    magnitude = np.sqrt(gradient[0]**2 + gradient[1]**2)
+
+    return pd.DataFrame(magnitude, data.index, data.columns)
 
 def op_highpass(data, op, **kwargs):
     sx, sy = op.get_property('X Width', float), op.get_property('Y Height', float)
@@ -113,10 +116,16 @@ def op_sub_linecut(data, op, **kwargs):
     return pd.DataFrame(data.values - lc_data, data.index, data.columns)
 
 def op_xderiv(data, op, **kwargs):
-    return pd.DataFrame(np.gradient(data.values)[1], data.index, data.columns)
+    dx = np.diff(data.columns)
+    ddata = np.diff(data.values, axis=1)
+
+    return pd.DataFrame(ddata / dx, data.index, data.columns[:-1] + dx)
 
 def op_yderiv(data, op, **kwargs):
-    return pd.DataFrame(np.gradient(data.values)[0], data.index, data.columns)
+    dy = np.diff(data.index)
+    ddata = np.diff(data.values, axis=0)
+
+    return pd.DataFrame(ddata / dy[np.newaxis,:].T, data.index[:-1] + dy, data.columns)
 
 class Operation(QtGui.QWidget):
     def __init__(self, name, func, widgets=[]):
@@ -170,19 +179,19 @@ class Operation(QtGui.QWidget):
             raise Exception('Operation doesn\'t have the property: ' + name)
 
     def get_formatted(self):
-        params = self.name + ' '
+        params = self.name + ';'
 
         for name in self.items:
             widget = self.items[name]
 
-            params += name + ':'
+            params += name + '\t'
             if type(widget) is QtGui.QCheckBox:
                 params += str(widget.isChecked())
             elif type(widget) is QtGui.QLineEdit:
                 params += str(widget.text())
             elif type(widget) is QtGui.QComboBox:
                 params += str(widget.currentText())
-            params += ' '
+            params += ';'
 
         return params
 
