@@ -21,7 +21,16 @@ def op_crop(data, op, **kwargs):
     return data.iloc[x1:x2, y1:y2]
 
 def op_dderiv(data, op, **kwargs):
-    return data
+    xcomp = op_xderiv(data, op)
+    ycomp = op_yderiv(data, op)
+
+    xvalues = np.delete(xcomp.values, -1, axis=0)
+    yvalues = np.delete(ycomp.values, -1, axis=1)
+
+    theta = np.radians(op.get_property('Theta', float))
+    xdir, ydir = np.cos(theta), np.sin(theta)
+
+    return pd.DataFrame(xvalues * xdir + yvalues * ydir, ycomp.index, xcomp.columns)
 
 def op_equalize(data, op, **kwargs):
     return data
@@ -39,10 +48,13 @@ def op_flip(data, op, **kwargs):
     return data
 
 def op_gradmag(data, op, **kwargs):
-    gradient = np.gradient(data.values)
-    magnitude = np.sqrt(gradient[0]**2 + gradient[1]**2)
+    xcomp = op_xderiv(data, op)
+    ycomp = op_yderiv(data, op)
 
-    return pd.DataFrame(magnitude, data.index, data.columns)
+    xvalues = np.delete(xcomp.values, -1, axis=0)
+    yvalues = np.delete(ycomp.values, -1, axis=1)
+
+    return pd.DataFrame(np.sqrt(xvalues**2 + yvalues**2), ycomp.index, xcomp.columns)
 
 def op_highpass(data, op, **kwargs):
     sx, sy = op.get_property('X Width', float), op.get_property('Y Height', float)
@@ -208,7 +220,7 @@ class Operations(QtGui.QDialog):
             'abs':          [op_abs],
             'autoflip':     [op_autoflip],
             'crop':         [op_crop, [('textbox', 'Left', '0'), ('textbox', 'Right', '0'), ('textbox', 'Bottom', '0'), ('textbox', 'Top', '0')]],
-            'dderiv':       [op_dderiv],
+            'dderiv':       [op_dderiv, [('textbox', 'Theta', '0')]],
             'equalize':     [op_equalize],
             'even odd':     [op_even_odd],
             'flip':         [op_flip, [('checkbox', 'X Axis', False), ('checkbox', 'Y Axis', False)]],
