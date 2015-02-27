@@ -23,6 +23,7 @@ from operations import Operations
 """
 
 class FixedOrderFormatter(ScalarFormatter):
+    """Format numbers using engineering notation."""
     def __init__(self, significance=0):
         ScalarFormatter.__init__(self, useOffset=None, useMathText=None)
         self.format = '%.' + str(significance) + 'f'
@@ -40,6 +41,7 @@ class FixedOrderFormatter(ScalarFormatter):
         self.orderOfMagnitude = exp - (exp % 3)
 
 class Window(QtGui.QMainWindow):
+    """The main window of the qtplot application."""
     def __init__(self, lc_window, op_window, filename=None):
         QtGui.QMainWindow.__init__(self)
         
@@ -248,8 +250,8 @@ class Window(QtGui.QMainWindow):
         img = QtGui.QImage(path)
         QtGui.QApplication.clipboard().setImage(img)
 
-    # Get a matrix of the data values with x and y axes
     def get_averaged_pivot(self, data, x, y, z, order_x, order_y):
+        """Transform the column-based data into a matrix with x and y coordinates."""
         processed = data.copy()
 
         if x != order_x:
@@ -274,8 +276,8 @@ class Window(QtGui.QMainWindow):
 
         self.data_changed = False
 
-    # Create quads for every datapoint so that the datapoint is in the center of the cell.
     def get_quadrilaterals(self, data, order_x, order_y, axis_y, average_y):
+        """Create two arrays with the X and Y coordinates respectively of quads for every datapoint."""
         xc, yc = np.meshgrid(data.columns.values, data.index.values)
 
         # TODO remove dependency on state

@@ -8,9 +8,11 @@ from PyQt4 import QtGui, QtCore
 from scipy import ndimage
 
 def op_abs(data, op, **kwargs):
+    """Return the absolute value of every datapoint."""
     return data.applymap(np.absolute)
 
 def op_autoflip(data, op, **kwargs):
+    """Flip the data so that the X and Y-axes increase to the top and right."""
     if data.index[0] > data.index[-1]:
         data = data.reindex(index=data.index[::-1])
     if data.columns[0] > data.columns[-1]:
@@ -19,12 +21,14 @@ def op_autoflip(data, op, **kwargs):
     return data
 
 def op_crop(data, op, **kwargs):
+    """Crop a region of the data by the columns and rows."""
     x1, x2 = op.get_property('Left', int), op.get_property('Right', int)
     y1, y2 = op.get_property('Bottom', int), op.get_property('Top', int)
 
     return data.iloc[x1:x2, y1:y2]
 
 def op_dderiv(data, op, **kwargs):
+    """Calculate the component of the gradient in a specific direction."""
     xcomp = op_xderiv(data, op)
     ycomp = op_yderiv(data, op)
 
@@ -43,6 +47,7 @@ def op_even_odd(data, op, **kwargs):
     return data
 
 def op_flip(data, op, **kwargs):
+    """Flip the X or Y-axes."""
     if op.get_property('X Axis'):
         data = data.reindex(columns=data.columns[::-1])
 
@@ -52,6 +57,7 @@ def op_flip(data, op, **kwargs):
     return data
 
 def op_gradmag(data, op, **kwargs):
+    """Calculate the length of every gradient vector."""
     xcomp = op_xderiv(data, op)
     ycomp = op_yderiv(data, op)
 
@@ -61,6 +67,7 @@ def op_gradmag(data, op, **kwargs):
     return pd.DataFrame(np.sqrt(xvalues**2 + yvalues**2), ycomp.index, xcomp.columns)
 
 def op_highpass(data, op, **kwargs):
+    """Perform a high-pass filter."""
     sx, sy = op.get_property('X Width', float), op.get_property('Y Height', float)
     values = ndimage.filters.gaussian_filter(data.values, [sy, sx])
 
@@ -70,9 +77,11 @@ def op_hist2d(data, op, **kwargs):
     return data
 
 def op_log(data, op, **kwargs):
+    """The base-10 logarithm of every datapoint."""
     return pd.DataFrame(np.log10(data.values), data.index, data.columns)
 
 def op_lowpass(data, op, **kwargs):
+    """Perform a low-pass filter."""
     # X and Y sigma order?
     sx, sy = op.get_property('X Width', float), op.get_property('Y Height', float)
     values = ndimage.filters.gaussian_filter(data.values, [sy, sx])
@@ -80,37 +89,44 @@ def op_lowpass(data, op, **kwargs):
     return pd.DataFrame(values, data.index, data.columns)
 
 def op_neg(data, op, **kwargs):
+    """Negate every datapoint."""
     return data.applymap(np.negative)
 
 def op_normalize(data, op, **kwargs):
     return data
 
 def op_offset(data, op, **kwargs):
+    """Add a value to every datapoint."""
     offset = op.get_property('Offset', float)
 
     return pd.DataFrame(data.values + offset, data.index, data.columns)
 
 def op_offset_axes(data, op, **kwargs):
+    """Add a value to the axes."""
     x_off, y_off = op.get_property('X Offset', float), op.get_property('Y Offset', float)
 
     return pd.DataFrame(data.values, data.index + y_off, data.columns + x_off)
 
 def op_power(data, op, **kwargs):
+    """Raise the datapoints to a power."""
     power = op.get_property('Power', float)
 
     return pd.DataFrame(np.power(data.values, power), data.index, data.columns)
 
 def op_scale_axes(data, op, **kwargs):
+    """Multiply the axes values by a number."""
     x_sc, y_sc = op.get_property('X Scale', float), op.get_property('Y Scale', float)
 
     return pd.DataFrame(data.values, data.index * y_sc, data.columns * x_sc)
 
 def op_scale_data(data, op, **kwargs):
+    """Multiply the datapoints by a number."""
     factor = op.get_property('Factor', float)
 
     return pd.DataFrame(data.values * factor, data.index, data.columns)
 
 def op_sub_linecut(data, op, **kwargs):
+    """Subtract a horizontal/vertical linecut from every row/column."""
     linecut_type = kwargs['linecut_type']
     linecut_coord = kwargs['linecut_coord']
 
@@ -126,12 +142,14 @@ def op_sub_linecut(data, op, **kwargs):
     return pd.DataFrame(data.values - lc_data, data.index, data.columns)
 
 def op_xderiv(data, op, **kwargs):
+    """Find the rate of change between every datapoint in the x-direction."""
     dx = np.diff(data.columns)
     ddata = np.diff(data.values, axis=1)
 
     return pd.DataFrame(ddata / dx, data.index, data.columns[:-1] + dx)
 
 def op_yderiv(data, op, **kwargs):
+    """Find the rate of change between every datapoint in the y-direction."""
     dy = np.diff(data.index)
     ddata = np.diff(data.values, axis=0)
 
