@@ -3,10 +3,9 @@ Plotting program inspired by Spyview.
 
 Read .dat files created by qtlab.
 
-Dependencies:
+Requirements:
 - numpy
 - pandas
 - scipy
 - PyQt4
 - matplotlib
-- PythonMagick
