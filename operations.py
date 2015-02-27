@@ -196,7 +196,7 @@ class Operation(QtGui.QWidget):
         for name in self.items:
             widget = self.items[name]
 
-            params += name + '\t'
+            params += name + ':'
             if type(widget) is QtGui.QCheckBox:
                 params += str(widget.isChecked())
             elif type(widget) is QtGui.QLineEdit:

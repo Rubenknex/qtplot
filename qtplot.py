@@ -1,17 +1,15 @@
 import math
-import os
-import sys
-import time
-
-from PyQt4 import QtGui, QtCore
-
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
-from matplotlib.ticker import ScalarFormatter
-
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
+import sys
+import time
+
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
+from matplotlib.ticker import ScalarFormatter
+from PyQt4 import QtGui, QtCore
 
 from config import *
 from dat_file import DatFile
@@ -78,29 +76,32 @@ class Window(QtGui.QMainWindow):
 
         self.b_load = QtGui.QPushButton('Load DAT...')
         self.b_load.clicked.connect(self.on_load_dat)
+        self.b_swap_axes = QtGui.QPushButton('Swap axes', self)
+        self.b_swap_axes.clicked.connect(self.on_swap_axes)
         self.b_swap = QtGui.QPushButton('Swap order', self)
         self.b_swap.clicked.connect(self.on_swap_order)
         self.c_average = QtGui.QCheckBox('Average Y-Axis', self)
         self.c_average.setChecked(True)
         self.c_average.stateChanged.connect(self.on_data_change)
 
-        self.lbl_x = QtGui.QLabel("X", self)
+        self.lbl_x = QtGui.QLabel("X:", self)
         self.cb_x = QtGui.QComboBox(self)
         self.cb_x.activated.connect(self.on_axis_changed)
-        lbl_order_x = QtGui.QLabel('Order: ', self)
+        lbl_order_x = QtGui.QLabel('X Order: ', self)
         self.cb_order_x = QtGui.QComboBox(self)
 
-        self.lbl_y = QtGui.QLabel("Y", self)
+        self.lbl_y = QtGui.QLabel("Y:", self)
         self.cb_y = QtGui.QComboBox(self)
         self.cb_y.activated.connect(self.on_axis_changed)
-        lbl_order_y = QtGui.QLabel('Order: ', self)
+        lbl_order_y = QtGui.QLabel('Y Order: ', self)
         self.cb_order_y = QtGui.QComboBox(self)
 
-        self.lbl_d = QtGui.QLabel("Data", self)
+        self.lbl_d = QtGui.QLabel("Data:", self)
         self.cb_z = QtGui.QComboBox(self)
         self.cb_z.activated.connect(self.on_axis_changed)
 
         self.le_min = QtGui.QLineEdit(self)
+        self.le_min.setMaximumWidth(100)
         self.le_min.returnPressed.connect(self.on_cmap_changed)
 
         self.s_gamma = QtGui.QSlider(QtCore.Qt.Horizontal)
@@ -110,6 +111,7 @@ class Window(QtGui.QMainWindow):
         self.s_gamma.valueChanged.connect(self.on_cmap_changed)
 
         self.le_max = QtGui.QLineEdit(self)
+        self.le_max.setMaximumWidth(100)
         self.le_max.returnPressed.connect(self.on_cmap_changed)
 
         self.b_copy_colorplot = QtGui.QPushButton('Copy colorplot to clipboard', self)
@@ -119,24 +121,23 @@ class Window(QtGui.QMainWindow):
 
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(self.b_load)
+        hbox.addWidget(self.b_swap_axes)
         hbox.addWidget(self.b_swap)
         hbox.addWidget(self.c_average)
-        
-        hbox1 = QtGui.QHBoxLayout()
-        hbox1.addWidget(self.lbl_x)
-        hbox1.addWidget(self.cb_x)
-        hbox1.addWidget(lbl_order_x)
-        hbox1.addWidget(self.cb_order_x)
 
-        hbox2 = QtGui.QHBoxLayout()
-        hbox2.addWidget(self.lbl_y)
-        hbox2.addWidget(self.cb_y)
-        hbox2.addWidget(lbl_order_y)
-        hbox2.addWidget(self.cb_order_y)
+        grid = QtGui.QGridLayout()
+        grid.addWidget(self.lbl_x, 1, 1)
+        grid.addWidget(self.cb_x, 1, 2)
+        grid.addWidget(lbl_order_x, 1, 3)
+        grid.addWidget(self.cb_order_x, 1, 4)
 
-        hbox3 = QtGui.QHBoxLayout()
-        hbox3.addWidget(self.lbl_d)
-        hbox3.addWidget(self.cb_z)
+        grid.addWidget(self.lbl_y, 2, 1)
+        grid.addWidget(self.cb_y, 2, 2)
+        grid.addWidget(lbl_order_y, 2, 3)
+        grid.addWidget(self.cb_order_y, 2, 4)
+
+        grid.addWidget(self.lbl_d, 3, 1)
+        grid.addWidget(self.cb_z, 3, 2)
 
         hbox_gamma = QtGui.QHBoxLayout()
         hbox_gamma.addWidget(self.le_min)
@@ -151,9 +152,7 @@ class Window(QtGui.QMainWindow):
         vbox.addWidget(self.toolbar)
         vbox.addWidget(self.canvas)
         vbox.addLayout(hbox)
-        vbox.addLayout(hbox1)
-        vbox.addLayout(hbox2)
-        vbox.addLayout(hbox3)
+        vbox.addLayout(grid)
         vbox.addLayout(hbox_gamma)
         vbox.addLayout(hbox4)
 
@@ -187,6 +186,9 @@ class Window(QtGui.QMainWindow):
 
             path, self.name = os.path.split(self.data_file.filename)
 
+            self.line = None
+            
+
             self.update_ui()
             self.on_data_change()
 
@@ -194,6 +196,13 @@ class Window(QtGui.QMainWindow):
         self.filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
 
         self.load_file(self.filename)
+
+    def on_swap_axes(self, event):
+        x, y = self.cb_x.currentIndex(), self.cb_y.currentIndex()
+        self.cb_x.setCurrentIndex(y)
+        self.cb_y.setCurrentIndex(x)
+
+        self.on_swap_order(event)
 
     def on_swap_order(self, event):
         x, y = self.cb_order_x.currentIndex(), self.cb_order_y.currentIndex()
