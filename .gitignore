@@ -5,3 +5,4 @@ test_data/
 *.pyc
 Thumbs.db
 *.png
+*.operations

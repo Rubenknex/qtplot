@@ -1,5 +1,9 @@
+from collections import OrderedDict
 import numpy as np
+import os
 import pandas as pd
+import json
+
 from PyQt4 import QtGui, QtCore
 from scipy import ndimage
 
@@ -96,12 +100,6 @@ def op_power(data, op, **kwargs):
 
     return pd.DataFrame(np.power(data.values, power), data.index, data.columns)
 
-def op_rotate_ccw(data, op, **kwargs):
-    return data
-
-def op_rotate_cw(data, op, **kwargs):
-    return pd.DataFrame(data.values, data.index, data.columns)
-
 def op_scale_axes(data, op, **kwargs):
     x_sc, y_sc = op.get_property('X Scale', float), op.get_property('Y Scale', float)
 
@@ -175,9 +173,7 @@ class Operation(QtGui.QWidget):
 
             height += 1
 
-        print self.get_formatted()
-
-    def get_property(self, name, cast=None):
+    def get_property(self, name, cast=str):
         if name in self.items:
             widget = self.items[name]
 
@@ -187,25 +183,27 @@ class Operation(QtGui.QWidget):
                 return cast(str(widget.text()))
             elif type(widget) is QtGui.QComboBox:
                 return str(widget.currentText())
-        else:
-            raise Exception('Operation doesn\'t have the property: ' + name)
 
-    def get_formatted(self):
-        params = self.name + ';'
-
-        for name in self.items:
+    def set_property(self, name, value):
+        if name in self.items:
             widget = self.items[name]
 
-            params += name + ':'
             if type(widget) is QtGui.QCheckBox:
-                params += str(widget.isChecked())
+                widget.setChecked(bool(value))
             elif type(widget) is QtGui.QLineEdit:
-                params += str(widget.text())
+                widget.setText(value)
             elif type(widget) is QtGui.QComboBox:
-                params += str(widget.currentText())
-            params += ';'
+                index = widget.findText(value)
+                widget.setCurrentIndex(index)
 
-        return params
+    def get_formatted(self):
+        params = {name: self.get_property(name) for name in self.items}
+
+        return self.name, params
+
+    def set_params(self, params):
+        for name, value in params.iteritems():
+            self.set_property(name, value)
 
 class Operations(QtGui.QDialog):
     def __init__(self, parent=None):
@@ -232,11 +230,9 @@ class Operations(QtGui.QDialog):
             'neg':          [op_neg],
             'normalize':    [op_normalize],
             'offset':       [op_offset, [('textbox', 'Offset', '0')]],
-            'offset axes':  [op_offset_axes],
+            'offset axes':  [op_offset_axes, [('textbox', 'X Offset', '0'), ('textbox', 'Y Offset', '0')]],
             'power':        [op_power, [('textbox', 'Power', '1')]],
-            'rotate ccw':   [op_rotate_ccw],
-            'rotate cw':    [op_rotate_cw],
-            'scale axes':   [op_scale_axes],
+            'scale axes':   [op_scale_axes, [('textbox', 'X Scale', '1'), ('textbox', 'Y Scale', '1')]],
             'scale data':   [op_scale_data, [('textbox', 'Factor', '1')]],
             'sub linecut':  [op_sub_linecut],
             'xderiv':       [op_xderiv],
@@ -344,11 +340,45 @@ class Operations(QtGui.QDialog):
     def on_update(self):
         pass
 
+    @update_plot
     def on_load(self):
-        pass
+        path = os.path.dirname(os.path.realpath(__file__))
+        filename = str(QtGui.QFileDialog.getOpenFileName(self, 'Open file', path, '*.operations'))
+
+        if filename == '':
+            return
+
+        self.queue.clear()
+
+        with open(filename) as f:
+            operations = json.load(f, object_pairs_hook=OrderedDict)
+
+        for name, operation in operations.iteritems():
+            item = QtGui.QListWidgetItem(name)
+            op = Operation(name, *self.items[name])
+            op.set_params(operation)
+            item.setData(QtCore.Qt.UserRole, QtCore.QVariant(op))
+            self.stack.addWidget(op)
+
+            self.queue.addItem(item)
+            self.queue.setCurrentItem(item)
     
     def on_save(self):
-        pass
+        path = os.path.dirname(os.path.realpath(__file__))
+        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save file', path, '.operations')
+
+        if filename == '':
+            return
+
+        operations = OrderedDict()
+        for i in xrange(self.queue.count()):
+                operation = self.queue.item(i).data(QtCore.Qt.UserRole).toPyObject()
+                
+                name, params = operation.get_formatted()
+                operations[name] = params
+
+        with open(filename, 'w') as f:
+            f.write(json.dumps(operations, indent=4))
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Return:

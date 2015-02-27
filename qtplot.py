@@ -84,19 +84,19 @@ class Window(QtGui.QMainWindow):
         self.c_average.setChecked(True)
         self.c_average.stateChanged.connect(self.on_data_change)
 
-        self.lbl_x = QtGui.QLabel("X:", self)
+        lbl_x = QtGui.QLabel("X:", self)
         self.cb_x = QtGui.QComboBox(self)
         self.cb_x.activated.connect(self.on_axis_changed)
         lbl_order_x = QtGui.QLabel('X Order: ', self)
         self.cb_order_x = QtGui.QComboBox(self)
 
-        self.lbl_y = QtGui.QLabel("Y:", self)
+        lbl_y = QtGui.QLabel("Y:", self)
         self.cb_y = QtGui.QComboBox(self)
         self.cb_y.activated.connect(self.on_axis_changed)
         lbl_order_y = QtGui.QLabel('Y Order: ', self)
         self.cb_order_y = QtGui.QComboBox(self)
 
-        self.lbl_d = QtGui.QLabel("Data:", self)
+        lbl_d = QtGui.QLabel("Data:", self)
         self.cb_z = QtGui.QComboBox(self)
         self.cb_z.activated.connect(self.on_axis_changed)
 
@@ -126,17 +126,17 @@ class Window(QtGui.QMainWindow):
         hbox.addWidget(self.c_average)
 
         grid = QtGui.QGridLayout()
-        grid.addWidget(self.lbl_x, 1, 1)
+        grid.addWidget(lbl_x, 1, 1)
         grid.addWidget(self.cb_x, 1, 2)
         grid.addWidget(lbl_order_x, 1, 3)
         grid.addWidget(self.cb_order_x, 1, 4)
 
-        grid.addWidget(self.lbl_y, 2, 1)
+        grid.addWidget(lbl_y, 2, 1)
         grid.addWidget(self.cb_y, 2, 2)
         grid.addWidget(lbl_order_y, 2, 3)
         grid.addWidget(self.cb_order_y, 2, 4)
 
-        grid.addWidget(self.lbl_d, 3, 1)
+        grid.addWidget(lbl_d, 3, 1)
         grid.addWidget(self.cb_z, 3, 2)
 
         hbox_gamma = QtGui.QHBoxLayout()
@@ -187,7 +187,6 @@ class Window(QtGui.QMainWindow):
             path, self.name = os.path.split(self.data_file.filename)
 
             self.line = None
-            
 
             self.update_ui()
             self.on_data_change()
@@ -275,7 +274,7 @@ class Window(QtGui.QMainWindow):
 
         self.data_changed = False
 
-    # As long as axis coords and values are in the same order
+    # Create quads for every datapoint so that the datapoint is in the center of the cell.
     def get_quadrilaterals(self, data, order_x, order_y, axis_y, average_y):
         xc, yc = np.meshgrid(data.columns.values, data.index.values)
 
