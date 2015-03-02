@@ -173,12 +173,16 @@ class Window(QtGui.QMainWindow):
         self.cb_x.clear()
         self.cb_x.addItems(self.data_file.columns)
         self.cb_x.setCurrentIndex(0)
+
+        self.cb_order_x.clear()
         self.cb_order_x.addItems(self.data_file.columns)
         self.cb_order_x.setCurrentIndex(0)
 
         self.cb_y.clear()
         self.cb_y.addItems(self.data_file.columns)
         self.cb_y.setCurrentIndex(1)
+
+        self.cb_order_y.clear()
         self.cb_order_y.addItems(self.data_file.columns)
         self.cb_order_y.setCurrentIndex(1)
 
@@ -196,7 +200,7 @@ class Window(QtGui.QMainWindow):
             self.line = None
             self.update_ui()
 
-        self.on_data_change()
+        self.on_axis_changed(None)
 
     def on_load_dat(self, event):
         filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
