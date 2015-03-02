@@ -11,7 +11,6 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationTool
 from matplotlib.ticker import ScalarFormatter
 from PyQt4 import QtGui, QtCore
 
-from config import *
 from dat_file import DatFile
 from operations import Operations
 
@@ -44,6 +43,8 @@ class Window(QtGui.QMainWindow):
     """The main window of the qtplot application."""
     def __init__(self, lc_window, op_window, filename=None):
         QtGui.QMainWindow.__init__(self)
+
+        self.filename = None
         
         self.linecut = lc_window
         self.operations = op_window
@@ -78,6 +79,8 @@ class Window(QtGui.QMainWindow):
 
         self.b_load = QtGui.QPushButton('Load DAT...')
         self.b_load.clicked.connect(self.on_load_dat)
+        self.b_refresh = QtGui.QPushButton('Refresh')
+        self.b_refresh.clicked.connect(self.on_refresh)
         self.b_swap_axes = QtGui.QPushButton('Swap axes', self)
         self.b_swap_axes.clicked.connect(self.on_swap_axes)
         self.b_swap = QtGui.QPushButton('Swap order', self)
@@ -123,6 +126,7 @@ class Window(QtGui.QMainWindow):
 
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(self.b_load)
+        hbox.addWidget(self.b_refresh)
         hbox.addWidget(self.b_swap_axes)
         hbox.addWidget(self.b_swap)
         hbox.addWidget(self.c_average)
@@ -168,35 +172,41 @@ class Window(QtGui.QMainWindow):
 
         self.cb_x.clear()
         self.cb_x.addItems(self.data_file.columns)
-        self.cb_x.setCurrentIndex(cfg_default_x)
+        self.cb_x.setCurrentIndex(0)
         self.cb_order_x.addItems(self.data_file.columns)
         self.cb_order_x.setCurrentIndex(0)
 
         self.cb_y.clear()
         self.cb_y.addItems(self.data_file.columns)
-        self.cb_y.setCurrentIndex(cfg_default_y)
+        self.cb_y.setCurrentIndex(1)
         self.cb_order_y.addItems(self.data_file.columns)
         self.cb_order_y.setCurrentIndex(1)
 
         self.cb_z.clear()
         self.cb_z.addItems(self.data_file.columns)
-        self.cb_z.setCurrentIndex(cfg_default_data)
+        self.cb_z.setCurrentIndex(3)
 
     def load_file(self, filename):
-        if filename != "":
-            self.data_file = DatFile(filename)
+        self.data_file = DatFile(filename)
 
-            path, self.name = os.path.split(self.data_file.filename)
+        if filename != self.filename:
+            path, self.name = os.path.split(filename)
+            self.filename = filename
 
             self.line = None
-
             self.update_ui()
-            self.on_data_change()
+
+        self.on_data_change()
 
     def on_load_dat(self, event):
-        self.filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
+        filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
 
-        self.load_file(self.filename)
+        if filename != "":
+            self.load_file(filename)
+
+    def on_refresh(self, event):
+        if self.filename:
+            self.load_file(self.filename)
 
     def on_swap_axes(self, event):
         x, y = self.cb_x.currentIndex(), self.cb_y.currentIndex()
@@ -456,8 +466,7 @@ if __name__ == '__main__':
     operations.main = main
 
     linecut.show()
-    main.show()
-
     operations.show()
-
+    main.show()
+    
     sys.exit(app.exec_())

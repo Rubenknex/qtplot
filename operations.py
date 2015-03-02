@@ -156,6 +156,7 @@ def op_yderiv(data, op, **kwargs):
     return pd.DataFrame(ddata / dy[np.newaxis,:].T, data.index[:-1] + dy, data.columns)
 
 class Operation(QtGui.QWidget):
+    """Contains the name and GUI widgets for the parameters of an operation."""
     def __init__(self, name, func, widgets=[]):
         super(Operation, self).__init__(None)
 
