@@ -294,15 +294,22 @@ class Window(QtGui.QMainWindow):
         if not average_y:
             yc = self.data_file.df.pivot(index=order_y, columns=order_x, values=axis_y).values
 
-        # Add a column/row on each side with estimated values
-        xc = np.hstack((xc[:,[0]] - (xc[:,[1]] - xc[:,[0]]), xc, xc[:,[-1]] + (xc[:,[-1]] - xc[:,[-2]])))
-        yc = np.vstack([yc[0] - (yc[1] - yc[0]), yc, yc[-1] + (yc[-1] - yc[-2])])
+        if len(data.columns) > 1:
+            xc = np.hstack((xc[:,[0]] - (xc[:,[1]] - xc[:,[0]]), xc, xc[:,[-1]] + (xc[:,[-1]] - xc[:,[-2]])))
+            x = xc[:,:-1] + np.diff(xc, axis=1) / 2.0
+            x = np.vstack((x, x[-1]))
+        else:
+            x = np.hstack((xc, xc[:,[0]] + 1))
+            x = np.vstack((x, x[0]))
 
-        x = xc[:,:-1] + np.diff(xc, axis=1) / 2.0
-        y = yc[:-1,:] + np.diff(yc, axis=0) / 2.0
 
-        x = np.vstack((x, x[-1]))
-        y = np.hstack([y, y[:,[-1]]])
+        if len(data.index) > 1:
+            yc = np.vstack([yc[0] - (yc[1] - yc[0]), yc, yc[-1] + (yc[-1] - yc[-2])])
+            y = yc[:-1,:] + np.diff(yc, axis=0) / 2.0
+            y = np.hstack([y, y[:,[-1]]])
+        else:
+            y = np.vstack([yc, yc[0] + 1])
+            y = np.hstack([y, y[:,[0]]])
 
         return x, y
 
