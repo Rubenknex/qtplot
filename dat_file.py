@@ -10,8 +10,8 @@ class DatFile:
         metadata = {}
 
         with open(filename, 'r') as f:
-            for i in range(100):
-                line = f.next().rstrip('\n\t\r')
+            for line in f:
+                line = line.rstrip('\n\t\r')
 
                 if line.startswith('# Column'):
                     column = int(self.find_number(line))

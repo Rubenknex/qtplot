@@ -316,7 +316,7 @@ class Operations(QtGui.QDialog):
     def update_plot(func):
         def wrapper(self):
             func(self)
-            self.main.on_axis_changed(None)
+            self.main.on_data_change()
 
         return wrapper
     
@@ -401,7 +401,7 @@ class Operations(QtGui.QDialog):
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Return:
-            self.main.on_axis_changed(None)
+            self.main.on_data_change()
 
     def on_selected_changed(self, current, previous):
         if current:

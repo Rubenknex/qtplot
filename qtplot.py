@@ -19,6 +19,12 @@ from operations import Operations
 
 - Integration into qtlab as real time plotting
 - Use proper axis when plotting linecut and not averaging
+
+- Warning message if NaN values are encountered
+- Handle duplicate coordinate values correctly:
+    Drop duplicates for the color plot
+    Duplicates are ok for linecut plots
+- Prevent data from sorting or add option
 """
 
 class FixedOrderFormatter(ScalarFormatter):
@@ -56,10 +62,10 @@ class Window(QtGui.QMainWindow):
         self.linecut_type = None
         self.linecut_coord = None
 
+        self.cmap_change = False
+
         self.data = None
         self.data_file = None
-
-        self.axis_changed = False
 
         self.init_ui()
 
@@ -91,19 +97,19 @@ class Window(QtGui.QMainWindow):
 
         lbl_x = QtGui.QLabel("X:", self)
         self.cb_x = QtGui.QComboBox(self)
-        self.cb_x.activated.connect(self.on_axis_changed)
+        self.cb_x.activated.connect(self.on_data_change)
         lbl_order_x = QtGui.QLabel('X Order: ', self)
         self.cb_order_x = QtGui.QComboBox(self)
 
         lbl_y = QtGui.QLabel("Y:", self)
         self.cb_y = QtGui.QComboBox(self)
-        self.cb_y.activated.connect(self.on_axis_changed)
+        self.cb_y.activated.connect(self.on_data_change)
         lbl_order_y = QtGui.QLabel('Y Order: ', self)
         self.cb_order_y = QtGui.QComboBox(self)
 
         lbl_d = QtGui.QLabel("Data:", self)
         self.cb_z = QtGui.QComboBox(self)
-        self.cb_z.activated.connect(self.on_axis_changed)
+        self.cb_z.activated.connect(self.on_data_change)
 
         self.le_min = QtGui.QLineEdit(self)
         self.le_min.setMaximumWidth(100)
@@ -198,9 +204,12 @@ class Window(QtGui.QMainWindow):
             self.filename = filename
 
             self.line = None
+            self.linecut_type = None
+            self.linecut_coord = None
+
             self.update_ui()
 
-        self.on_axis_changed(None)
+        self.on_data_change()
 
     def on_load_dat(self, event):
         filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
@@ -217,6 +226,14 @@ class Window(QtGui.QMainWindow):
         self.cb_x.setCurrentIndex(y)
         self.cb_y.setCurrentIndex(x)
 
+        if len(self.ax.lines) > 0:
+            self.ax.lines.pop(0)
+
+        if self.linecut_type == 'horizontal':
+            self.linecut_type = 'vertical'
+        else:
+            self.linecut_type = 'horizontal'
+
         self.on_swap_order(event)
 
     def on_swap_order(self, event):
@@ -226,18 +243,24 @@ class Window(QtGui.QMainWindow):
 
         self.on_data_change()
 
-    def on_axis_changed(self, event):
-        self.axis_changed = True
-        self.on_data_change()
-
     def on_cmap_changed(self):
+        self.cmap_change = True
         self.plot_2d_data()
 
     def on_mouse_click(self, event):
-        if not event.inaxes:
+        if not event.inaxes or self.data_file == None:
             return
 
-        self.plot_linecut(event.button, event.xdata, event.ydata)
+        if event.button == 1:
+            # Get the row closest to the mouse Y
+            self.linecut_coord = min(self.data.index, key=lambda x:abs(x - event.ydata))
+            self.linecut_type = 'horizontal'
+        elif event.button == 2:
+            # Get the column closest to the mouse X
+            self.linecut_coord = min(self.data.columns, key=lambda x:abs(x - event.xdata))
+            self.linecut_type = 'vertical'
+
+        self.plot_linecut()
 
     def on_mouse_motion(self, event):
         if event.button != None:
@@ -245,7 +268,6 @@ class Window(QtGui.QMainWindow):
 
     def on_data_change(self):
         if self.data_file is not None:
-            self.manipulate_data()
             self.plot_2d_data()
 
     def on_copy_colorplot(self):
@@ -276,49 +298,33 @@ class Window(QtGui.QMainWindow):
 
         return processed.pivot(index=y, columns=x, values=z)
 
-    def manipulate_data(self):
-        # Get the column names to use for the x, y and data
-        self.lbl_x = str(self.cb_x.currentText())
-        self.lbl_y = str(self.cb_y.currentText())
-        self.data_lbl = str(self.cb_z.currentText())
-
-        order_x, order_y = str(self.cb_order_x.currentText()), str(self.cb_order_y.currentText())
-
-        data = self.get_averaged_pivot(self.data_file.df, self.lbl_x, self.lbl_y, self.data_lbl, order_x, order_y)
-
-        self.data = self.operations.apply_operations(data)
-
-        self.data_changed = False
-
-    def get_quadrilaterals(self, data, order_x, order_y, axis_y, average_y):
+    def get_quadrilaterals(self, original_data, pivotted_data, order_x, order_y, axis_y, average_y):
         """Create two arrays with the X and Y coordinates respectively of quads for every datapoint."""
-        xc, yc = np.meshgrid(data.columns.values, data.index.values)
+        xc, yc = np.meshgrid(pivotted_data.columns.values, pivotted_data.index.values)
 
-        # TODO remove dependency on state
         if not average_y:
-            yc = self.data_file.df.pivot(index=order_y, columns=order_x, values=axis_y).values
+            yc = original_data.pivot(index=order_y, columns=order_x, values=axis_y).values
 
-        if len(data.columns) > 1:
+        if len(pivotted_data.columns) > 1:
             xc = np.hstack((xc[:,[0]] - (xc[:,[1]] - xc[:,[0]]), xc, xc[:,[-1]] + (xc[:,[-1]] - xc[:,[-2]])))
             x = xc[:,:-1] + np.diff(xc, axis=1) / 2.0
             x = np.vstack((x, x[-1]))
         else:
-            x = np.hstack((xc, xc[:,[0]] + 1))
+            x = np.hstack((xc - 0.5, xc[:,[0]] + 0.5))
             x = np.vstack((x, x[0]))
 
-
-        if len(data.index) > 1:
+        if len(pivotted_data.index) > 1:
             yc = np.vstack([yc[0] - (yc[1] - yc[0]), yc, yc[-1] + (yc[-1] - yc[-2])])
             y = yc[:-1,:] + np.diff(yc, axis=0) / 2.0
             y = np.hstack([y, y[:,[-1]]])
         else:
-            y = np.vstack([yc, yc[0] + 1])
+            y = np.vstack([yc - 0.5, yc[0] + 0.5])
             y = np.hstack([y, y[:,[0]]])
 
         return x, y
 
     def plot_2d_data(self):
-        if self.data is None:
+        if self.data_file is None:
             return
 
         cmap = mpl.cm.get_cmap('seismic')
@@ -327,9 +333,17 @@ class Window(QtGui.QMainWindow):
 
         self.ax.clear()
 
+        self.x_name, self.y_name = str(self.cb_x.currentText()), str(self.cb_y.currentText())
+        self.data_name = str(self.cb_z.currentText())
         order_x, order_y = str(self.cb_order_x.currentText()), str(self.cb_order_y.currentText())
-        x, y = self.get_quadrilaterals(self.data, order_x, order_y, self.lbl_y, self.c_average.isChecked())
 
+        no_duplicates = self.data_file.df.drop_duplicates(subset=[self.x_name, self.y_name])
+        pivot = self.get_averaged_pivot(no_duplicates, self.x_name, self.y_name, self.data_name, order_x, order_y)
+        self.data = self.operations.apply_operations(pivot)
+
+        x, y = self.get_quadrilaterals(no_duplicates, self.data, order_x, order_y, self.y_name, self.c_average.isChecked())
+
+        # Set the axis range to increase upwards or to the left, and reverse if necessary
         self.ax.set_xlim(sorted(self.ax.get_xlim()))
         self.ax.set_ylim(sorted(self.ax.get_ylim()))
 
@@ -343,14 +357,14 @@ class Window(QtGui.QMainWindow):
         masked = np.ma.masked_where(np.isnan(self.data.values), self.data.values)
         self.quadmesh = self.ax.pcolormesh(x[::-1], masked_y, masked, cmap=cmap)
 
-        if self.le_min.text() == '' or self.le_max.text() == '' or self.axis_changed:
+        if self.cmap_change:
+            self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
+        else:
             cm_min, cm_max = self.quadmesh.get_clim()
             self.le_min.setText('%.2e' % cm_min)
             self.le_max.setText('%.2e' % cm_max)
 
             self.s_gamma.setValue(50)
-        else:
-            self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
         
         self.ax.axis('tight')
 
@@ -361,14 +375,14 @@ class Window(QtGui.QMainWindow):
         else:
             self.cb = self.fig.colorbar(self.quadmesh)
 
-        self.cb.set_label(self.data_lbl)
+        self.cb.set_label(self.data_name)
         self.cb.formatter = FixedOrderFormatter(1)
         self.cb.update_ticks()
 
         # Set the various labels
         self.ax.set_title(self.name)
-        self.ax.set_xlabel(self.lbl_x)
-        self.ax.set_ylabel(self.lbl_y)
+        self.ax.set_xlabel(self.x_name)
+        self.ax.set_ylabel(self.y_name)
         self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
         self.ax.yaxis.set_major_formatter(FixedOrderFormatter())
         self.ax.set_aspect('auto')
@@ -379,9 +393,14 @@ class Window(QtGui.QMainWindow):
 
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
 
-        self.axis_changed = False
+        self.cmap_change = False
 
-    def plot_linecut(self, button, x_coord, y_coord):
+        self.plot_linecut()
+
+    def plot_linecut(self):
+        if self.data_file == None:
+            return
+
         lc = self.linecut
 
         if len(self.ax.lines) == 0:
@@ -390,31 +409,27 @@ class Window(QtGui.QMainWindow):
         if len(lc.ax.lines) > 0:
             lc.ax.lines.pop(0)
 
-        if button == 1:
-            # Get the row closest to the mouse Y
-            self.linecut_coord = min(self.data.index, key=lambda x:abs(x - y_coord))
-            self.linecut_type = 'horizontal'
-
+        if self.linecut_type == 'horizontal':
             self.line.set_transform(self.ax.get_yaxis_transform())
             self.line.set_xdata([0, 1])
             self.line.set_ydata([self.linecut_coord, self.linecut_coord])
 
-            lc.ax.plot(self.data.columns, self.data.loc[self.linecut_coord], color='red', linewidth=0.5)
-            lc.ax.set_xlabel(self.lbl_x)
-        elif button == 2:
-            # Get the column closest to the mouse X
-            self.linecut_coord = min(self.data.columns, key=lambda x:abs(x - x_coord))
-            self.linecut_type = 'vertical'
-
+            data = self.data.loc[self.linecut_coord]
+            masked = np.ma.masked_where(np.isnan(data), data)
+            lc.ax.plot(self.data.columns, masked, color='red', linewidth=0.5)
+            lc.ax.set_xlabel(self.x_name)
+        elif self.linecut_type == 'vertical':
             self.line.set_transform(self.ax.get_xaxis_transform())
             self.line.set_xdata([self.linecut_coord, self.linecut_coord])
             self.line.set_ydata([0, 1])
 
-            lc.ax.plot(self.data.index, self.data[self.linecut_coord], color='red', linewidth=0.5)
-            lc.ax.set_xlabel(self.lbl_y)
-        
+            data = self.data[self.linecut_coord]
+            masked = np.ma.masked_where(np.isnan(data), data)
+            lc.ax.plot(self.data.index, masked, color='red', linewidth=0.5)
+            lc.ax.set_xlabel(self.y_name)
+
         lc.ax.set_title(self.name)
-        lc.ax.set_ylabel(self.data_lbl)
+        lc.ax.set_ylabel(self.data_name)
         lc.ax.xaxis.set_major_formatter(FixedOrderFormatter())
         lc.ax.yaxis.set_major_formatter(FixedOrderFormatter())
 
