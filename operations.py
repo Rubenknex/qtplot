@@ -7,153 +7,7 @@ import json
 from PyQt4 import QtGui, QtCore
 from scipy import ndimage
 
-def op_abs(data, op, **kwargs):
-    """Return the absolute value of every datapoint."""
-    return data.applymap(np.absolute)
-
-def op_autoflip(data, op, **kwargs):
-    """Flip the data so that the X and Y-axes increase to the top and right."""
-    if data.index[0] > data.index[-1]:
-        data = data.reindex(index=data.index[::-1])
-    if data.columns[0] > data.columns[-1]:
-        data = data.reindex(columns=data.columns[::-1])
-    
-    return data
-
-def op_crop(data, op, **kwargs):
-    """Crop a region of the data by the columns and rows."""
-    x1, x2 = op.get_property('Left', int), op.get_property('Right', int)
-    y1, y2 = op.get_property('Bottom', int), op.get_property('Top', int)
-
-    return data.iloc[x1:x2, y1:y2]
-
-def op_dderiv(data, op, **kwargs):
-    """Calculate the component of the gradient in a specific direction."""
-    xcomp = op_xderiv(data, op)
-    ycomp = op_yderiv(data, op)
-
-    xvalues = np.delete(xcomp.values, -1, axis=0)
-    yvalues = np.delete(ycomp.values, -1, axis=1)
-
-    theta = np.radians(op.get_property('Theta', float))
-    xdir, ydir = np.cos(theta), np.sin(theta)
-
-    return pd.DataFrame(xvalues * xdir + yvalues * ydir, ycomp.index, xcomp.columns)
-
-def op_equalize(data, op, **kwargs):
-    return data
-
-def op_even_odd(data, op, **kwargs):
-    return data
-
-def op_flip(data, op, **kwargs):
-    """Flip the X or Y-axes."""
-    if op.get_property('X Axis'):
-        data = data.reindex(columns=data.columns[::-1])
-
-    if op.get_property('Y Axis'):
-        data = data.reindex(index=data.index[::-1])
-
-    return data
-
-def op_gradmag(data, op, **kwargs):
-    """Calculate the length of every gradient vector."""
-    xcomp = op_xderiv(data, op)
-    ycomp = op_yderiv(data, op)
-
-    xvalues = np.delete(xcomp.values, -1, axis=0)
-    yvalues = np.delete(ycomp.values, -1, axis=1)
-
-    return pd.DataFrame(np.sqrt(xvalues**2 + yvalues**2), ycomp.index, xcomp.columns)
-
-def op_highpass(data, op, **kwargs):
-    """Perform a high-pass filter."""
-    sx, sy = op.get_property('X Width', float), op.get_property('Y Height', float)
-    values = ndimage.filters.gaussian_filter(data.values, [sy, sx])
-
-    return pd.DataFrame(data.values - values, data.index, data.columns)
-
-def op_hist2d(data, op, **kwargs):
-    return data
-
-def op_log(data, op, **kwargs):
-    """The base-10 logarithm of every datapoint."""
-    return pd.DataFrame(np.log10(data.values), data.index, data.columns)
-
-def op_lowpass(data, op, **kwargs):
-    """Perform a low-pass filter."""
-    # X and Y sigma order?
-    sx, sy = op.get_property('X Width', float), op.get_property('Y Height', float)
-    values = ndimage.filters.gaussian_filter(data.values, [sy, sx])
-
-    return pd.DataFrame(values, data.index, data.columns)
-
-def op_neg(data, op, **kwargs):
-    """Negate every datapoint."""
-    return data.applymap(np.negative)
-
-def op_normalize(data, op, **kwargs):
-    return data
-
-def op_offset(data, op, **kwargs):
-    """Add a value to every datapoint."""
-    offset = op.get_property('Offset', float)
-
-    return pd.DataFrame(data.values + offset, data.index, data.columns)
-
-def op_offset_axes(data, op, **kwargs):
-    """Add a value to the axes."""
-    x_off, y_off = op.get_property('X Offset', float), op.get_property('Y Offset', float)
-
-    return pd.DataFrame(data.values, data.index + y_off, data.columns + x_off)
-
-def op_power(data, op, **kwargs):
-    """Raise the datapoints to a power."""
-    power = op.get_property('Power', float)
-
-    return pd.DataFrame(np.power(data.values, power), data.index, data.columns)
-
-def op_scale_axes(data, op, **kwargs):
-    """Multiply the axes values by a number."""
-    x_sc, y_sc = op.get_property('X Scale', float), op.get_property('Y Scale', float)
-
-    return pd.DataFrame(data.values, data.index * y_sc, data.columns * x_sc)
-
-def op_scale_data(data, op, **kwargs):
-    """Multiply the datapoints by a number."""
-    factor = op.get_property('Factor', float)
-
-    return pd.DataFrame(data.values * factor, data.index, data.columns)
-
-def op_sub_linecut(data, op, **kwargs):
-    """Subtract a horizontal/vertical linecut from every row/column."""
-    linecut_type = kwargs['linecut_type']
-    linecut_coord = kwargs['linecut_coord']
-
-    if linecut_type == None:
-        return data
-
-    if linecut_type == 'horizontal':
-        lc_data = np.array(data.loc[linecut_coord])
-    elif linecut_type == 'vertical':
-        lc_data = np.array(data[linecut_coord])
-        lc_data = lc_data[:,np.newaxis]
-
-    return pd.DataFrame(data.values - lc_data, data.index, data.columns)
-
-def op_xderiv(data, op, **kwargs):
-    """Find the rate of change between every datapoint in the x-direction."""
-    dx = np.diff(data.columns)
-    ddata = np.diff(data.values, axis=1)
-
-    return pd.DataFrame(ddata / dx, data.index, data.columns[:-1] + dx)
-
-def op_yderiv(data, op, **kwargs):
-    """Find the rate of change between every datapoint in the y-direction."""
-    dy = np.diff(data.index)
-    ddata = np.diff(data.values, axis=0)
-
-    return pd.DataFrame(ddata / dy[np.newaxis,:].T, data.index[:-1] + dy, data.columns)
+from dat_file import Data
 
 class Operation(QtGui.QWidget):
     """Contains the name and GUI widgets for the parameters of an operation."""
@@ -234,28 +88,28 @@ class Operations(QtGui.QDialog):
         self.setWindowTitle("Operations")
 
         self.items = {
-            'abs':          [op_abs],
-            'autoflip':     [op_autoflip],
-            'crop':         [op_crop, [('textbox', 'Left', '0'), ('textbox', 'Right', '0'), ('textbox', 'Bottom', '0'), ('textbox', 'Top', '0')]],
-            'dderiv':       [op_dderiv, [('textbox', 'Theta', '0')]],
-            'equalize':     [op_equalize],
-            'even odd':     [op_even_odd],
-            'flip':         [op_flip, [('checkbox', 'X Axis', False), ('checkbox', 'Y Axis', False)]],
-            'gradmag':      [op_gradmag],
-            'highpass':     [op_highpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
-            'hist2d':       [op_hist2d],
-            'log':          [op_log],
-            'lowpass':      [op_lowpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
-            'neg':          [op_neg],
-            'normalize':    [op_normalize],
-            'offset':       [op_offset, [('textbox', 'Offset', '0')]],
-            'offset axes':  [op_offset_axes, [('textbox', 'X Offset', '0'), ('textbox', 'Y Offset', '0')]],
-            'power':        [op_power, [('textbox', 'Power', '1')]],
-            'scale axes':   [op_scale_axes, [('textbox', 'X Scale', '1'), ('textbox', 'Y Scale', '1')]],
-            'scale data':   [op_scale_data, [('textbox', 'Factor', '1')]],
-            'sub linecut':  [op_sub_linecut],
-            'xderiv':       [op_xderiv],
-            'yderiv':       [op_yderiv],
+            'abs':          [Data.abs],
+            'autoflip':     [Data.autoflip],
+            'crop':         [Data.crop, [('textbox', 'Left', '0'), ('textbox', 'Right', '0'), ('textbox', 'Bottom', '0'), ('textbox', 'Top', '0')]],
+            'dderiv':       [Data.dderiv, [('textbox', 'Theta', '0')]],
+            'equalize':     [Data.equalize],
+            'even odd':     [Data.even_odd],
+            'flip':         [Data.flip, [('checkbox', 'X Axis', False), ('checkbox', 'Y Axis', False)]],
+            'gradmag':      [Data.gradmag],
+            'highpass':     [Data.highpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
+            'hist2d':       [Data.hist2d],
+            'log':          [Data.log],
+            'lowpass':      [Data.lowpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
+            'neg':          [Data.neg],
+            'normalize':    [Data.normalize],
+            'offset':       [Data.offset, [('textbox', 'Offset', '0')]],
+            'offset axes':  [Data.offset_axes, [('textbox', 'X Offset', '0'), ('textbox', 'Y Offset', '0')]],
+            'power':        [Data.power, [('textbox', 'Power', '1')]],
+            'scale axes':   [Data.scale_axes, [('textbox', 'X Scale', '1'), ('textbox', 'Y Scale', '1')]],
+            'scale data':   [Data.scale_data, [('textbox', 'Factor', '1')]],
+            'sub linecut':  [Data.sub_linecut],
+            'xderiv':       [Data.xderiv],
+            'yderiv':       [Data.yderiv],
         }
 
         self.options = QtGui.QListWidget(self)
@@ -412,11 +266,17 @@ class Operations(QtGui.QDialog):
     def apply_operations(self, data):
         ops = []
 
+        copy = data.copy()
+
         for i in xrange(self.queue.count()):
             item = self.queue.item(i)
             operation = item.data(QtCore.Qt.UserRole).toPyObject()
             name = str(self.queue.item(i).text())
 
-            data = operation.func(data, operation, linecut_type=self.main.linecut_type, linecut_coord=self.main.linecut_coord)
+            kwargs = operation.get_formatted()[1]
+            kwargs['linecut_type'] = self.main.linecut_type
+            kwargs['linecut_coord'] = self.main.linecut_coord
 
-        return data
+            copy = operation.func(copy, **kwargs)
+
+        return copy
