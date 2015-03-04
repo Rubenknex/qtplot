@@ -145,6 +145,9 @@ class Data:
         x1, x2 = int(kwargs.get('Left')), int(kwargs.get('Right'))
         y1, y2 = int(kwargs.get('Bottom')), int(kwargs.get('Top'))
 
+        if x2 == -1: x2 = data.values.shape[1] 
+        if y2 == -1: y2 = data.values.shape[0] 
+
         copy = data.copy()
         copy.x_coords = copy.x_coords[y1:y2,x1:x2]
         copy.y_coords = copy.y_coords[y1:y2,x1:x2]
@@ -197,7 +200,6 @@ class Data:
         """Perform a high-pass filter."""
         copy = data.copy()
 
-        # X and Y sigma order?
         sx, sy = float(kwargs.get('X Width')), float(kwargs.get('Y Height'))
 
         copy.values = copy.values - ndimage.filters.gaussian_filter(copy.values, [sy, sx])
@@ -209,18 +211,16 @@ class Data:
         hmin, hmax = float(kwargs.get('Min')), float(kwargs.get('Max'))
         hbins = int(kwargs.get('Bins'))
         
-        if hmin == -1:
-            hmin = np.min(data.values)
-        if hmax == -1:
-            hmax = np.max(data.values)
+        if hmin == -1: hmin = np.min(data.values)
+        if hmax == -1: hmax = np.max(data.values)
 
         hist = np.apply_along_axis(lambda x: np.histogram(x, bins=hbins, range=(hmin, hmax))[0], 0, data.values)
 
         binedges = np.linspace(hmin, hmax, hbins + 1)
         bincoords = (binedges[:-1] + binedges[1:]) / 2
 
-        xcoords = np.tile(data.x_coords[0,:], (len(hist[:,0]), 1))
-        ycoords = np.tile(bincoords[:,np.newaxis], (1, len(hist[0,:])))
+        xcoords = np.tile(data.x_coords[0,:], (hist.shape[0], 1))
+        ycoords = np.tile(bincoords[:,np.newaxis], (1, hist.shape[1]))
         
         return Data(xcoords, ycoords, hist)
 

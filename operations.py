@@ -94,7 +94,7 @@ class Operations(QtGui.QDialog):
         self.items = {
             'abs':          [Data.abs],
             'autoflip':     [Data.autoflip],
-            'crop':         [Data.crop, [('textbox', 'Left', '0'), ('textbox', 'Right', '0'), ('textbox', 'Bottom', '0'), ('textbox', 'Top', '0')]],
+            'crop':         [Data.crop, [('textbox', 'Left', '0'), ('textbox', 'Right', '-1'), ('textbox', 'Bottom', '0'), ('textbox', 'Top', '-1')]],
             'dderiv':       [Data.dderiv, [('textbox', 'Theta', '0')]],
             'equalize':     [Data.equalize],
             'even odd':     [Data.even_odd],
@@ -119,6 +119,7 @@ class Operations(QtGui.QDialog):
 
         self.options = QtGui.QListWidget(self)
         self.options.addItems(sorted(self.items.keys()))
+        self.options.currentItemChanged.connect(self.on_select_option)
 
         self.b_add = QtGui.QPushButton('Add')
         self.b_add.clicked.connect(self.on_add)
@@ -147,6 +148,11 @@ class Operations(QtGui.QDialog):
         self.queue = QtGui.QListWidget(self)
         self.queue.currentItemChanged.connect(self.on_selected_changed)
 
+        self.le_help = QtGui.QLineEdit(self)
+        self.le_help.setReadOnly(True)
+
+        main_vbox = QtGui.QVBoxLayout()
+
         hbox = QtGui.QHBoxLayout()
 
         vbox = QtGui.QVBoxLayout()
@@ -167,8 +173,11 @@ class Operations(QtGui.QDialog):
         hbox.addWidget(self.options)
         hbox.addLayout(vbox)
         hbox.addLayout(vbox2)
+
+        main_vbox.addLayout(hbox)
+        main_vbox.addWidget(self.le_help)
         
-        self.setLayout(hbox)
+        self.setLayout(main_vbox)
 
         self.setGeometry(800, 700, 400, 200)
 
@@ -261,6 +270,11 @@ class Operations(QtGui.QDialog):
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Return:
             self.main.on_data_change()
+
+    def on_select_option(self, current, previous):
+        if current:
+            description = self.items[str(current.text())][0].__doc__
+            self.le_help.setText(description)
 
     def on_selected_changed(self, current, previous):
         if current:
