@@ -71,6 +71,7 @@ class Window(QtGui.QMainWindow):
 
         self.dat_file = None
         self.data = None
+        self.pcolor_data = None
 
         self.init_ui()
 
@@ -96,9 +97,6 @@ class Window(QtGui.QMainWindow):
         self.b_swap_axes.clicked.connect(self.on_swap_axes)
         self.b_swap = QtGui.QPushButton('Swap order', self)
         self.b_swap.clicked.connect(self.on_swap_order)
-        self.c_average = QtGui.QCheckBox('Average Y-Axis', self)
-        self.c_average.setChecked(True)
-        self.c_average.stateChanged.connect(self.on_data_change)
 
         lbl_x = QtGui.QLabel("X:", self)
         self.cb_x = QtGui.QComboBox(self)
@@ -140,7 +138,6 @@ class Window(QtGui.QMainWindow):
         hbox.addWidget(self.b_refresh)
         hbox.addWidget(self.b_swap_axes)
         hbox.addWidget(self.b_swap)
-        hbox.addWidget(self.c_average)
 
         grid = QtGui.QGridLayout()
         grid.addWidget(lbl_x, 1, 1)
@@ -214,6 +211,9 @@ class Window(QtGui.QMainWindow):
 
             self.update_ui()
 
+        self.data = None
+        self.pcolor_data = None
+
         self.on_data_change()
 
     def on_load_dat(self, event):
@@ -273,7 +273,9 @@ class Window(QtGui.QMainWindow):
 
     def on_data_change(self):
         if self.dat_file is not None:
+            self.generate_data()
             self.plot_2d_data()
+            self.plot_linecut()
 
     def on_copy_colorplot(self):
         path = os.path.dirname(os.path.realpath(__file__))
@@ -300,6 +302,13 @@ class Window(QtGui.QMainWindow):
 
         return x_name, y_name, data_name, order_x, order_y
 
+    def generate_data(self):
+        x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
+
+        self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
+        self.data = self.operations.apply_operations(self.data)
+        self.pcolor_data = self.data.get_pcolor()
+
     def plot_2d_data(self):
         if self.dat_file is None:
             return
@@ -312,11 +321,9 @@ class Window(QtGui.QMainWindow):
 
         x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
 
-        self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
-        self.data = self.operations.apply_operations(self.data)
-        x, y, c = self.data.get_pcolor()
-        self.quadmesh = self.ax.pcolormesh(x, y, c, cmap=cmap)
-
+        if self.pcolor_data == None:
+            self.generate_data()
+        
         # Set the axis range to increase upwards or to the left, and reverse if necessary
         self.ax.set_xlim(sorted(self.ax.get_xlim()))
         self.ax.set_ylim(sorted(self.ax.get_ylim()))
@@ -326,6 +333,8 @@ class Window(QtGui.QMainWindow):
             self.ax.invert_xaxis()
         if y_flip:
             self.ax.invert_yaxis()
+
+        self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap=cmap)
 
         if self.cmap_change:
             self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
@@ -364,8 +373,6 @@ class Window(QtGui.QMainWindow):
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
 
         self.cmap_change = False
-
-        self.plot_linecut()
 
     def plot_linecut(self):
         if self.dat_file == None:
