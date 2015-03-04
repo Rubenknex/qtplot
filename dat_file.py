@@ -3,6 +3,7 @@ import pandas as pd
 from scipy import ndimage
 
 class DatFile:
+    """Class which contains the column based DataFrame of the data."""
     def __init__(self, filename):
         self.filename = filename
 
@@ -19,6 +20,14 @@ class DatFile:
         self.df = pd.read_table(filename, engine='c', sep='\t', comment='#', names=self.columns)
 
     def get_data(self, x, y, z, x_order, y_order):
+        """Pivot the column based data into matrices."""
+        # Either the x or y order is all zeros, fill them with 1,2,3... so they have a coordinate
+        if (self.df[x_order] == 0).all():
+            self.df[x_order] = self.df.groupby(y_order)[x_order].apply(lambda x: pd.Series(range(len(x.values)), x.index))
+
+        if (self.df[y_order] == 0).all():
+            self.df[y_order] = self.df.groupby(x_order)[y_order].apply(lambda x: pd.Series(range(len(x.values)), x.index))
+
         x_coords = self.df.pivot(y_order, x_order, x).values
         y_coords = self.df.pivot(y_order, x_order, y).values
         values   = self.df.pivot(y_order, x_order, z).values
@@ -26,12 +35,14 @@ class DatFile:
         return Data(x_coords, y_coords, values)
 
 class Data:
+    """Class which represents 2d data as two matrices with x and y coordinates and one with values."""
     def __init__(self, x_coords, y_coords, values):
         self.x_coords = np.ma.masked_invalid(x_coords)
         self.y_coords = np.ma.masked_invalid(y_coords)
         self.values = np.ma.masked_invalid(values)
 
     def get_sorted(self):
+        """Return the data sorted so that every coordinate increases."""
         x_indices = np.argsort(self.x_coords[0,:])
         y_indices = np.argsort(self.y_coords[:,0])
 
@@ -44,12 +55,18 @@ class Data:
         - Add the difference between all the coords divided by 2 to the coords, this generates midpoints
         - Add a row/column at the end to satisfy the 1 larger requirements of pcolor
         """
+        # If we are dealing with data that is 2-dimensional
         if len(xc[0,:]) > 1:
+            # Pad both sides with a column of interpolated coordinates
             xc = np.hstack((xc[:,[0]] - (xc[:,[1]] - xc[:,[0]]), xc, xc[:,[-1]] + (xc[:,[-1]] - xc[:,[-2]])))
+            # Create center points by adding the differences divided by 2 to the original coordinates
             x = xc[:,:-1] + np.diff(xc, axis=1) / 2.0
+            # Add a row to the bottom so that the x coords have the same dimension as the y coords
             x = np.vstack((x, x[-1]))
         else:
+            # If data is 1d, make one axis range from -.5 to .5
             x = np.hstack((xc - 0.5, xc[:,[0]] + 0.5))
+            # Duplicate the only row/column so that pcolor has something to actually plot
             x = np.vstack((x, x[0]))
         
         if len(yc[:,0]) > 1:
@@ -63,6 +80,12 @@ class Data:
         return x, y
 
     def get_pcolor(self):
+        """
+        Return a version of the coordinates and values that can be plotted by pcolor, this means:
+        -   Points are sorted by increasing coordinates
+        -   Coordinates are converted to coordinates of quadrilaterals
+        -   NaN values are masked to ignore them when plotting
+        """
         xc, yc, c = self.get_sorted()
 
         x, y = self.get_quadrilaterals(xc, yc)
@@ -178,7 +201,27 @@ class Data:
         return pd.DataFrame(data.values - values, data.index, data.columns)
 
     def hist2d(data, **kwargs):
-        return data
+        axis = {'Horizontal':1, 'Vertical':0}[kwargs.get('Axis')]
+        hmin, hmax = float(kwargs.get('Min')), float(kwargs.get('Max'))
+        hbins = int(kwargs.get('Bins'))
+        
+        if hmin == -1:
+            hmin = np.min(data.values)
+        if hmax == -1:
+            hmax = np.max(data.values)
+
+        hist = np.apply_along_axis(lambda x: np.histogram(x, bins=hbins, range=(hmin, hmax))[0], 0, data.values)
+
+        binedges = np.linspace(hmin, hmax, hbins + 1)
+        bincoords = (binedges[:-1] + binedges[1:]) / 2
+
+        #xcoords = np.tile(bincoords, (len(hist[:,0]), 1))
+        #ycoords = np.tile(data.y_coords[:,0][:,np.newaxis], (1, len(hist[0,:])))
+
+        xcoords = np.tile(data.x_coords[0,:], (len(hist[:,0]), 1))
+        ycoords = np.tile(bincoords[:,np.newaxis], (1, len(hist[0,:])))
+        
+        return Data(xcoords, ycoords, hist)
 
     def log(data, **kwargs):
         """The base-10 logarithm of every datapoint."""

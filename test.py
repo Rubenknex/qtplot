@@ -9,41 +9,16 @@ import gobject
 
 from dat_file import Data
 
+df = pd.DataFrame([[1, 0, 1],
+				   [1, 0, 2],
+				   [1, 0, 3],
+				   [2, 0, 4],
+				   [2, 0, 5],
+				   [2, 0, 6],
+				   [3, 0, 7],
+				   [3, 0, 8],
+				   [3, 0, 9],])
 
-df = pd.DataFrame([[1, 1, 3, 1, 1],
-				   [2, 1, 2, 1, 2],
-				   [3, 1, 4, 1, 3],
-				   [1, 2, 3, 2, 1],
-				   [2, 2, 2, 2, 1],
-				   [3, 2, 4, 2, 1],
-				   [1, 3, 3, 3, 1],
-				   [2, 3, 2, 3, 1],
-				   [3, 3, 4, 3, 1],])
+print (df[1] == 0).all()
 
-a = np.array([1,2,3,4])
-b = a
-b[0] = 234
-print a
-
-"""
-x = np.array([[0, 1, 2, 3],
-			  [0, 1, 2, 3],
-			  [0, 1, 2, 3],
-			  [0, 1, 2, 3]])
-
-y = np.array([[1, 0, 0, 0],
-			  [0, 1, 1, 1],
-			  [2, 2, 2, 2],
-			  [3, 3, 3, 3]])
-
-z = np.array([[0, 1, 2, 3],
-			  [1, 2, 3, 4],
-			  [2, 3, 4, 5],
-			  [3, 4, 5, 6]])
-
-d = Data(x, y, z)
-
-for x in d.get_sorted():
-	print x
-	print '\n'
-"""
+print df.groupby(0)[1].apply(lambda x: pd.Series(range(len(x.values)), x.index))

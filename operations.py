@@ -46,7 +46,8 @@ class Operation(QtGui.QWidget):
 
             height += 1
 
-    def get_property(self, name, cast=str):
+    def get_parameter(self, name, cast=str):
+        """Return the casted value of a property."""
         if name in self.items:
             widget = self.items[name]
 
@@ -57,7 +58,8 @@ class Operation(QtGui.QWidget):
             elif type(widget) is QtGui.QComboBox:
                 return str(widget.currentText())
 
-    def set_property(self, name, value):
+    def set_parameter(self, name, value):
+        """Set a property to a value."""
         if name in self.items:
             widget = self.items[name]
 
@@ -69,14 +71,16 @@ class Operation(QtGui.QWidget):
                 index = widget.findText(value)
                 widget.setCurrentIndex(index)
 
-    def get_formatted(self):
-        params = {name: self.get_property(name) for name in self.items}
+    def get_parameters(self):
+        """Return a tuple of the name of the operation and a dict of the parameters."""
+        params = {name: self.get_parameter(name) for name in self.items}
 
         return self.name, params
 
-    def set_params(self, params):
+    def set_parameters(self, params):
+        """Set all the parameters with a dict containing them."""
         for name, value in params.iteritems():
-            self.set_property(name, value)
+            self.set_parameter(name, value)
 
 class Operations(QtGui.QDialog):
     def __init__(self, parent=None):
@@ -97,7 +101,7 @@ class Operations(QtGui.QDialog):
             'flip':         [Data.flip, [('checkbox', 'X Axis', False), ('checkbox', 'Y Axis', False)]],
             'gradmag':      [Data.gradmag],
             'highpass':     [Data.highpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
-            'hist2d':       [Data.hist2d],
+            'hist2d':       [Data.hist2d, [('combobox', 'Axis', ['Horizontal', 'Vertical']), ('textbox', 'Min', '0'), ('textbox', 'Max', '0'), ('textbox', 'Bins', '20')]],
             'log':          [Data.log],
             'lowpass':      [Data.lowpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
             'neg':          [Data.neg],
@@ -229,7 +233,7 @@ class Operations(QtGui.QDialog):
         for name, operation in operations.iteritems():
             item = QtGui.QListWidgetItem(name)
             op = Operation(name, *self.items[name])
-            op.set_params(operation)
+            op.set_parameters(operation)
             item.setData(QtCore.Qt.UserRole, QtCore.QVariant(op))
             self.stack.addWidget(op)
 
@@ -247,7 +251,7 @@ class Operations(QtGui.QDialog):
         for i in xrange(self.queue.count()):
                 operation = self.queue.item(i).data(QtCore.Qt.UserRole).toPyObject()
                 
-                name, params = operation.get_formatted()
+                name, params = operation.get_parameters()
                 operations[name] = params
 
         with open(filename, 'w') as f:
@@ -273,7 +277,7 @@ class Operations(QtGui.QDialog):
             operation = item.data(QtCore.Qt.UserRole).toPyObject()
             name = str(self.queue.item(i).text())
 
-            kwargs = operation.get_formatted()[1]
+            kwargs = operation.get_parameters()[1]
             kwargs['linecut_type'] = self.main.linecut_type
             kwargs['linecut_coord'] = self.main.linecut_coord
 

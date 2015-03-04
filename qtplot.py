@@ -15,11 +15,9 @@ from dat_file import DatFile, Data
 from operations import Operations
 
 """
-- Proper units on y-axis of linecut, now not properly formatted
+TODO
 
 - Integration into qtlab as real time plotting
-
-- Use proper axis when plotting linecut and not averaging
 
 - Warning message if NaN values are encountered
 
@@ -27,9 +25,15 @@ from operations import Operations
     Drop duplicates for the color plot
     Duplicates are ok for linecut plots
 
-- Prevent data from sorting or add option
-    Is this expected behavior? A colorplot is a top down view and measurement order is lost
-    Should the linecut retain information about the order of the measurements?
+- Proper linecuts for non equidistant data
+
+- Operations:
+    equalize
+    even odd
+    hist2d
+    normalize
+
+- Perform operations on Data object iself?
 """
 
 class FixedOrderFormatter(ScalarFormatter):
@@ -107,12 +111,14 @@ class Window(QtGui.QMainWindow):
         self.cb_x.activated.connect(self.on_data_change)
         lbl_order_x = QtGui.QLabel('X Order: ', self)
         self.cb_order_x = QtGui.QComboBox(self)
+        self.cb_order_x.activated.connect(self.on_data_change)
 
         lbl_y = QtGui.QLabel("Y:", self)
         self.cb_y = QtGui.QComboBox(self)
         self.cb_y.activated.connect(self.on_data_change)
         lbl_order_y = QtGui.QLabel('Y Order: ', self)
         self.cb_order_y = QtGui.QComboBox(self)
+        self.cb_order_y.activated.connect(self.on_data_change)
 
         lbl_d = QtGui.QLabel("Data:", self)
         self.cb_z = QtGui.QComboBox(self)
@@ -263,11 +269,9 @@ class Window(QtGui.QMainWindow):
             return
 
         if event.button == 1:
-            # Get the row closest to the mouse Y
             self.linecut_coord = self.data.get_closest_y(event.ydata)
             self.linecut_type = 'horizontal'
         elif event.button == 2:
-            # Get the column closest to the mouse X
             self.linecut_coord = self.data.get_closest_x(event.xdata)
             self.linecut_type = 'vertical'
 
@@ -414,6 +418,7 @@ class Window(QtGui.QMainWindow):
         lc.ax.set_ylabel(data_name)
         lc.ax.xaxis.set_major_formatter(FixedOrderFormatter())
         lc.ax.yaxis.set_major_formatter(FixedOrderFormatter())
+        #lc.ax.set_yscale('log')
 
         # Make the figure fit the data
         lc.ax.relim()
