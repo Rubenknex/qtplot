@@ -195,10 +195,14 @@ class Data:
 
     def highpass(data, **kwargs):
         """Perform a high-pass filter."""
-        sx, sy = op.get_property('X Width', float), op.get_property('Y Height', float)
-        values = ndimage.filters.gaussian_filter(data.values, [sy, sx])
+        copy = data.copy()
 
-        return pd.DataFrame(data.values - values, data.index, data.columns)
+        # X and Y sigma order?
+        sx, sy = float(kwargs.get('X Width')), float(kwargs.get('Y Height'))
+
+        copy.values = copy.values - ndimage.filters.gaussian_filter(copy.values, [sy, sx])
+
+        return copy
 
     def hist2d(data, **kwargs):
         axis = {'Horizontal':1, 'Vertical':0}[kwargs.get('Axis')]
@@ -214,9 +218,6 @@ class Data:
 
         binedges = np.linspace(hmin, hmax, hbins + 1)
         bincoords = (binedges[:-1] + binedges[1:]) / 2
-
-        #xcoords = np.tile(bincoords, (len(hist[:,0]), 1))
-        #ycoords = np.tile(data.y_coords[:,0][:,np.newaxis], (1, len(hist[0,:])))
 
         xcoords = np.tile(data.x_coords[0,:], (len(hist[:,0]), 1))
         ycoords = np.tile(bincoords[:,np.newaxis], (1, len(hist[0,:])))
@@ -242,8 +243,17 @@ class Data:
         """Negate every datapoint."""
         return Data(data.x_coords, data.y_coords, np.negative(data.values))
 
-    def normalize(data, **kwargs):
-        return data
+    def norm_columns(data, **kwargs):
+        copy = data.copy()
+        copy.values = np.apply_along_axis(lambda x: (x - np.min(x)) / (np.max(x) - np.min(x)), 0, copy.values)
+
+        return copy
+
+    def norm_rows(data, **kwargs):
+        copy = data.copy()
+        copy.values = np.apply_along_axis(lambda x: (x - np.min(x)) / (np.max(x) - np.min(x)), 1, copy.values)
+
+        return copy
 
     def offset(data, **kwargs):
         """Add a value to every datapoint."""

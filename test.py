@@ -19,6 +19,6 @@ df = pd.DataFrame([[1, 0, 1],
 				   [3, 0, 8],
 				   [3, 0, 9],])
 
-print (df[1] == 0).all()
+print np.max(df.values, axis=1)
 
 print df.groupby(0)[1].apply(lambda x: pd.Series(range(len(x.values)), x.index))
