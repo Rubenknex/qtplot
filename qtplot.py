@@ -178,6 +178,9 @@ class Window(QtGui.QMainWindow):
         vbox.addLayout(hbox_gamma)
         vbox.addLayout(hbox4)
 
+        self.status_bar = QtGui.QStatusBar()
+        self.setStatusBar(self.status_bar)
+
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
 
@@ -314,6 +317,13 @@ class Window(QtGui.QMainWindow):
         self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
         self.data = self.operations.apply_operations(self.data)
         self.pcolor_data = self.data.get_pcolor()
+
+        print self.data.values
+
+        if self.data.values.mask.any():
+            self.status_bar.showMessage("WARNING: DATA CONTAINS NAN VALUES")
+        else:
+            self.status_bar.showMessage("")
 
     def plot_2d_data(self):
         if self.dat_file is None:
