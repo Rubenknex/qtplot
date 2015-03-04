@@ -375,7 +375,7 @@ class Window(QtGui.QMainWindow):
         self.cmap_change = False
 
     def plot_linecut(self):
-        if self.dat_file == None:
+        if self.dat_file == None or self.linecut_type == None:
             return
 
         lc = self.linecut
