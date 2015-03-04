@@ -11,7 +11,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationTool
 from matplotlib.ticker import ScalarFormatter
 from PyQt4 import QtGui, QtCore
 
-from dat_file import DatFile, Data
+from data import DatFile, Data
 from operations import Operations
 
 """

@@ -7,7 +7,7 @@ import json
 from PyQt4 import QtGui, QtCore
 from scipy import ndimage
 
-from dat_file import Data
+from data import Data
 
 class Operation(QtGui.QWidget):
     """Contains the name and GUI widgets for the parameters of an operation."""
