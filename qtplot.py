@@ -97,6 +97,10 @@ class Window(QtGui.QMainWindow):
         self.b_swap_axes.clicked.connect(self.on_swap_axes)
         self.b_swap = QtGui.QPushButton('Swap order', self)
         self.b_swap.clicked.connect(self.on_swap_order)
+        self.b_linecut = QtGui.QPushButton('Linecut')
+        self.b_linecut.clicked.connect(self.linecut.raise_)
+        self.b_operations = QtGui.QPushButton('Operations')
+        self.b_operations.clicked.connect(self.operations.raise_)
 
         lbl_x = QtGui.QLabel("X:", self)
         self.cb_x = QtGui.QComboBox(self)
@@ -138,6 +142,8 @@ class Window(QtGui.QMainWindow):
         hbox.addWidget(self.b_refresh)
         hbox.addWidget(self.b_swap_axes)
         hbox.addWidget(self.b_swap)
+        hbox.addWidget(self.b_linecut)
+        hbox.addWidget(self.b_operations)
 
         grid = QtGui.QGridLayout()
         grid.addWidget(lbl_x, 1, 1)
