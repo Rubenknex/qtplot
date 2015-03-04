@@ -147,6 +147,7 @@ class Operations(QtGui.QDialog):
 
         self.queue = QtGui.QListWidget(self)
         self.queue.currentItemChanged.connect(self.on_selected_changed)
+        self.queue.itemClicked.connect(self.on_item_clicked)
 
         self.le_help = QtGui.QLineEdit(self)
         self.le_help.setReadOnly(True)
@@ -194,6 +195,7 @@ class Operations(QtGui.QDialog):
             name = str(self.options.currentItem().text())
 
             item = QtGui.QListWidgetItem(name)
+            item.setCheckState(QtCore.Qt.Checked)
             operation = Operation(name, *self.items[name])
             item.setData(QtCore.Qt.UserRole, QtCore.QVariant(operation))
             self.stack.addWidget(operation)
@@ -282,6 +284,9 @@ class Operations(QtGui.QDialog):
             self.stack.addWidget(widget)
             self.stack.setCurrentWidget(widget)
 
+    def on_item_clicked(self, item):
+        self.main.on_data_change()
+
     def apply_operations(self, data):
         ops = []
 
@@ -289,6 +294,10 @@ class Operations(QtGui.QDialog):
 
         for i in xrange(self.queue.count()):
             item = self.queue.item(i)
+
+            if item.checkState() == QtCore.Qt.Unchecked:
+                continue
+
             operation = item.data(QtCore.Qt.UserRole).toPyObject()
             name = str(self.queue.item(i).text())
 

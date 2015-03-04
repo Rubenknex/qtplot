@@ -25,12 +25,8 @@ TODO
     Drop duplicates for the color plot
     Duplicates are ok for linecut plots
 
-- Proper linecuts for non equidistant data
-
 - Operations:
-    equalize
     even odd
-    hist2d
     normalize
 
 - Perform operations on Data object iself?
