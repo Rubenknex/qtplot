@@ -21,7 +21,8 @@ class DatFile:
 
     def get_data(self, x, y, z, x_order, y_order):
         """Pivot the column based data into matrices."""
-        # Either the x or y order is all zeros, fill them with 1,2,3... so they have a coordinate
+        # Sometimes there are multiple datapoints for the same coordinate, but there is only one coordinate axis
+        # In this case, fill the second coordinate with 1,2,3,... so the datapoints can be plotted in 2D
         if (self.df[x_order] == 0).all():
             self.df[x_order] = self.df.groupby(y_order)[x_order].apply(lambda x: pd.Series(range(len(x.values)), x.index))
 
@@ -37,6 +38,7 @@ class DatFile:
 class Data:
     """Class which represents 2d data as two matrices with x and y coordinates and one with values."""
     def __init__(self, x_coords, y_coords, values):
+        # Mask NaN values so they don't get plotted by matplotlib
         self.x_coords = np.ma.masked_invalid(x_coords)
         self.y_coords = np.ma.masked_invalid(y_coords)
         self.values = np.ma.masked_invalid(values)
@@ -51,9 +53,9 @@ class Data:
     def get_quadrilaterals(self, xc, yc):
         """
         In order to generate quads for every datapoint we do the following for the x and y coordinates:
-        - Pad the coordinates with a column/row on each side
-        - Add the difference between all the coords divided by 2 to the coords, this generates midpoints
-        - Add a row/column at the end to satisfy the 1 larger requirements of pcolor
+        -   Pad the coordinates with a column/row on each side
+        -   Add the difference between all the coords divided by 2 to the coords, this generates midpoints
+        -   Add a row/column at the end to satisfy the 1 larger requirements of pcolor
         """
         # If we are dealing with data that is 2-dimensional
         if len(xc[0,:]) > 1:
@@ -90,7 +92,7 @@ class Data:
 
         x, y = self.get_quadrilaterals(xc, yc)
 
-        return np.ma.masked_where(np.isnan(x), x), np.ma.masked_where(np.isnan(y), y), np.ma.masked_where(np.isnan(c), c)
+        return np.ma.masked_invalid(x), np.ma.masked_invalid(y), np.ma.masked_invalid(c)
 
     def get_column_at(self, x):
         x_index = np.where(self.x_coords[0,:]==self.get_closest_x(x))[0][0]
@@ -169,13 +171,15 @@ class Data:
         return Data(xcomp.x_coords[:-1,:], ycomp.y_coords[:,:-1], xvalues * xdir + yvalues * ydir)
 
     def equalize(data, **kwargs):
+        """Perform histogramic equalization on the image."""
         return data
 
     def even_odd(data, **kwargs):
+        """Extract even or odd rows, optionally flipping odd rows."""
         return data
 
     def flip(data, **kwargs):
-        """Flip the X or Y-axes."""
+        """Flip the X or Y axes."""
         copy = data.copy()
 
         if bool(kwargs.get('X Axis')):
@@ -207,6 +211,7 @@ class Data:
         return copy
 
     def hist2d(data, **kwargs):
+        """Convert every column into a histogram."""
         axis = {'Horizontal':1, 'Vertical':0}[kwargs.get('Axis')]
         hmin, hmax = float(kwargs.get('Min')), float(kwargs.get('Max'))
         hbins = int(kwargs.get('Bins'))
@@ -244,12 +249,14 @@ class Data:
         return Data(data.x_coords, data.y_coords, np.negative(data.values))
 
     def norm_columns(data, **kwargs):
+        """Transform the values of every column so that they use the full colormap."""
         copy = data.copy()
         copy.values = np.apply_along_axis(lambda x: (x - np.min(x)) / (np.max(x) - np.min(x)), 0, copy.values)
 
         return copy
 
     def norm_rows(data, **kwargs):
+        """Transform the values of every row so that they use the full colormap."""
         copy = data.copy()
         copy.values = np.apply_along_axis(lambda x: (x - np.min(x)) / (np.max(x) - np.min(x)), 1, copy.values)
 
@@ -262,7 +269,7 @@ class Data:
         return Data(data.x_coords, data.y_coords, data.values + offset)
 
     def offset_axes(data, **kwargs):
-        """Add a value to the axes."""
+        """Add an offset value to the axes."""
         x_off, y_off = float(kwargs.get('X Offset')), float(kwargs.get('Y Offset'))
 
         return Data(data.x_coords + x_off, data.y_coords + y_off, data.values)

@@ -288,8 +288,6 @@ class Operations(QtGui.QDialog):
         self.main.on_data_change()
 
     def apply_operations(self, data):
-        ops = []
-
         copy = data.copy()
 
         for i in xrange(self.queue.count()):
@@ -299,7 +297,6 @@ class Operations(QtGui.QDialog):
                 continue
 
             operation = item.data(QtCore.Qt.UserRole).toPyObject()
-            name = str(self.queue.item(i).text())
 
             kwargs = operation.get_parameters()[1]
             kwargs['linecut_type'] = self.main.linecut_type

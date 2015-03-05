@@ -53,7 +53,7 @@ class Linecut(QtGui.QDialog):
     def on_copy_figure(self):
         path = os.path.dirname(os.path.realpath(__file__))
         path = os.path.join(path, 'test.png')
-        self.fig.savefig(path)
+        self.fig.savefig(path, bbox_inches='tight')
 
         img = QtGui.QImage(path)
         QtGui.QApplication.clipboard().setImage(img)
@@ -73,6 +73,8 @@ class Linecut(QtGui.QDialog):
 
         self.ax.relim()
         self.ax.autoscale_view()
+        
+        self.ax.set_aspect('auto')
         self.fig.tight_layout()
 
         self.canvas.draw()

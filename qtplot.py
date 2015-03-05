@@ -118,8 +118,8 @@ class Window(QtGui.QMainWindow):
         self.le_max.returnPressed.connect(self.on_cmap_changed)
 
         self.b_copy_colorplot = QtGui.QPushButton('Copy figure to clipboard (Ctrl+C)', self)
-        self.b_copy_colorplot.clicked.connect(self.on_copy_colorplot)
-        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_colorplot)
+        self.b_copy_colorplot.clicked.connect(self.on_copy_figure)
+        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_figure)
 
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(self.b_load)
@@ -267,7 +267,7 @@ class Window(QtGui.QMainWindow):
             self.plot_2d_data()
             self.plot_linecut()
 
-    def on_copy_colorplot(self):
+    def on_copy_figure(self):
         path = os.path.dirname(os.path.realpath(__file__))
         path = os.path.join(path, 'test.png')
         self.fig.savefig(path)
