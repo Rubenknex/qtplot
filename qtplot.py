@@ -12,14 +12,11 @@ from matplotlib.ticker import ScalarFormatter
 from PyQt4 import QtGui, QtCore
 
 from data import DatFile, Data
+from linecut import Linecut, FixedOrderFormatter
 from operations import Operations
 
 """
 TODO
-
-- Integration into qtlab as real time plotting
-
-- Warning message if NaN values are encountered
 
 - Handle duplicate coordinate values correctly:
     Drop duplicates for the color plot
@@ -30,25 +27,11 @@ TODO
     normalize
 
 - Perform operations on Data object iself?
+
+- Different axis scales in the linecut plot
+
+- Different distributions for low/high pass filters
 """
-
-class FixedOrderFormatter(ScalarFormatter):
-    """Format numbers using engineering notation."""
-    def __init__(self, significance=0):
-        ScalarFormatter.__init__(self, useOffset=None, useMathText=None)
-        self.format = '%.' + str(significance) + 'f'
-
-    def __call__(self, x, pos=None):
-        if x == 0:
-            return '0'
-
-        exp = self.orderOfMagnitude
-
-        return self.format % (x / (10 ** exp))
-
-    def _set_orderOfMagnitude(self, range):
-        exp = math.floor(math.log10(range))
-        self.orderOfMagnitude = exp - (exp % 3)
 
 class Window(QtGui.QMainWindow):
     """The main window of the qtplot application."""
@@ -318,8 +301,6 @@ class Window(QtGui.QMainWindow):
         self.data = self.operations.apply_operations(self.data)
         self.pcolor_data = self.data.get_pcolor()
 
-        print self.data.values
-
         if self.data.values.mask.any():
             self.status_bar.showMessage("WARNING: DATA CONTAINS NAN VALUES")
         else:
@@ -394,14 +375,10 @@ class Window(QtGui.QMainWindow):
         if self.dat_file == None or self.linecut_type == None:
             return
 
-        lc = self.linecut
         x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
 
         if len(self.ax.lines) == 0:
             self.line = self.ax.axvline(color='red')
-
-        if len(lc.ax.lines) > 0:
-            lc.ax.lines.pop(0)
 
         if self.linecut_type == 'horizontal':
             self.line.set_transform(self.ax.get_yaxis_transform())
@@ -409,34 +386,19 @@ class Window(QtGui.QMainWindow):
             self.line.set_ydata([self.linecut_coord, self.linecut_coord])
 
             x, y = self.data.get_row_at(self.linecut_coord)
-            lc.ax.plot(x, y, color='red', linewidth=0.5)
-            lc.ax.set_xlabel(x_name)
+            self.linecut.plot_linecut(x, y, self.name, x_name, data_name)
         elif self.linecut_type == 'vertical':
             self.line.set_transform(self.ax.get_xaxis_transform())
             self.line.set_xdata([self.linecut_coord, self.linecut_coord])
             self.line.set_ydata([0, 1])
 
             x, y = self.data.get_column_at(self.linecut_coord)
-            lc.ax.plot(x, y, color='red', linewidth=0.5)
-            lc.ax.set_xlabel(y_name)
-
-        lc.ax.set_title(self.name)
-        lc.ax.set_ylabel(data_name)
-        lc.ax.xaxis.set_major_formatter(FixedOrderFormatter())
-        lc.ax.yaxis.set_major_formatter(FixedOrderFormatter())
-        #lc.ax.set_yscale('log')
-
-        # Make the figure fit the data
-        lc.ax.relim()
-        lc.ax.autoscale_view()
-        lc.fig.tight_layout()
+            self.linecut.plot_linecut(x, y, self.name, y_name, data_name)
 
         # Redraw both plots to update them
         self.canvas.restore_region(self.background)
         self.ax.draw_artist(self.line)
         self.canvas.blit(self.ax.bbox)
-
-        lc.canvas.draw()
 
     def resizeEvent(self, event):
         if len(self.ax.lines) > 0:
@@ -449,27 +411,6 @@ class Window(QtGui.QMainWindow):
     def closeEvent(self, event):
         self.linecut.close()
         self.operations.close()
-
-class Linecut(QtGui.QDialog):
-    def __init__(self, parent=None):
-        super(Linecut, self).__init__(parent)
-
-        self.fig, self.ax = plt.subplots()
-
-        self.init_ui()
-
-    def init_ui(self):
-        self.setWindowTitle("Linecut")
-
-        self.canvas = FigureCanvasQTAgg(self.fig)
-        self.toolbar = NavigationToolbar2QT(self.canvas, self)
-
-        layout = QtGui.QVBoxLayout()
-        layout.addWidget(self.toolbar)
-        layout.addWidget(self.canvas)
-        self.setLayout(layout)
-
-        self.move(800, 100)
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
