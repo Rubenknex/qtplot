@@ -207,6 +207,7 @@ class Data:
         sx, sy = float(kwargs.get('X Width')), float(kwargs.get('Y Height'))
 
         copy.values = copy.values - ndimage.filters.gaussian_filter(copy.values, [sy, sx])
+        copy.values = np.ma.masked_invalid(copy.values)
 
         return copy
 
