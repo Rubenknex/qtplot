@@ -28,8 +28,6 @@ TODO
 
 - Perform operations on Data object iself?
 
-- Save linecut data for further processing
-
 - Different distributions for low/high pass filters
 """
 

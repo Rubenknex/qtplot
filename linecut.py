@@ -40,7 +40,7 @@ class Linecut(QtGui.QDialog):
         self.canvas = FigureCanvasQTAgg(self.fig)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
-        self.b_save = QtGui.QPushButton('Save data...', self)
+        self.b_save = QtGui.QPushButton('Copy data to clipboard', self)
         self.b_save.clicked.connect(self.on_save_data)
 
         self.b_copy = QtGui.QPushButton('Copy figure to clipboard (Ctrl+C)', self)
@@ -61,12 +61,14 @@ class Linecut(QtGui.QDialog):
             return
 
         data = pd.DataFrame(np.column_stack((self.x, self.y)), columns=[self.xlabel, self.ylabel])
-
+        data.to_clipboard(index=False)
+        """
         path = os.path.dirname(os.path.realpath(__file__))
         filename = QtGui.QFileDialog.getSaveFileName(self, 'Save file', path, '.operations')
 
         if filename != '':
             data.to_csv(filename)
+        """
 
     def on_copy_figure(self):
         path = os.path.dirname(os.path.realpath(__file__))
