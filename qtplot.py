@@ -28,7 +28,7 @@ TODO
 
 - Perform operations on Data object iself?
 
-- Different axis scales in the linecut plot
+- Save linecut data for further processing
 
 - Different distributions for low/high pass filters
 """
@@ -407,10 +407,11 @@ if __name__ == '__main__':
 
     linecut = Linecut()
     operations = Operations()
-    main = Window(linecut, operations)
     
     if len(sys.argv) > 1:
         main = Window(linecut, operations, filename=sys.argv[1])
+    else:
+        main = Window(linecut, operations)
 
     linecut.main = main
     operations.main = main
