@@ -40,18 +40,21 @@ class Linecut(QtGui.QDialog):
         self.canvas = FigureCanvasQTAgg(self.fig)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
+        hbox = QtGui.QHBoxLayout()
+
         self.b_save = QtGui.QPushButton('Copy data to clipboard', self)
         self.b_save.clicked.connect(self.on_save_data)
+        hbox.addWidget(self.b_save)
 
         self.b_copy = QtGui.QPushButton('Copy figure to clipboard (Ctrl+C)', self)
         self.b_copy.clicked.connect(self.on_copy_figure)
         QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_figure)
+        hbox.addWidget(self.b_copy)
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
-        layout.addWidget(self.b_save)
-        layout.addWidget(self.b_copy)
+        layout.addLayout(hbox)
         self.setLayout(layout)
 
         self.move(800, 100)
@@ -100,4 +103,8 @@ class Linecut(QtGui.QDialog):
         self.ax.set_aspect('auto')
         self.fig.tight_layout()
 
+        self.canvas.draw()
+
+    def resizeEvent(self, event):
+        self.fig.tight_layout()
         self.canvas.draw()

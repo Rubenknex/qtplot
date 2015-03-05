@@ -226,7 +226,7 @@ class Window(QtGui.QMainWindow):
 
         if self.linecut_type == 'horizontal':
             self.linecut_type = 'vertical'
-        else:
+        elif self.linecut_type == 'vertical':
             self.linecut_type = 'horizontal'
 
         self.on_swap_order(event)
