@@ -117,10 +117,9 @@ class Window(QtGui.QMainWindow):
         self.le_max.setMaximumWidth(100)
         self.le_max.returnPressed.connect(self.on_cmap_changed)
 
-        self.b_copy_colorplot = QtGui.QPushButton('Copy colorplot to clipboard', self)
+        self.b_copy_colorplot = QtGui.QPushButton('Copy figure to clipboard (Ctrl+C)', self)
         self.b_copy_colorplot.clicked.connect(self.on_copy_colorplot)
-        self.b_copy_linecut = QtGui.QPushButton('Copy linecut to clipboard', self)
-        self.b_copy_linecut.clicked.connect(self.on_copy_linecut)
+        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_colorplot)
 
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(self.b_load)
@@ -151,7 +150,6 @@ class Window(QtGui.QMainWindow):
 
         hbox4 = QtGui.QHBoxLayout()
         hbox4.addWidget(self.b_copy_colorplot)
-        hbox4.addWidget(self.b_copy_linecut)
 
         vbox = QtGui.QVBoxLayout(self.main_widget)
         vbox.addWidget(self.toolbar)
@@ -273,14 +271,6 @@ class Window(QtGui.QMainWindow):
         path = os.path.dirname(os.path.realpath(__file__))
         path = os.path.join(path, 'test.png')
         self.fig.savefig(path)
-
-        img = QtGui.QImage(path)
-        QtGui.QApplication.clipboard().setImage(img)
-
-    def on_copy_linecut(self):
-        path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(path, 'test.png')
-        self.linecut.fig.savefig(path)
 
         img = QtGui.QImage(path)
         QtGui.QApplication.clipboard().setImage(img)

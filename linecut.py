@@ -4,6 +4,7 @@ from matplotlib.ticker import ScalarFormatter
 import matplotlib.pyplot as plt
 import numpy as np
 from PyQt4 import QtGui, QtCore
+import os
 
 class FixedOrderFormatter(ScalarFormatter):
     """Format numbers using engineering notation."""
@@ -37,12 +38,25 @@ class Linecut(QtGui.QDialog):
         self.canvas = FigureCanvasQTAgg(self.fig)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
+        self.b_copy = QtGui.QPushButton('Copy figure to clipboard (Ctrl+C)', self)
+        self.b_copy.clicked.connect(self.on_copy_figure)
+        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_figure)
+
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
+        layout.addWidget(self.b_copy)
         self.setLayout(layout)
 
         self.move(800, 100)
+
+    def on_copy_figure(self):
+        path = os.path.dirname(os.path.realpath(__file__))
+        path = os.path.join(path, 'test.png')
+        self.fig.savefig(path)
+
+        img = QtGui.QImage(path)
+        QtGui.QApplication.clipboard().setImage(img)
     
     def plot_linecut(self, x, y, title, xlabel, ylabel):
         if len(self.ax.lines) > 0:
