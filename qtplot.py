@@ -10,6 +10,7 @@ import time
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.ticker import ScalarFormatter
 from PyQt4 import QtGui, QtCore
+from scipy.interpolate import griddata
 
 from data import DatFile, Data
 from linecut import Linecut, FixedOrderFormatter
@@ -21,14 +22,19 @@ TODO
 - Handle duplicate coordinate values correctly:
     Drop duplicates for the color plot
     Duplicates are ok for linecut plots
-
 - Operations:
     even odd
     normalize
-
-- Perform operations on Data object iself?
-
 - Different distributions for low/high pass filters
+
+- Subtracting series resistance
+- Interpolation operation to put data into uniform grid > kernel filters
+- Regex for numbers / only numerical in textboxes
+- Linecuts at any angle and position
+- Mathematical foundation for operations
+
+- Filter distributions:
+    Check if formula can be applied after each other or supply r^2 = x^2+y^2
 """
 
 class Window(QtGui.QMainWindow):
@@ -45,8 +51,11 @@ class Window(QtGui.QMainWindow):
         self.cb = None
 
         self.line = None
-        self.linecut_type = None
-        self.linecut_coord = None
+        self.line_type = None
+        self.line_coord = None
+        self.line_start = None
+        self.line_end = None
+        self.line_calculate = False
 
         self.cmap_change = False
 
@@ -66,7 +75,8 @@ class Window(QtGui.QMainWindow):
         self.main_widget = QtGui.QWidget(self)
 
         self.canvas = FigureCanvasQTAgg(self.fig)
-        self.canvas.mpl_connect('button_press_event', self.on_mouse_click)
+        self.canvas.mpl_connect('button_press_event', self.on_mouse_press)
+        self.canvas.mpl_connect('button_release_event', self.on_mouse_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_motion)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
@@ -79,9 +89,9 @@ class Window(QtGui.QMainWindow):
         self.b_swap = QtGui.QPushButton('Swap order', self)
         self.b_swap.clicked.connect(self.on_swap_order)
         self.b_linecut = QtGui.QPushButton('Linecut')
-        self.b_linecut.clicked.connect(self.linecut.raise_)
+        self.b_linecut.clicked.connect(self.linecut.show)
         self.b_operations = QtGui.QPushButton('Operations')
-        self.b_operations.clicked.connect(self.operations.raise_)
+        self.b_operations.clicked.connect(self.operations.show)
 
         lbl_x = QtGui.QLabel("X:", self)
         self.cb_x = QtGui.QComboBox(self)
@@ -196,8 +206,10 @@ class Window(QtGui.QMainWindow):
             self.filename = filename
 
             self.line = None
-            self.linecut_type = None
-            self.linecut_coord = None
+            self.line_type = None
+            self.line_coord = None
+            self.line_start = None
+            self.line_end = None
 
             self.update_ui()
 
@@ -224,10 +236,10 @@ class Window(QtGui.QMainWindow):
         if len(self.ax.lines) > 0:
             self.ax.lines.pop(0)
 
-        if self.linecut_type == 'horizontal':
-            self.linecut_type = 'vertical'
-        elif self.linecut_type == 'vertical':
-            self.linecut_type = 'horizontal'
+        if self.line_type == 'horizontal':
+            self.line_type = 'vertical'
+        elif self.line_type == 'vertical':
+            self.line_type = 'horizontal'
 
         self.on_swap_order(event)
 
@@ -242,22 +254,42 @@ class Window(QtGui.QMainWindow):
         self.cmap_change = True
         self.plot_2d_data()
 
-    def on_mouse_click(self, event):
+    def on_mouse_press(self, event):
         if not event.inaxes or self.dat_file == None:
             return
 
         if event.button == 1:
-            self.linecut_coord = self.data.get_closest_y(event.ydata)
-            self.linecut_type = 'horizontal'
+            self.line_coord = self.data.get_closest_y(event.ydata)
+            self.line_type = 'horizontal'
         elif event.button == 2:
-            self.linecut_coord = self.data.get_closest_x(event.xdata)
-            self.linecut_type = 'vertical'
+            self.line_coord = self.data.get_closest_x(event.xdata)
+            self.line_type = 'vertical'
+        elif event.button == 3:
+            self.line_start = (event.xdata, event.ydata)
+            self.line_end = (event.xdata, event.ydata)
+            self.line_type = 'arbitrary'
+            self.line_calculate = False
 
         self.plot_linecut()
 
     def on_mouse_motion(self, event):
-        if event.button != None:
-            self.on_mouse_click(event)
+        if not event.inaxes or self.dat_file == None or event.button == None:
+            return
+
+        if event.button == 1 or event.button == 2:
+            self.on_mouse_press(event)
+        elif event.button == 3:
+            self.line_end = (event.xdata, event.ydata)
+            self.plot_linecut()
+
+    def on_mouse_release(self, event):
+        if not event.inaxes or self.line_start == None:
+            return
+
+        if event.button == 3:
+            self.line_end = (event.xdata, event.ydata)
+            self.line_calculate = True
+            self.plot_linecut()
 
     def on_data_change(self):
         if self.dat_file is not None:
@@ -360,7 +392,7 @@ class Window(QtGui.QMainWindow):
         self.cmap_change = False
 
     def plot_linecut(self):
-        if self.dat_file == None or self.linecut_type == None:
+        if self.dat_file == None or self.line_type == None:
             return
 
         x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
@@ -368,20 +400,37 @@ class Window(QtGui.QMainWindow):
         if len(self.ax.lines) == 0:
             self.line = self.ax.axvline(color='red')
 
-        if self.linecut_type == 'horizontal':
+        if self.line_type == 'horizontal':
             self.line.set_transform(self.ax.get_yaxis_transform())
-            self.line.set_xdata([0, 1])
-            self.line.set_ydata([self.linecut_coord, self.linecut_coord])
+            self.line.set_data([0, 1], [self.line_coord, self.line_coord])
 
-            x, y = self.data.get_row_at(self.linecut_coord)
+            x, y = self.data.get_row_at(self.line_coord)
             self.linecut.plot_linecut(x, y, self.name, x_name, data_name)
-        elif self.linecut_type == 'vertical':
+        elif self.line_type == 'vertical':
             self.line.set_transform(self.ax.get_xaxis_transform())
-            self.line.set_xdata([self.linecut_coord, self.linecut_coord])
-            self.line.set_ydata([0, 1])
+            self.line.set_data([self.line_coord, self.line_coord], [0, 1])
 
-            x, y = self.data.get_column_at(self.linecut_coord)
+            x, y = self.data.get_column_at(self.line_coord)
             self.linecut.plot_linecut(x, y, self.name, y_name, data_name)
+        elif self.line_type == 'arbitrary':
+            self.line.set_transform(self.ax.transData)
+            self.line.set_data([self.line_start[0], self.line_end[0]], [self.line_start[1], self.line_end[1]])
+
+            if self.line_calculate:
+                points = np.column_stack((self.data.x_coords.flatten(), self.data.y_coords.flatten()))
+                values = self.data.values.flatten()
+
+                x = np.linspace(self.line_start[0], self.line_end[0], 100)
+                y = np.linspace(self.line_start[1], self.line_end[1], 100)
+                xi = np.column_stack((x, y))
+
+                data = griddata(points, values, xi)
+
+                x -= x[0]
+                y -= y[0]
+                positions = np.sqrt(x**2 + y**2)
+                
+                self.linecut.plot_linecut(positions, data, self.name, 'Distance', data_name)
 
         # Redraw both plots to update them
         self.canvas.restore_region(self.background)

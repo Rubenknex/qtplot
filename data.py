@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy import ndimage
+import math
 
 class DatFile:
     """Class which contains the column based DataFrame of the data."""
@@ -34,6 +35,31 @@ class DatFile:
         values   = self.df.pivot(y_order, x_order, z).values
 
         return Data(x_coords, y_coords, values)
+
+def create_kernel(x_dev, y_dev, cutoff, distr):
+    distributions = {
+        'gaussian': lambda x, dev: math.exp(-(x**2) / 2.0),
+        'exponential': lambda x, dev: math.exp(-abs(x) * math.sqrt(2.0)),
+        'lorentzian': lambda x, dev: 1.0 / (x**2+1.0),
+        'thermal': lambda x, dev: math.exp(x) / (dev * (1+math.exp(x))**2)
+    }
+    func = distributions[distr]
+
+    xcenter = math.floor((x_dev * cutoff) / 2.0)
+    ycenter = math.floor((y_dev * cutoff) / 2.0)
+
+    kernel = np.empty((y_dev * cutoff, x_dev * cutoff))
+
+    for y in range(max(1, int(y_dev * cutoff))):
+        dy = (y - ycenter) / y_dev
+        for x in range(max(1, int(x_dev * cutoff))):
+            dx = (x - xcenter) / x_dev
+
+            kernel[y,x] = func(dy, y_dev) * func(dx, x_dev)
+
+    kernel /= np.sum(kernel)
+
+    return kernel
 
 class Data:
     """Class which represents 2d data as two matrices with x and y coordinates and one with values."""
@@ -240,8 +266,13 @@ class Data:
 
         # X and Y sigma order?
         sx, sy = float(kwargs.get('X Width')), float(kwargs.get('Y Height'))
+        kernel_type = str(kwargs.get('Type')).lower()
 
-        copy.values = ndimage.filters.gaussian_filter(copy.values, [sy, sx])
+        #copy.values = ndimage.filters.gaussian_filter(copy.values, [sy, sx])
+
+        kernel = create_kernel(sx, sy, 7, kernel_type)
+        copy.values = ndimage.filters.convolve(copy.values, kernel)
+
         copy.values = np.ma.masked_invalid(copy.values)
 
         return copy

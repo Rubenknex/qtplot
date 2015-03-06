@@ -113,7 +113,7 @@ class Operations(QtGui.QDialog):
             'scale axes':   [Data.scale_axes, [('textbox', 'X Scale', '1'), ('textbox', 'Y Scale', '1')]],
             'scale data':   [Data.scale_data, [('textbox', 'Factor', '1')]],
             'sub linecut':  [Data.sub_linecut],
-            'xderiv':       [Data.xderiv],
+            'xderiv':       [Data.xderiv, [('combobox', 'Method', ['Midpoint', '2nd order finite difference', '4th order finite difference', '6th order finite difference'])]],
             'yderiv':       [Data.yderiv],
         }
 
@@ -299,9 +299,13 @@ class Operations(QtGui.QDialog):
             operation = item.data(QtCore.Qt.UserRole).toPyObject()
 
             kwargs = operation.get_parameters()[1]
-            kwargs['linecut_type'] = self.main.linecut_type
-            kwargs['linecut_coord'] = self.main.linecut_coord
+            kwargs['linecut_type'] = self.main.line_type
+            kwargs['linecut_coord'] = self.main.line_coord
 
             copy = operation.func(copy, **kwargs)
 
         return copy
+
+    def closeEvent(self, event):
+        self.hide()
+        event.ignore()
