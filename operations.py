@@ -86,6 +86,8 @@ class Operations(QtGui.QDialog):
     def __init__(self, parent=None):
         super(Operations, self).__init__(parent)
 
+        self.columns = None
+
         self.init_ui()
 
     def init_ui(self):

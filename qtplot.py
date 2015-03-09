@@ -93,6 +93,21 @@ class Window(QtGui.QMainWindow):
         self.b_operations = QtGui.QPushButton('Operations')
         self.b_operations.clicked.connect(self.operations.show)
 
+        lbl_sub = QtGui.QLabel('Sub series R:')
+        lbl_v = QtGui.QLabel('V:')
+        lbl_v.setMaximumWidth(20)
+        self.cb_v = QtGui.QComboBox(self)
+        lbl_i = QtGui.QLabel('I:')
+        lbl_i.setMaximumWidth(20)
+        self.cb_i = QtGui.QComboBox(self)
+        lbl_r = QtGui.QLabel('R:')
+        lbl_r.setMaximumWidth(20)
+        self.le_r = QtGui.QLineEdit(self)
+        self.le_r.setMaximumWidth(100)
+        self.b_ok = QtGui.QPushButton('Ok', self)
+        self.b_ok.clicked.connect(self.on_sub_series_r)
+        self.b_ok.setMaximumWidth(50)
+
         lbl_x = QtGui.QLabel("X:", self)
         self.cb_x = QtGui.QComboBox(self)
         self.cb_x.activated.connect(self.on_data_change)
@@ -137,6 +152,16 @@ class Window(QtGui.QMainWindow):
         hbox.addWidget(self.b_linecut)
         hbox.addWidget(self.b_operations)
 
+        r_hbox = QtGui.QHBoxLayout()
+        r_hbox.addWidget(lbl_sub)
+        r_hbox.addWidget(lbl_v)
+        r_hbox.addWidget(self.cb_v)
+        r_hbox.addWidget(lbl_i)
+        r_hbox.addWidget(self.cb_i)
+        r_hbox.addWidget(lbl_r)
+        r_hbox.addWidget(self.le_r)
+        r_hbox.addWidget(self.b_ok)
+
         grid = QtGui.QGridLayout()
         grid.addWidget(lbl_x, 1, 1)
         grid.addWidget(self.cb_x, 1, 2)
@@ -163,6 +188,7 @@ class Window(QtGui.QMainWindow):
         vbox.addWidget(self.toolbar)
         vbox.addWidget(self.canvas)
         vbox.addLayout(hbox)
+        vbox.addLayout(r_hbox)
         vbox.addLayout(grid)
         vbox.addLayout(hbox_gamma)
         vbox.addLayout(hbox4)
@@ -175,28 +201,48 @@ class Window(QtGui.QMainWindow):
 
         self.move(100, 100)
 
-    def update_ui(self):
+    def update_ui(self, reset=True):
         self.setWindowTitle(self.name)
 
+        columns = self.dat_file.df.columns.values
+
+        self.cb_v.clear()
+        self.cb_v.addItems(columns)
+
+        self.cb_i.clear()
+        self.cb_i.addItems(columns)
+
+        i = self.cb_x.currentIndex()
         self.cb_x.clear()
-        self.cb_x.addItems(self.dat_file.columns)
-        self.cb_x.setCurrentIndex(0)
+        self.cb_x.addItems(columns)
+        self.cb_x.setCurrentIndex(i)
 
+        i = self.cb_order_x.currentIndex()
         self.cb_order_x.clear()
-        self.cb_order_x.addItems(self.dat_file.columns)
-        self.cb_order_x.setCurrentIndex(0)
+        self.cb_order_x.addItems(columns)
+        self.cb_order_x.setCurrentIndex(i)
 
+        i = self.cb_y.currentIndex()
         self.cb_y.clear()
-        self.cb_y.addItems(self.dat_file.columns)
-        self.cb_y.setCurrentIndex(1)
+        self.cb_y.addItems(columns)
+        self.cb_y.setCurrentIndex(i)
 
+        i = self.cb_order_y.currentIndex()
         self.cb_order_y.clear()
-        self.cb_order_y.addItems(self.dat_file.columns)
-        self.cb_order_y.setCurrentIndex(1)
+        self.cb_order_y.addItems(columns)
+        self.cb_order_y.setCurrentIndex(i)
 
+        i = self.cb_z.currentIndex()
         self.cb_z.clear()
-        self.cb_z.addItems(self.dat_file.columns)
-        self.cb_z.setCurrentIndex(3)
+        self.cb_z.addItems(columns)
+        self.cb_z.setCurrentIndex(i)
+
+        if reset:
+            self.cb_x.setCurrentIndex(0)
+            self.cb_order_x.setCurrentIndex(0)
+            self.cb_y.setCurrentIndex(1)
+            self.cb_order_y.setCurrentIndex(1)
+            self.cb_z.setCurrentIndex(3)
 
     def load_file(self, filename):
         self.dat_file = DatFile(filename)
@@ -249,6 +295,17 @@ class Window(QtGui.QMainWindow):
         self.cb_order_y.setCurrentIndex(x)
 
         self.on_data_change()
+
+    def on_sub_series_r(self, event):
+        if self.dat_file == None:
+            return
+
+        V, I = str(self.cb_v.currentText()), str(self.cb_i.currentText())
+        R = float(self.le_r.text())
+
+        self.dat_file.df['SUB SERIES R'] = self.dat_file.df[V] - self.dat_file.df[I] * R
+
+        self.update_ui(reset=False)
 
     def on_cmap_changed(self):
         self.cmap_change = True
