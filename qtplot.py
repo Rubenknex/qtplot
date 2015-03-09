@@ -25,16 +25,10 @@ TODO
 - Operations:
     even odd
     normalize
-- Different distributions for low/high pass filters
 
-- Subtracting series resistance
 - Interpolation operation to put data into uniform grid > kernel filters
 - Regex for numbers / only numerical in textboxes
-- Linecuts at any angle and position
 - Mathematical foundation for operations
-
-- Filter distributions:
-    Check if formula can be applied after each other or supply r^2 = x^2+y^2
 """
 
 class Window(QtGui.QMainWindow):

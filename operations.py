@@ -115,8 +115,8 @@ class Operations(QtGui.QDialog):
             'scale axes':   [Data.scale_axes, [('textbox', 'X Scale', '1'), ('textbox', 'Y Scale', '1')]],
             'scale data':   [Data.scale_data, [('textbox', 'Factor', '1')]],
             'sub linecut':  [Data.sub_linecut],
-            'xderiv':       [Data.xderiv, [('combobox', 'Method', ['Midpoint', '2nd order finite difference', '4th order finite difference', '6th order finite difference'])]],
-            'yderiv':       [Data.yderiv],
+            'xderiv':       [Data.xderiv, [('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
+            'yderiv':       [Data.yderiv, [('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
         }
 
         self.options = QtGui.QListWidget(self)

@@ -38,25 +38,27 @@ class DatFile:
 
 def create_kernel(x_dev, y_dev, cutoff, distr):
     distributions = {
-        'gaussian': lambda x, dev: math.exp(-(x**2) / 2.0),
-        'exponential': lambda x, dev: math.exp(-abs(x) * math.sqrt(2.0)),
-        'lorentzian': lambda x, dev: 1.0 / (x**2+1.0),
-        'thermal': lambda x, dev: math.exp(x) / (dev * (1+math.exp(x))**2)
+        'gaussian': lambda r: np.exp(-(r**2) / 2.0),
+        'exponential': lambda r: np.exp(-abs(r) * np.sqrt(2.0)),
+        'lorentzian': lambda r: 1.0 / (r**2+1.0),
+        'thermal': lambda r: np.exp(r) / (1 * (1+np.exp(r))**2)
     }
     func = distributions[distr]
 
-    xcenter = math.floor((x_dev * cutoff) / 2.0)
-    ycenter = math.floor((y_dev * cutoff) / 2.0)
+    hx = math.floor((x_dev * cutoff) / 2.0)
+    hy = math.floor((y_dev * cutoff) / 2.0)
 
-    kernel = np.empty((y_dev * cutoff, x_dev * cutoff))
+    x = np.linspace(-hx, hx, hx * 2 + 1) / x_dev
+    y = np.linspace(-hy, hy, hy * 2 + 1) / y_dev
 
-    for y in range(max(1, int(y_dev * cutoff))):
-        dy = (y - ycenter) / y_dev
-        for x in range(max(1, int(x_dev * cutoff))):
-            dx = (x - xcenter) / x_dev
+    if x.size == 1:
+        x = np.zeros(1)
+    if y.size == 1:
+        y = np.zeros(1)
+    
+    xv, yv = np.meshgrid(x, y)
 
-            kernel[y,x] = func(dy, y_dev) * func(dx, x_dev)
-
+    kernel = func(np.sqrt(xv**2+yv**2))
     kernel /= np.sum(kernel)
 
     return kernel
@@ -343,26 +345,38 @@ class Data:
 
     def xderiv(data, **kwargs):
         """Find the rate of change between every datapoint in the x-direction."""
+        method = str(kwargs.get('Method'))
         copy = data.copy()
 
-        dx = np.diff(copy.x_coords, axis=1)
-        ddata = np.diff(copy.values, axis=1)
+        if method == 'midpoint':
+            dx = np.diff(copy.x_coords, axis=1)
+            ddata = np.diff(copy.values, axis=1)
 
-        copy.x_coords = copy.x_coords[:,:-1] + dx / 2.0
-        copy.y_coords = copy.y_coords[:,:-1]
-        copy.values = ddata / dx
+            copy.x_coords = copy.x_coords[:,:-1] + dx / 2.0
+            copy.y_coords = copy.y_coords[:,:-1]
+            copy.values = ddata / dx
+        elif method == '2nd order central diff':
+            copy.values = (copy.values[:,2:] - copy.values[:,:-2]) / (copy.x_coords[:,2:] - copy.x_coords[:,:-2])
+            copy.x_coords = copy.x_coords[:,1:-1]
+            copy.y_coords = copy.y_coords[:,1:-1]
 
         return copy
 
     def yderiv(data, **kwargs):
         """Find the rate of change between every datapoint in the y-direction."""
+        method = str(kwargs.get('Method'))
         copy = data.copy()
 
-        dy = np.diff(copy.y_coords, axis=0)
-        ddata = np.diff(copy.values, axis=0)
+        if method == 'midpoint':
+            dy = np.diff(copy.y_coords, axis=0)
+            ddata = np.diff(copy.values, axis=0)
 
-        copy.x_coords = copy.x_coords[:-1,:]
-        copy.y_coords = copy.y_coords[:-1,:] + dy / 2.0
-        copy.values = ddata / dy
+            copy.x_coords = copy.x_coords[:-1,:]
+            copy.y_coords = copy.y_coords[:-1,:] + dy / 2.0
+            copy.values = ddata / dy
+        elif method == '2nd order central diff':
+            copy.values = (copy.values[2:] - copy.values[:-2]) / (copy.y_coords[2:] - copy.y_coords[:-2])
+            copy.x_coords = copy.x_coords[1:-1]
+            copy.y_coords = copy.y_coords[1:-1]
 
         return copy
