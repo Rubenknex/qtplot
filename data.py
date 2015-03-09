@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy import ndimage
+from scipy.spatial import qhull
 import math
 
 class DatFile:
@@ -34,7 +35,7 @@ class DatFile:
         y_coords = self.df.pivot(y_order, x_order, y).values
         values   = self.df.pivot(y_order, x_order, z).values
 
-        return Data(x_coords, y_coords, values)
+        return Data(x_coords, y_coords, values, (x==x_order,y==y_order))
 
 def create_kernel(x_dev, y_dev, cutoff, distr):
     distributions = {
@@ -65,11 +66,34 @@ def create_kernel(x_dev, y_dev, cutoff, distr):
 
 class Data:
     """Class which represents 2d data as two matrices with x and y coordinates and one with values."""
-    def __init__(self, x_coords, y_coords, values):
+    def __init__(self, x_coords, y_coords, values, equidistant=(False, False)):
         # Mask NaN values so they don't get plotted by matplotlib
-        self.x_coords = np.ma.masked_invalid(x_coords)
-        self.y_coords = np.ma.masked_invalid(y_coords)
-        self.values = np.ma.masked_invalid(values)
+        
+        self.x_coords = x_coords
+        self.y_coords = y_coords
+        self.values = values
+        #self.x_coords = np.ma.masked_invalid(x_coords)
+        #self.y_coords = np.ma.masked_invalid(y_coords)
+        #self.values = np.ma.masked_invalid(values)
+
+        self.equidistant = equidistant
+        self.tri = None
+
+    def interpolate(self, points):
+        if self.tri == None:
+            self.tri = qhull.Delaunay(np.column_stack((self.x_coords.flatten(), self.y_coords.flatten())))
+
+        simplices = self.tri.find_simplex(points)
+
+        indices = np.take(self.tri.simplices, simplices, axis=0)
+        transforms = np.take(self.tri.transform, simplices, axis=0)
+        
+        delta = points - transforms[:,2]
+        bary = np.einsum('njk,nk->nj', transforms[:,:2,:], delta)
+
+        temp = np.hstack((bary, 1-bary.sum(axis=1, keepdims=True)))
+
+        return np.einsum('nj,nj->n', np.take(self.values.flatten(), indices), temp)
 
     def get_sorted(self):
         """Return the data sorted so that every coordinate increases."""
@@ -156,11 +180,11 @@ class Data:
         return x_flip, y_flip
 
     def copy(self):
-        return Data(np.copy(self.x_coords), np.copy(self.y_coords), np.copy(self.values))
+        return Data(np.copy(self.x_coords), np.copy(self.y_coords), np.copy(self.values), self.equidistant)
 
     def abs(data, **kwargs):
         """Take the absolute value of every datapoint."""
-        return Data(data.x_coords, data.y_coords, np.absolute(data.values))
+        return Data(data.x_coords, data.y_coords, np.absolute(data.values), data.equidistant)
 
     def autoflip(data, **kwargs):
         """Flip the data so that the X and Y-axes increase to the top and right."""
@@ -196,7 +220,7 @@ class Data:
         theta = np.radians(float(kwargs.get('Theta')))
         xdir, ydir = np.cos(theta), np.sin(theta)
 
-        return Data(xcomp.x_coords[:-1,:], ycomp.y_coords[:,:-1], xvalues * xdir + yvalues * ydir)
+        return Data(xcomp.x_coords[:-1,:], ycomp.y_coords[:,:-1], xvalues * xdir + yvalues * ydir, data.equidistant)
 
     def equalize(data, **kwargs):
         """Perform histogramic equalization on the image."""
@@ -226,7 +250,7 @@ class Data:
         xvalues = xcomp.values[:-1,:]
         yvalues = ycomp.values[:,:-1]
 
-        return Data(xcomp.x_coords[:-1,:], ycomp.y_coords[:,:-1], np.sqrt(xvalues**2 + yvalues**2))
+        return Data(xcomp.x_coords[:-1,:], ycomp.y_coords[:,:-1], np.sqrt(xvalues**2 + yvalues**2), data.equidistant)
 
     def highpass(data, **kwargs):
         """Perform a high-pass filter."""
@@ -256,11 +280,11 @@ class Data:
         xcoords = np.tile(data.x_coords[0,:], (hist.shape[0], 1))
         ycoords = np.tile(bincoords[:,np.newaxis], (1, hist.shape[1]))
         
-        return Data(xcoords, ycoords, hist)
+        return Data(xcoords, ycoords, hist, equidistant=(True, True))
 
     def log(data, **kwargs):
         """The base-10 logarithm of every datapoint."""
-        return Data(data.x_coords, data.y_coords, np.log10(data.values))
+        return Data(data.x_coords, data.y_coords, np.log10(data.values), data.equidistant)
 
     def lowpass(data, **kwargs):
         """Perform a low-pass filter."""
@@ -281,7 +305,7 @@ class Data:
 
     def neg(data, **kwargs):
         """Negate every datapoint."""
-        return Data(data.x_coords, data.y_coords, np.negative(data.values))
+        return Data(data.x_coords, data.y_coords, np.negative(data.values), data.equidistant)
 
     def norm_columns(data, **kwargs):
         """Transform the values of every column so that they use the full colormap."""
@@ -301,31 +325,31 @@ class Data:
         """Add a value to every datapoint."""
         offset = float(kwargs.get('Offset'))
 
-        return Data(data.x_coords, data.y_coords, data.values + offset)
+        return Data(data.x_coords, data.y_coords, data.values + offset, data.equidistant)
 
     def offset_axes(data, **kwargs):
         """Add an offset value to the axes."""
         x_off, y_off = float(kwargs.get('X Offset')), float(kwargs.get('Y Offset'))
 
-        return Data(data.x_coords + x_off, data.y_coords + y_off, data.values)
+        return Data(data.x_coords + x_off, data.y_coords + y_off, data.values, data.equidistant)
 
     def power(data, **kwargs):
         """Raise the datapoints to a power."""
         power = float(kwargs.get('Power'))
 
-        return Data(data.x_coords, data.y_coords, np.power(data.values, power))
+        return Data(data.x_coords, data.y_coords, np.power(data.values, power), data.equidistant)
 
     def scale_axes(data, **kwargs):
         """Multiply the axes values by a number."""
         x_sc, y_sc = float(kwargs.get('X Scale')), float(kwargs.get('Y Scale'))
 
-        return Data(data.x_coords * x_sc, data.y_coords * y_sc, data.values)
+        return Data(data.x_coords * x_sc, data.y_coords * y_sc, data.values, data.equidistant)
 
     def scale_data(data, **kwargs):
         """Multiply the datapoints by a number."""
         factor = float(kwargs.get('Factor'))
 
-        return Data(data.x_coords, data.y_coords, data.values * factor)
+        return Data(data.x_coords, data.y_coords, data.values * factor, data.equidistant)
 
     def sub_linecut(data, **kwargs):
         """Subtract a horizontal/vertical linecut from every row/column."""
@@ -341,7 +365,7 @@ class Data:
             x, y = data.get_column_at(linecut_coord)
             y = y[:,np.newaxis]
 
-        return Data(data.x_coords, data.y_coords, data.values - y)
+        return Data(data.x_coords, data.y_coords, data.values - y, data.equidistant)
 
     def xderiv(data, **kwargs):
         """Find the rate of change between every datapoint in the x-direction."""

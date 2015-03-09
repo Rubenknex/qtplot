@@ -32,6 +32,7 @@ class Operation(QtGui.QWidget):
                 self.items[name] = checkbox
             elif typ == 'textbox':
                 lineedit = QtGui.QLineEdit(data)
+                lineedit.setValidator(QtGui.QDoubleValidator())
                 layout.addWidget(QtGui.QLabel(name), height, 1)
                 layout.addWidget(lineedit, height, 2)
 

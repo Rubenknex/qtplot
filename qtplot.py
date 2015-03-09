@@ -27,7 +27,6 @@ TODO
     normalize
 
 - Interpolation operation to put data into uniform grid > kernel filters
-- Regex for numbers / only numerical in textboxes
 - Mathematical foundation for operations
 """
 
@@ -372,7 +371,7 @@ class Window(QtGui.QMainWindow):
         self.data = self.operations.apply_operations(self.data)
         self.pcolor_data = self.data.get_pcolor()
 
-        if self.data.values.mask.any():
+        if self.pcolor_data[2].mask.any():
             self.status_bar.showMessage("WARNING: DATA CONTAINS NAN VALUES")
         else:
             self.status_bar.showMessage("")
@@ -468,14 +467,11 @@ class Window(QtGui.QMainWindow):
             self.line.set_data([self.line_start[0], self.line_end[0]], [self.line_start[1], self.line_end[1]])
 
             if self.line_calculate:
-                points = np.column_stack((self.data.x_coords.flatten(), self.data.y_coords.flatten()))
-                values = self.data.values.flatten()
-
-                x = np.linspace(self.line_start[0], self.line_end[0], 100)
-                y = np.linspace(self.line_start[1], self.line_end[1], 100)
+                x = np.linspace(self.line_start[0], self.line_end[0], 1000)
+                y = np.linspace(self.line_start[1], self.line_end[1], 1000)
                 xi = np.column_stack((x, y))
 
-                data = griddata(points, values, xi)
+                data = self.data.interpolate(xi)
 
                 x -= x[0]
                 y -= y[0]
