@@ -11,6 +11,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationTool
 from matplotlib.ticker import ScalarFormatter
 from PyQt4 import QtGui, QtCore
 from scipy.interpolate import griddata
+from scipy.spatial import qhull, delaunay_plot_2d
 
 from data import DatFile, Data
 from linecut import Linecut, FixedOrderFormatter
@@ -82,9 +83,9 @@ class Window(QtGui.QMainWindow):
         self.b_swap = QtGui.QPushButton('Swap order', self)
         self.b_swap.clicked.connect(self.on_swap_order)
         self.b_linecut = QtGui.QPushButton('Linecut')
-        self.b_linecut.clicked.connect(self.linecut.show)
+        self.b_linecut.clicked.connect(self.linecut.show_window)
         self.b_operations = QtGui.QPushButton('Operations')
-        self.b_operations.clicked.connect(self.operations.show)
+        self.b_operations.clicked.connect(self.operations.show_window)
 
         lbl_sub = QtGui.QLabel('Sub series R:')
         lbl_v = QtGui.QLabel('V:')
@@ -402,6 +403,9 @@ class Window(QtGui.QMainWindow):
             self.ax.invert_yaxis()
 
         self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap=cmap)
+        if self.data.tri != None:
+            print 'plotting delaunay'
+            #delaunay_plot_2d(self.data.tri, self.ax)
 
         if self.cmap_change:
             self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
@@ -470,7 +474,6 @@ class Window(QtGui.QMainWindow):
                 x = np.linspace(self.line_start[0], self.line_end[0], 1000)
                 y = np.linspace(self.line_start[1], self.line_end[1], 1000)
                 xi = np.column_stack((x, y))
-
                 data = self.data.interpolate(xi)
 
                 x -= x[0]

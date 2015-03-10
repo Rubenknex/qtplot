@@ -105,6 +105,7 @@ class Operations(QtGui.QDialog):
             'gradmag':      [Data.gradmag],
             'highpass':     [Data.highpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
             'hist2d':       [Data.hist2d, [('combobox', 'Axis', ['Horizontal', 'Vertical']), ('textbox', 'Min', '0'), ('textbox', 'Max', '-1'), ('textbox', 'Bins', '20')]],
+            'interp grid':  [Data.interp_grid],
             'log':          [Data.log],
             'lowpass':      [Data.lowpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
             'neg':          [Data.neg],
@@ -116,6 +117,7 @@ class Operations(QtGui.QDialog):
             'scale axes':   [Data.scale_axes, [('textbox', 'X Scale', '1'), ('textbox', 'Y Scale', '1')]],
             'scale data':   [Data.scale_data, [('textbox', 'Factor', '1')]],
             'sub linecut':  [Data.sub_linecut],
+            'sub plane':    [Data.sub_plane, [('textbox', 'X Slope', '0'), ('textbox', 'Y Slope', '0')]],
             'xderiv':       [Data.xderiv, [('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
             'yderiv':       [Data.yderiv, [('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
         }
@@ -308,6 +310,10 @@ class Operations(QtGui.QDialog):
             copy = operation.func(copy, **kwargs)
 
         return copy
+
+    def show_window(self):
+        self.show()
+        self.raise_()
 
     def closeEvent(self, event):
         self.hide()

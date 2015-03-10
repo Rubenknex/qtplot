@@ -67,21 +67,17 @@ def create_kernel(x_dev, y_dev, cutoff, distr):
 class Data:
     """Class which represents 2d data as two matrices with x and y coordinates and one with values."""
     def __init__(self, x_coords, y_coords, values, equidistant=(False, False)):
-        # Mask NaN values so they don't get plotted by matplotlib
-        
         self.x_coords = x_coords
         self.y_coords = y_coords
         self.values = values
-        #self.x_coords = np.ma.masked_invalid(x_coords)
-        #self.y_coords = np.ma.masked_invalid(y_coords)
-        #self.values = np.ma.masked_invalid(values)
 
         self.equidistant = equidistant
         self.tri = None
 
     def interpolate(self, points):
         if self.tri == None:
-            self.tri = qhull.Delaunay(np.column_stack((self.x_coords.flatten(), self.y_coords.flatten())))
+            # Default: Qbb Qc Qz 
+            self.tri = qhull.Delaunay(np.column_stack((self.x_coords.flatten(), self.y_coords.flatten())), qhull_options='')
 
         simplices = self.tri.find_simplex(points)
 
@@ -93,7 +89,10 @@ class Data:
 
         temp = np.hstack((bary, 1-bary.sum(axis=1, keepdims=True)))
 
-        return np.einsum('nj,nj->n', np.take(self.values.flatten(), indices), temp)
+        values = np.einsum('nj,nj->n', np.take(self.values.flatten(), indices), temp)
+        values[np.any(temp < 0, axis=1)] = 0
+
+        return values
 
     def get_sorted(self):
         """Return the data sorted so that every coordinate increases."""
@@ -149,12 +148,18 @@ class Data:
     def get_column_at(self, x):
         x_index = np.where(self.x_coords[0,:]==self.get_closest_x(x))[0][0]
 
-        return self.y_coords[:,x_index], self.values[:,x_index]
+        if self.equidistant[0]:
+            return self.y_coords[:,x_index], self.values[:,x_index]
+        else:
+            return self.y_coords[:,x_index], self.values[:,x_index]
 
     def get_row_at(self, y):
         y_index = np.where(self.y_coords[:,0]==self.get_closest_y(y))[0][0]
 
-        return self.x_coords[y_index], self.values[y_index]
+        if self.equidistant[1]:
+            return self.x_coords[y_index], self.values[y_index]
+        else:
+            return self.x_coords[y_index], self.values[y_index]
 
     def get_closest_x(self, x_coord):
         return min(self.x_coords[0,:], key=lambda x:abs(x - x_coord))
@@ -256,9 +261,13 @@ class Data:
         """Perform a high-pass filter."""
         copy = data.copy()
 
+        # X and Y sigma order?
         sx, sy = float(kwargs.get('X Width')), float(kwargs.get('Y Height'))
+        kernel_type = str(kwargs.get('Type')).lower()
 
-        copy.values = copy.values - ndimage.filters.gaussian_filter(copy.values, [sy, sx])
+        kernel = create_kernel(sx, sy, 7, kernel_type)
+        copy.values = copy.values - ndimage.filters.convolve(copy.values, kernel)
+
         copy.values = np.ma.masked_invalid(copy.values)
 
         return copy
@@ -281,6 +290,9 @@ class Data:
         ycoords = np.tile(bincoords[:,np.newaxis], (1, hist.shape[1]))
         
         return Data(xcoords, ycoords, hist, equidistant=(True, True))
+
+    def interp_grid(data, **kwargs):
+        return data
 
     def log(data, **kwargs):
         """The base-10 logarithm of every datapoint."""
@@ -366,6 +378,13 @@ class Data:
             y = y[:,np.newaxis]
 
         return Data(data.x_coords, data.y_coords, data.values - y, data.equidistant)
+
+    def sub_plane(data, **kwargs):
+        xs, ys = float(kwargs.get('X Slope')), float(kwargs.get('Y Slope'))
+
+        
+        
+        return data
 
     def xderiv(data, **kwargs):
         """Find the rate of change between every datapoint in the x-direction."""

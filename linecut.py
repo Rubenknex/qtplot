@@ -109,6 +109,10 @@ class Linecut(QtGui.QDialog):
         self.fig.tight_layout()
         self.canvas.draw()
 
+    def show_window(self):
+        self.show()
+        self.raise_()
+
     def closeEvent(self, event):
         self.hide()
         event.ignore()
