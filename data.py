@@ -3,6 +3,7 @@ import pandas as pd
 from scipy import ndimage
 from scipy.spatial import qhull
 import math
+import matplotlib.pyplot as plt
 
 class DatFile:
     """Class which contains the column based DataFrame of the data."""
@@ -76,8 +77,17 @@ class Data:
 
     def interpolate(self, points):
         if self.tri == None:
+            xc = self.x_coords.flatten()
+            yc = self.y_coords.flatten()
+            self.no_nan_values = self.values.flatten()
+
+            if np.isnan(xc).any() and np.isnan(yc).any():
+                xc = xc[~np.isnan(xc)]
+                yc = yc[~np.isnan(yc)]
+                self.no_nan_values = self.no_nan_values[~np.isnan(self.no_nan_values)]
+
             # Default: Qbb Qc Qz 
-            self.tri = qhull.Delaunay(np.column_stack((self.x_coords.flatten(), self.y_coords.flatten())), qhull_options='')
+            self.tri = qhull.Delaunay(np.column_stack((xc, yc)), qhull_options='')
 
         simplices = self.tri.find_simplex(points)
 
@@ -89,7 +99,7 @@ class Data:
 
         temp = np.hstack((bary, 1-bary.sum(axis=1, keepdims=True)))
 
-        values = np.einsum('nj,nj->n', np.take(self.values.flatten(), indices), temp)
+        values = np.einsum('nj,nj->n', np.take(self.no_nan_values, indices), temp)
         values[np.any(temp < 0, axis=1)] = 0
 
         return values
@@ -167,6 +177,9 @@ class Data:
     def get_closest_y(self, y_coord):
         return min(self.y_coords[:,0], key=lambda y:abs(y - y_coord))
 
+    def get_dimensions(self):
+        return np.min(self.x_coords), np.max(self.x_coords), np.min(self.y_coords), np.max(self.y_coords)
+
     def flip_axes(self, x_flip, y_flip):
         if x_flip:
             self.x_coords = np.fliplr(self.x_coords)
@@ -229,11 +242,34 @@ class Data:
 
     def equalize(data, **kwargs):
         """Perform histogramic equalization on the image."""
-        return data
+        copy = data.copy()
+
+        binn = 65535
+
+        # Create a density histogram with surface area 1
+        hist, bins = np.histogram(copy.values.flatten(), binn)
+        cdf = hist.cumsum()
+
+        cdf = bins[0] + (bins[-1]-bins[0]) * (cdf / float(cdf[-1]))
+
+        new = np.interp(copy.values.flatten(), bins[:-1], cdf)
+        copy.values = np.reshape(new, data.values.shape)
+
+        return copy
 
     def even_odd(data, **kwargs):
         """Extract even or odd rows, optionally flipping odd rows."""
-        return data
+        even = bool(kwargs.get('Even'))
+
+        copy = data.copy()
+        indices = np.arange(0, data.values.shape[0], 2)
+        if not even: indices = np.arange(1, data.values.shape[0], 2)
+
+        copy.values = copy.values[indices]
+        copy.x_coords = copy.x_coords[indices]
+        copy.y_coords = copy.y_coords[indices]
+
+        return copy
 
     def flip(data, **kwargs):
         """Flip the X or Y axes."""
@@ -273,8 +309,7 @@ class Data:
         return copy
 
     def hist2d(data, **kwargs):
-        """Convert every column into a histogram."""
-        axis = {'Horizontal':1, 'Vertical':0}[kwargs.get('Axis')]
+        """Convert every column into a histogram, default bin amount is sqrt(n)."""
         hmin, hmax = float(kwargs.get('Min')), float(kwargs.get('Max'))
         hbins = int(kwargs.get('Bins'))
         
@@ -292,21 +327,39 @@ class Data:
         return Data(xcoords, ycoords, hist, equidistant=(True, True))
 
     def interp_grid(data, **kwargs):
-        return data
+        """Interpolate the data onto a uniformly spaced grid using barycentric interpolation."""
+        width, height = int(kwargs.get('Width')), int(kwargs.get('Height'))
+        xmin, xmax, ymin, ymax = data.get_dimensions()
+
+        x = np.linspace(xmin, xmax, width)
+        y = np.linspace(ymin, ymax, height)
+        xv, yv = np.meshgrid(x, y)
+
+        values = data.interpolate(np.column_stack((xv.flatten(), yv.flatten())))
+
+        return Data(xv, yv, np.reshape(values, xv.shape))
 
     def log(data, **kwargs):
         """The base-10 logarithm of every datapoint."""
-        return Data(data.x_coords, data.y_coords, np.log10(data.values), data.equidistant)
+        subtract = bool(kwargs.get('Subtract offset'))
+        newmin = float(kwargs.get('New min'))
+
+        copy = data.copy()
+        min = np.min(copy.values)
+
+        if subtract:
+            copy.values = (copy.values - min) + newmin
+
+        copy.values = np.log10(copy.values)
+
+        return copy
 
     def lowpass(data, **kwargs):
         """Perform a low-pass filter."""
         copy = data.copy()
 
-        # X and Y sigma order?
         sx, sy = float(kwargs.get('X Width')), float(kwargs.get('Y Height'))
         kernel_type = str(kwargs.get('Type')).lower()
-
-        #copy.values = ndimage.filters.gaussian_filter(copy.values, [sy, sx])
 
         kernel = create_kernel(sx, sy, 7, kernel_type)
         copy.values = ndimage.filters.convolve(copy.values, kernel)
@@ -380,11 +433,14 @@ class Data:
         return Data(data.x_coords, data.y_coords, data.values - y, data.equidistant)
 
     def sub_plane(data, **kwargs):
+        """Subtract a plane with x and y slopes centered in the middle."""
         xs, ys = float(kwargs.get('X Slope')), float(kwargs.get('Y Slope'))
+        xmin, xmax, ymin, ymax = data.get_dimensions()
 
+        copy = data.copy()
+        copy.values -= xs*(copy.x_coords - (xmax - xmin)/2) + ys*(copy.y_coords - (ymax - ymin)/2)
         
-        
-        return data
+        return copy
 
     def xderiv(data, **kwargs):
         """Find the rate of change between every datapoint in the x-direction."""

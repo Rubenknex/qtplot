@@ -20,15 +20,10 @@ from operations import Operations
 """
 TODO
 
-- Handle duplicate coordinate values correctly:
-    Drop duplicates for the color plot
-    Duplicates are ok for linecut plots
-- Operations:
-    even odd
-    normalize
-
-- Interpolation operation to put data into uniform grid > kernel filters
-- Mathematical foundation for operations
+Things for next iteration:
+- Unit tests for every operation with a test dataset (uniform, slope, sin/cos, gaussian distr)
+- Correct handling of horizontal/vertical linecuts in a non equidistant plot
+- Linecut line number/orientation or current line
 """
 
 class Window(QtGui.QMainWindow):
@@ -372,8 +367,10 @@ class Window(QtGui.QMainWindow):
         self.data = self.operations.apply_operations(self.data)
         self.pcolor_data = self.data.get_pcolor()
 
+        pd.DataFrame(self.data.values).to_clipboard()
+
         if self.pcolor_data[2].mask.any():
-            self.status_bar.showMessage("WARNING: DATA CONTAINS NAN VALUES")
+            self.status_bar.showMessage("Warning: Data contains NaN values")
         else:
             self.status_bar.showMessage("")
 
@@ -402,6 +399,7 @@ class Window(QtGui.QMainWindow):
         if y_flip:
             self.ax.invert_yaxis()
 
+        #self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap=cmap, edgecolors='black')
         self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap=cmap)
         if self.data.tri != None:
             print 'plotting delaunay'

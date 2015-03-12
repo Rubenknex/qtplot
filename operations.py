@@ -11,11 +11,12 @@ from data import Data
 
 class Operation(QtGui.QWidget):
     """Contains the name and GUI widgets for the parameters of an operation."""
-    def __init__(self, name, func, widgets=[]):
+    def __init__(self, name, main, func, widgets=[]):
         super(Operation, self).__init__(None)
 
         layout = QtGui.QGridLayout(self)
         self.name = name
+        self.main = main
         self.func = func
         self.items = {}
 
@@ -27,6 +28,7 @@ class Operation(QtGui.QWidget):
             if typ == 'checkbox':
                 checkbox = QtGui.QCheckBox(name)
                 checkbox.setChecked(data)
+                checkbox.stateChanged.connect(self.main.on_data_change)
                 layout.addWidget(checkbox, height, 2)
 
                 self.items[name] = checkbox
@@ -40,6 +42,7 @@ class Operation(QtGui.QWidget):
             elif typ == 'combobox':
                 layout.addWidget(QtGui.QLabel(name), height, 1)
                 combobox = QtGui.QComboBox()
+                combobox.activated.connect(self.main.on_data_change)
                 combobox.addItems(data)
                 layout.addWidget(combobox, height, 2)
 
@@ -67,7 +70,7 @@ class Operation(QtGui.QWidget):
             if type(widget) is QtGui.QCheckBox:
                 widget.setChecked(bool(value))
             elif type(widget) is QtGui.QLineEdit:
-                widget.setText(value)
+                widget.setText(str(value))
             elif type(widget) is QtGui.QComboBox:
                 index = widget.findText(value)
                 widget.setCurrentIndex(index)
@@ -100,13 +103,13 @@ class Operations(QtGui.QDialog):
             'crop':         [Data.crop, [('textbox', 'Left', '0'), ('textbox', 'Right', '-1'), ('textbox', 'Bottom', '0'), ('textbox', 'Top', '-1')]],
             'dderiv':       [Data.dderiv, [('textbox', 'Theta', '0')]],
             'equalize':     [Data.equalize],
-            'even odd':     [Data.even_odd],
+            'even odd':     [Data.even_odd, [('checkbox', 'Even', True)]],
             'flip':         [Data.flip, [('checkbox', 'X Axis', False), ('checkbox', 'Y Axis', False)]],
             'gradmag':      [Data.gradmag],
             'highpass':     [Data.highpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
-            'hist2d':       [Data.hist2d, [('combobox', 'Axis', ['Horizontal', 'Vertical']), ('textbox', 'Min', '0'), ('textbox', 'Max', '-1'), ('textbox', 'Bins', '20')]],
-            'interp grid':  [Data.interp_grid],
-            'log':          [Data.log],
+            'hist2d':       [Data.hist2d, [('textbox', 'Min', '0'), ('textbox', 'Max', '-1'), ('textbox', 'Bins', '0')]],
+            'interp grid':  [Data.interp_grid, [('textbox', 'Width', '100'), ('textbox', 'Height', '100')]],
+            'log':          [Data.log, [('checkbox', 'Subtract offset', False), ('textbox', 'New min', '0.0001')]],
             'lowpass':      [Data.lowpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
             'neg':          [Data.neg],
             'norm columns': [Data.norm_columns],
@@ -201,7 +204,7 @@ class Operations(QtGui.QDialog):
 
             item = QtGui.QListWidgetItem(name)
             item.setCheckState(QtCore.Qt.Checked)
-            operation = Operation(name, *self.items[name])
+            operation = Operation(name, self.main, *self.items[name])
             item.setData(QtCore.Qt.UserRole, QtCore.QVariant(operation))
             self.stack.addWidget(operation)
 
@@ -302,6 +305,10 @@ class Operations(QtGui.QDialog):
                 continue
 
             operation = item.data(QtCore.Qt.UserRole).toPyObject()
+
+            if operation.name == 'hist2d' and int(operation.get_parameter('Bins')) == 0:
+                bins = np.round(np.sqrt(copy.values.shape[0]))
+                operation.set_parameter('Bins', int(bins))
 
             kwargs = operation.get_parameters()[1]
             kwargs['linecut_type'] = self.main.line_type
