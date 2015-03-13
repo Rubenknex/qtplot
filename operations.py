@@ -101,13 +101,13 @@ class Operations(QtGui.QDialog):
             'abs':          [Data.abs],
             'autoflip':     [Data.autoflip],
             'crop':         [Data.crop, [('textbox', 'Left', '0'), ('textbox', 'Right', '-1'), ('textbox', 'Bottom', '0'), ('textbox', 'Top', '-1')]],
-            'dderiv':       [Data.dderiv, [('textbox', 'Theta', '0')]],
+            'dderiv':       [Data.dderiv, [('textbox', 'Theta', '0'), ('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
             'equalize':     [Data.equalize],
             'even odd':     [Data.even_odd, [('checkbox', 'Even', True)]],
             'flip':         [Data.flip, [('checkbox', 'X Axis', False), ('checkbox', 'Y Axis', False)]],
-            'gradmag':      [Data.gradmag],
+            'gradmag':      [Data.gradmag, [('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
             'highpass':     [Data.highpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
-            'hist2d':       [Data.hist2d, [('textbox', 'Min', '0'), ('textbox', 'Max', '-1'), ('textbox', 'Bins', '0')]],
+            'hist2d':       [Data.hist2d, [('textbox', 'Min', ''), ('textbox', 'Max', ''), ('textbox', 'Bins', '')]],
             'interp grid':  [Data.interp_grid, [('textbox', 'Width', '100'), ('textbox', 'Height', '100')]],
             'log':          [Data.log, [('checkbox', 'Subtract offset', False), ('textbox', 'New min', '0.0001')]],
             'lowpass':      [Data.lowpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
@@ -252,7 +252,8 @@ class Operations(QtGui.QDialog):
 
         for name, operation in operations.iteritems():
             item = QtGui.QListWidgetItem(name)
-            op = Operation(name, *self.items[name])
+            item.setCheckState(QtCore.Qt.Checked)
+            op = Operation(name, self.main, *self.items[name])
             op.set_parameters(operation)
             item.setData(QtCore.Qt.UserRole, QtCore.QVariant(op))
             self.stack.addWidget(op)
@@ -306,9 +307,15 @@ class Operations(QtGui.QDialog):
 
             operation = item.data(QtCore.Qt.UserRole).toPyObject()
 
-            if operation.name == 'hist2d' and int(operation.get_parameter('Bins')) == 0:
-                bins = np.round(np.sqrt(copy.values.shape[0]))
-                operation.set_parameter('Bins', int(bins))
+            if operation.name == 'hist2d':
+                if operation.get_parameter('Bins') == '':
+                    bins = np.round(np.sqrt(copy.values.shape[0]))
+                    operation.set_parameter('Bins', int(bins))
+
+                if operation.get_parameter('Min') == '':
+                    min, max = np.min(copy.values), np.max(copy.values)
+                    operation.set_parameter('Min', min)
+                    operation.set_parameter('Max', max)
 
             kwargs = operation.get_parameters()[1]
             kwargs['linecut_type'] = self.main.line_type

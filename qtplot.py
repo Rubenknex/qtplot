@@ -403,7 +403,7 @@ class Window(QtGui.QMainWindow):
         self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap=cmap)
         if self.data.tri != None:
             print 'plotting delaunay'
-            #delaunay_plot_2d(self.data.tri, self.ax)
+            delaunay_plot_2d(self.data.tri, self.ax)
 
         if self.cmap_change:
             self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))

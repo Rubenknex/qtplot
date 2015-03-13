@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy import ndimage
 from scipy.spatial import qhull
+from scipy.interpolate import griddata
 import math
 import matplotlib.pyplot as plt
 
@@ -53,10 +54,8 @@ def create_kernel(x_dev, y_dev, cutoff, distr):
     x = np.linspace(-hx, hx, hx * 2 + 1) / x_dev
     y = np.linspace(-hy, hy, hy * 2 + 1) / y_dev
 
-    if x.size == 1:
-        x = np.zeros(1)
-    if y.size == 1:
-        y = np.zeros(1)
+    if x.size == 1: x = np.zeros(1)
+    if y.size == 1: y = np.zeros(1)
     
     xv, yv = np.meshgrid(x, y)
 
@@ -100,7 +99,8 @@ class Data:
         temp = np.hstack((bary, 1-bary.sum(axis=1, keepdims=True)))
 
         values = np.einsum('nj,nj->n', np.take(self.no_nan_values, indices), temp)
-        values[np.any(temp < 0, axis=1)] = 0
+        #print values[np.any(temp<0, axis=1)]
+        #values[np.any(temp < 0, axis=1)] = np.nan
 
         return values
 
@@ -217,8 +217,10 @@ class Data:
         x1, x2 = int(kwargs.get('Left')), int(kwargs.get('Right'))
         y1, y2 = int(kwargs.get('Bottom')), int(kwargs.get('Top'))
 
-        if x2 == -1: x2 = data.values.shape[1] 
-        if y2 == -1: y2 = data.values.shape[0] 
+        if x2 < 0: 
+            x2 = data.values.shape[1] + x2 + 1
+        if y2 < 0: 
+            y2 = data.values.shape[0] + y2 + 1
 
         copy = data.copy()
         copy.x_coords = copy.x_coords[y1:y2,x1:x2]
@@ -229,16 +231,26 @@ class Data:
 
     def dderiv(data, **kwargs):
         """Calculate the component of the gradient in a specific direction."""
-        xcomp = Data.xderiv(data)
-        ycomp = Data.yderiv(data)
-
-        xvalues = xcomp.values[:-1,:]
-        yvalues = ycomp.values[:,:-1]
-
         theta = np.radians(float(kwargs.get('Theta')))
         xdir, ydir = np.cos(theta), np.sin(theta)
+        method = str(kwargs.get('Method'))
 
-        return Data(xcomp.x_coords[:-1,:], ycomp.y_coords[:,:-1], xvalues * xdir + yvalues * ydir, data.equidistant)
+        if method == 'midpoint':
+            xcomp = Data.xderiv(data, Method=method)
+            ycomp = Data.yderiv(data, Method=method)
+
+            xvalues = xcomp.values[:-1,:]
+            yvalues = ycomp.values[:,:-1]
+
+            return Data(xcomp.x_coords[:-1,:], ycomp.y_coords[:,:-1], xvalues * xdir + yvalues * ydir, data.equidistant)
+        elif method == '2nd order central diff':
+            xcomp = Data.xderiv(data, Method=method)
+            ycomp = Data.yderiv(data, Method=method)
+
+            xvalues = xcomp.values[1:-1,:]
+            yvalues = ycomp.values[:,1:-1]
+
+            return Data(xcomp.x_coords[1:-1,:], ycomp.y_coords[:,1:-1], xvalues * xdir + yvalues * ydir, data.equidistant)
 
     def equalize(data, **kwargs):
         """Perform histogramic equalization on the image."""
@@ -285,13 +297,24 @@ class Data:
 
     def gradmag(data, **kwargs):
         """Calculate the length of every gradient vector."""
-        xcomp = Data.xderiv(data)
-        ycomp = Data.yderiv(data)
+        method = str(kwargs.get('Method'))
 
-        xvalues = xcomp.values[:-1,:]
-        yvalues = ycomp.values[:,:-1]
+        if method == 'midpoint':
+            xcomp = Data.xderiv(data, Method=method)
+            ycomp = Data.yderiv(data, Method=method)
 
-        return Data(xcomp.x_coords[:-1,:], ycomp.y_coords[:,:-1], np.sqrt(xvalues**2 + yvalues**2), data.equidistant)
+            xvalues = xcomp.values[:-1,:]
+            yvalues = ycomp.values[:,:-1]
+
+            return Data(xcomp.x_coords[:-1,:], ycomp.y_coords[:,:-1], np.sqrt(xvalues**2 + yvalues**2), data.equidistant)
+        elif method == '2nd order central diff':
+            xcomp = Data.xderiv(data, Method=method)
+            ycomp = Data.yderiv(data, Method=method)
+
+            xvalues = xcomp.values[1:-1,:]
+            yvalues = ycomp.values[:,1:-1]
+
+            return Data(xcomp.x_coords[1:-1,:], ycomp.y_coords[:,1:-1], np.sqrt(xvalues**2 + yvalues**2), data.equidistant)
 
     def highpass(data, **kwargs):
         """Perform a high-pass filter."""
@@ -312,9 +335,6 @@ class Data:
         """Convert every column into a histogram, default bin amount is sqrt(n)."""
         hmin, hmax = float(kwargs.get('Min')), float(kwargs.get('Max'))
         hbins = int(kwargs.get('Bins'))
-        
-        if hmin == -1: hmin = np.min(data.values)
-        if hmax == -1: hmax = np.max(data.values)
 
         hist = np.apply_along_axis(lambda x: np.histogram(x, bins=hbins, range=(hmin, hmax))[0], 0, data.values)
 
@@ -336,6 +356,7 @@ class Data:
         xv, yv = np.meshgrid(x, y)
 
         values = data.interpolate(np.column_stack((xv.flatten(), yv.flatten())))
+        #values = griddata(np.column_stack((data.x_coords.flatten(), data.y_coords.flatten())), data.values.flatten(), np.column_stack((xv.flatten(), yv.flatten())))
 
         return Data(xv, yv, np.reshape(values, xv.shape))
 
