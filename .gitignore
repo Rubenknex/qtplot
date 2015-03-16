@@ -1,7 +1,5 @@
 test_data/
 
-test.py
-
 *.xlsx
 *.pptx
 *.pyc
