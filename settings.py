@@ -45,6 +45,8 @@ class Settings(QtGui.QDialog):
             pass
 
     def fill_tree(self, lines):
+        self.tree.clear()
+
         widgets = []
 
         for line in lines:
