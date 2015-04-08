@@ -43,8 +43,12 @@ class Linecut(QtGui.QDialog):
         hbox = QtGui.QHBoxLayout()
 
         self.b_save = QtGui.QPushButton('Copy data to clipboard', self)
-        self.b_save.clicked.connect(self.on_save_data)
+        self.b_save.clicked.connect(self.on_clipboard)
         hbox.addWidget(self.b_save)
+
+        self.b_save_dat = QtGui.QPushButton('Save data...', self)
+        self.b_save_dat.clicked.connect(self.on_save)
+        hbox.addWidget(self.b_save_dat)
 
         self.b_copy = QtGui.QPushButton('Copy figure to clipboard (Ctrl+C)', self)
         self.b_copy.clicked.connect(self.on_copy_figure)
@@ -59,7 +63,7 @@ class Linecut(QtGui.QDialog):
 
         self.move(800, 100)
 
-    def on_save_data(self):
+    def on_clipboard(self):
         if self.x == None or self.y == None:
             return
 
@@ -72,6 +76,17 @@ class Linecut(QtGui.QDialog):
         if filename != '':
             data.to_csv(filename)
         """
+
+    def on_save(self):
+        if self.x == None or self.y == None:
+            return
+
+        path = os.path.dirname(os.path.realpath(__file__))
+        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save file', path, '.dat')
+
+        if filename != '':
+            data = pd.DataFrame(np.column_stack((self.x, self.y)), columns=[self.xlabel, self.ylabel])
+            data.to_csv(filename, sep='\t', index=False)
 
     def on_copy_figure(self):
         path = os.path.dirname(os.path.realpath(__file__))

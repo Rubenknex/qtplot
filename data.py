@@ -99,8 +99,9 @@ class Data:
         temp = np.hstack((bary, 1-bary.sum(axis=1, keepdims=True)))
 
         values = np.einsum('nj,nj->n', np.take(self.no_nan_values, indices), temp)
+
         #print values[np.any(temp<0, axis=1)]
-        #values[np.any(temp < 0, axis=1)] = np.nan
+        values[np.any(temp < 0.0, axis=1)] = np.nan
 
         return values
 
@@ -439,15 +440,15 @@ class Data:
 
     def sub_linecut(data, **kwargs):
         """Subtract a horizontal/vertical linecut from every row/column."""
-        linecut_type = kwargs.get('linecut_type')
-        linecut_coord = kwargs.get('linecut_coord')
+        linecut_type = kwargs.get('Horizontal')
+        linecut_coord = float(kwargs.get('Row/Column'))
 
         if linecut_type == None:
             return data
 
-        if linecut_type == 'horizontal':
+        if linecut_type:
             x, y = data.get_row_at(linecut_coord)
-        elif linecut_type == 'vertical':
+        else:
             x, y = data.get_column_at(linecut_coord)
             y = y[:,np.newaxis]
 

@@ -23,32 +23,41 @@ class Operation(QtGui.QWidget):
         height = 1
 
         for widget in widgets:
-            typ, name, data = widget
+            typ, w_name, data = widget
 
             if typ == 'checkbox':
-                checkbox = QtGui.QCheckBox(name)
+                checkbox = QtGui.QCheckBox(w_name)
                 checkbox.setChecked(data)
                 checkbox.stateChanged.connect(self.main.on_data_change)
                 layout.addWidget(checkbox, height, 2)
 
-                self.items[name] = checkbox
+                self.items[w_name] = checkbox
             elif typ == 'textbox':
                 lineedit = QtGui.QLineEdit(data)
                 lineedit.setValidator(QtGui.QDoubleValidator())
-                layout.addWidget(QtGui.QLabel(name), height, 1)
+                layout.addWidget(QtGui.QLabel(w_name), height, 1)
                 layout.addWidget(lineedit, height, 2)
 
-                self.items[name] = lineedit
+                self.items[w_name] = lineedit
             elif typ == 'combobox':
-                layout.addWidget(QtGui.QLabel(name), height, 1)
+                layout.addWidget(QtGui.QLabel(w_name), height, 1)
                 combobox = QtGui.QComboBox()
                 combobox.activated.connect(self.main.on_data_change)
                 combobox.addItems(data)
                 layout.addWidget(combobox, height, 2)
 
-                self.items[name] = combobox
+                self.items[w_name] = combobox
 
             height += 1
+
+        if name == 'sub linecut':
+            b_current = QtGui.QPushButton('Get current linecut')
+            b_current.clicked.connect(self.on_current_linecut)
+            layout.addWidget(b_current, height, 2)
+
+    def on_current_linecut(self):
+        self.items['Horizontal'].setChecked(self.main.line_type == 'horizontal')
+        self.items['Row/Column'].setText(str(self.main.line_coord))
 
     def get_parameter(self, name, cast=str):
         """Return the casted value of a property."""
@@ -119,7 +128,7 @@ class Operations(QtGui.QDialog):
             'power':        [Data.power, [('textbox', 'Power', '1')]],
             'scale axes':   [Data.scale_axes, [('textbox', 'X Scale', '1'), ('textbox', 'Y Scale', '1')]],
             'scale data':   [Data.scale_data, [('textbox', 'Factor', '1')]],
-            'sub linecut':  [Data.sub_linecut],
+            'sub linecut':  [Data.sub_linecut, [('checkbox', 'Horizontal', False), ('textbox', 'Row/Column', '')]],
             'sub plane':    [Data.sub_plane, [('textbox', 'X Slope', '0'), ('textbox', 'Y Slope', '0')]],
             'xderiv':       [Data.xderiv, [('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
             'yderiv':       [Data.yderiv, [('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
@@ -316,10 +325,15 @@ class Operations(QtGui.QDialog):
                     min, max = np.min(copy.values), np.max(copy.values)
                     operation.set_parameter('Min', min)
                     operation.set_parameter('Max', max)
+            elif operation.name == 'sub linecut':
+                if self.main.line_coord != None and self.main.line_type != None:
+                    if operation.get_parameter('Row/Column') == '':
+                        operation.set_parameter('Horizontal', self.main.line_type == 'horizontal')
+                        operation.set_parameter('Row/Column', self.main.line_coord)
 
             kwargs = operation.get_parameters()[1]
-            kwargs['linecut_type'] = self.main.line_type
-            kwargs['linecut_coord'] = self.main.line_coord
+            #kwargs['linecut_type'] = self.main.line_type
+            #kwargs['linecut_coord'] = self.main.line_coord
 
             copy = operation.func(copy, **kwargs)
 

@@ -16,6 +16,7 @@ from scipy.spatial import qhull, delaunay_plot_2d
 from data import DatFile, Data
 from linecut import Linecut, FixedOrderFormatter
 from operations import Operations
+from settings import Settings
 
 """
 TODO
@@ -35,6 +36,7 @@ class Window(QtGui.QMainWindow):
         
         self.linecut = lc_window
         self.operations = op_window
+        self.settings = Settings()
 
         self.fig, self.ax = plt.subplots()
         self.cb = None
@@ -69,110 +71,145 @@ class Window(QtGui.QMainWindow):
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_motion)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
+        # Top row buttons
+        hbox = QtGui.QHBoxLayout()
+        
         self.b_load = QtGui.QPushButton('Load DAT...')
         self.b_load.clicked.connect(self.on_load_dat)
+        hbox.addWidget(self.b_load)
+
         self.b_refresh = QtGui.QPushButton('Refresh')
         self.b_refresh.clicked.connect(self.on_refresh)
+        hbox.addWidget(self.b_refresh)
+
         self.b_swap_axes = QtGui.QPushButton('Swap axes', self)
         self.b_swap_axes.clicked.connect(self.on_swap_axes)
+        hbox.addWidget(self.b_swap_axes)
+
         self.b_swap = QtGui.QPushButton('Swap order', self)
         self.b_swap.clicked.connect(self.on_swap_order)
+        hbox.addWidget(self.b_swap)
+
         self.b_linecut = QtGui.QPushButton('Linecut')
         self.b_linecut.clicked.connect(self.linecut.show_window)
+        hbox.addWidget(self.b_linecut)
+
         self.b_operations = QtGui.QPushButton('Operations')
         self.b_operations.clicked.connect(self.operations.show_window)
+        hbox.addWidget(self.b_operations)
+
+        # Subtracting series R
+        r_hbox = QtGui.QHBoxLayout()
 
         lbl_sub = QtGui.QLabel('Sub series R:')
+        r_hbox.addWidget(lbl_sub)
+
         lbl_v = QtGui.QLabel('V:')
         lbl_v.setMaximumWidth(20)
+        r_hbox.addWidget(lbl_v)
+
         self.cb_v = QtGui.QComboBox(self)
+        r_hbox.addWidget(self.cb_v)
+
         lbl_i = QtGui.QLabel('I:')
         lbl_i.setMaximumWidth(20)
+        r_hbox.addWidget(lbl_i)
+
         self.cb_i = QtGui.QComboBox(self)
+        r_hbox.addWidget(self.cb_i)
+
         lbl_r = QtGui.QLabel('R:')
         lbl_r.setMaximumWidth(20)
+        r_hbox.addWidget(lbl_r)
+
         self.le_r = QtGui.QLineEdit(self)
         self.le_r.setMaximumWidth(100)
+        r_hbox.addWidget(self.le_r)
+
         self.b_ok = QtGui.QPushButton('Ok', self)
         self.b_ok.clicked.connect(self.on_sub_series_r)
         self.b_ok.setMaximumWidth(50)
+        r_hbox.addWidget(self.b_ok)
+
+        # Selecting columns and orders
+        grid = QtGui.QGridLayout()
 
         lbl_x = QtGui.QLabel("X:", self)
+        grid.addWidget(lbl_x, 1, 1)
+
         self.cb_x = QtGui.QComboBox(self)
         self.cb_x.activated.connect(self.on_data_change)
+        grid.addWidget(self.cb_x, 1, 2)
+
         lbl_order_x = QtGui.QLabel('X Order: ', self)
+        grid.addWidget(lbl_order_x, 1, 3)
+
         self.cb_order_x = QtGui.QComboBox(self)
         self.cb_order_x.activated.connect(self.on_data_change)
+        grid.addWidget(self.cb_order_x, 1, 4)
 
         lbl_y = QtGui.QLabel("Y:", self)
+        grid.addWidget(lbl_y, 2, 1)
+
         self.cb_y = QtGui.QComboBox(self)
         self.cb_y.activated.connect(self.on_data_change)
+        grid.addWidget(self.cb_y, 2, 2)
+
         lbl_order_y = QtGui.QLabel('Y Order: ', self)
+        grid.addWidget(lbl_order_y, 2, 3)
+
         self.cb_order_y = QtGui.QComboBox(self)
         self.cb_order_y.activated.connect(self.on_data_change)
+        grid.addWidget(self.cb_order_y, 2, 4)
 
         lbl_d = QtGui.QLabel("Data:", self)
+        grid.addWidget(lbl_d, 3, 1)
+
         self.cb_z = QtGui.QComboBox(self)
         self.cb_z.activated.connect(self.on_data_change)
+        grid.addWidget(self.cb_z, 3, 2)
+
+        # Colormap
+        hbox_gamma = QtGui.QHBoxLayout()
+        
+        self.cb_reset_cmap = QtGui.QCheckBox('Reset on plot')
+        self.cb_reset_cmap.setCheckState(QtCore.Qt.Checked)
+        hbox_gamma.addWidget(self.cb_reset_cmap)
 
         self.le_min = QtGui.QLineEdit(self)
         self.le_min.setMaximumWidth(100)
         self.le_min.returnPressed.connect(self.on_cmap_changed)
+        hbox_gamma.addWidget(self.le_min)
 
         self.s_gamma = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.s_gamma.setMinimum(0)
         self.s_gamma.setMaximum(100)
         self.s_gamma.setValue(50)
         self.s_gamma.valueChanged.connect(self.on_cmap_changed)
+        hbox_gamma.addWidget(self.s_gamma)
 
         self.le_max = QtGui.QLineEdit(self)
         self.le_max.setMaximumWidth(100)
         self.le_max.returnPressed.connect(self.on_cmap_changed)
+        hbox_gamma.addWidget(self.le_max)
+
+        # Bottom row buttons
+        hbox4 = QtGui.QHBoxLayout()
 
         self.b_copy_colorplot = QtGui.QPushButton('Copy figure to clipboard (Ctrl+C)', self)
         self.b_copy_colorplot.clicked.connect(self.on_copy_figure)
+        hbox4.addWidget(self.b_copy_colorplot)
         QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_figure)
 
-        hbox = QtGui.QHBoxLayout()
-        hbox.addWidget(self.b_load)
-        hbox.addWidget(self.b_refresh)
-        hbox.addWidget(self.b_swap_axes)
-        hbox.addWidget(self.b_swap)
-        hbox.addWidget(self.b_linecut)
-        hbox.addWidget(self.b_operations)
+        self.b_save_matrix = QtGui.QPushButton('Save data...')
+        self.b_save_matrix.clicked.connect(self.on_save_matrix)
+        hbox4.addWidget(self.b_save_matrix)
 
-        r_hbox = QtGui.QHBoxLayout()
-        r_hbox.addWidget(lbl_sub)
-        r_hbox.addWidget(lbl_v)
-        r_hbox.addWidget(self.cb_v)
-        r_hbox.addWidget(lbl_i)
-        r_hbox.addWidget(self.cb_i)
-        r_hbox.addWidget(lbl_r)
-        r_hbox.addWidget(self.le_r)
-        r_hbox.addWidget(self.b_ok)
+        self.b_settings = QtGui.QPushButton('Settings')
+        self.b_settings.clicked.connect(self.settings.show_window)
+        hbox4.addWidget(self.b_settings)
 
-        grid = QtGui.QGridLayout()
-        grid.addWidget(lbl_x, 1, 1)
-        grid.addWidget(self.cb_x, 1, 2)
-        grid.addWidget(lbl_order_x, 1, 3)
-        grid.addWidget(self.cb_order_x, 1, 4)
-
-        grid.addWidget(lbl_y, 2, 1)
-        grid.addWidget(self.cb_y, 2, 2)
-        grid.addWidget(lbl_order_y, 2, 3)
-        grid.addWidget(self.cb_order_y, 2, 4)
-
-        grid.addWidget(lbl_d, 3, 1)
-        grid.addWidget(self.cb_z, 3, 2)
-
-        hbox_gamma = QtGui.QHBoxLayout()
-        hbox_gamma.addWidget(self.le_min)
-        hbox_gamma.addWidget(self.s_gamma)
-        hbox_gamma.addWidget(self.le_max)
-
-        hbox4 = QtGui.QHBoxLayout()
-        hbox4.addWidget(self.b_copy_colorplot)
-
+        # Main vertical box
         vbox = QtGui.QVBoxLayout(self.main_widget)
         vbox.addWidget(self.toolbar)
         vbox.addWidget(self.canvas)
@@ -235,6 +272,7 @@ class Window(QtGui.QMainWindow):
 
     def load_file(self, filename):
         self.dat_file = DatFile(filename)
+        self.settings.load_file(filename)
 
         if filename != self.filename:
             path, self.name = os.path.split(filename)
@@ -251,7 +289,8 @@ class Window(QtGui.QMainWindow):
         self.data = None
         self.pcolor_data = None
 
-        self.on_data_change()
+        #self.on_data_change()
+        self.plot_2d_data(initial_plot=True)
 
     def on_load_dat(self, event):
         filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
@@ -298,7 +337,7 @@ class Window(QtGui.QMainWindow):
 
     def on_cmap_changed(self):
         self.cmap_change = True
-        self.plot_2d_data()
+        self.plot_2d_data(data_change=False)
 
     def on_mouse_press(self, event):
         if not event.inaxes or self.dat_file == None:
@@ -340,7 +379,7 @@ class Window(QtGui.QMainWindow):
     def on_data_change(self):
         if self.dat_file is not None:
             self.generate_data()
-            self.plot_2d_data()
+            self.plot_2d_data(initial_plot=False)
             self.plot_linecut()
 
     def on_copy_figure(self):
@@ -350,6 +389,15 @@ class Window(QtGui.QMainWindow):
 
         img = QtGui.QImage(path)
         QtGui.QApplication.clipboard().setImage(img)
+
+    def on_save_matrix(self):
+        path = os.path.dirname(os.path.realpath(__file__))
+        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save file', path, '.dat')
+
+        if filename != '' and self.dat_file != None:
+            mat = np.dstack((self.data.x_coords, self.data.y_coords, self.data.values))
+
+            mat.dump(str(filename))
 
     def get_axis_names(self):
         x_name = str(self.cb_x.currentText())
@@ -374,13 +422,9 @@ class Window(QtGui.QMainWindow):
         else:
             self.status_bar.showMessage("")
 
-    def plot_2d_data(self):
+    def plot_2d_data(self, initial_plot=False, data_change=True):
         if self.dat_file is None:
             return
-
-        cmap = mpl.cm.get_cmap('seismic')
-        value = (self.s_gamma.value() / 100.0)
-        cmap.set_gamma(math.exp(value * 5) / 10.0)
 
         self.ax.clear()
 
@@ -392,7 +436,6 @@ class Window(QtGui.QMainWindow):
         # Set the axis range to increase upwards or to the left, and reverse if necessary
         self.ax.set_xlim(sorted(self.ax.get_xlim()))
         self.ax.set_ylim(sorted(self.ax.get_ylim()))
-
         x_flip, y_flip = self.data.is_flipped()
         if x_flip:
             self.ax.invert_xaxis()
@@ -400,26 +443,49 @@ class Window(QtGui.QMainWindow):
             self.ax.invert_yaxis()
 
         #self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap=cmap, edgecolors='black')
-        self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap=cmap)
-        if self.data.tri != None:
-            print 'plotting delaunay'
-            delaunay_plot_2d(self.data.tri, self.ax)
+        self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap='seismic')
+        #if self.data.tri != None:
+        #    print 'plotting delaunay'
+        #    delaunay_plot_2d(self.data.tri, self.ax)
 
-        if self.cmap_change:
-            self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
-        else:
+        reset_cmap = self.cb_reset_cmap.checkState() == QtCore.Qt.Checked
+        
+        print 'Replotting: ', initial_plot, data_change
+        
+        if initial_plot:
             cm_min, cm_max = self.quadmesh.get_clim()
             self.le_min.setText('%.2e' % cm_min)
             self.le_max.setText('%.2e' % cm_max)
 
             self.s_gamma.setValue(50)
-        
+        elif data_change:
+            print 'data change'
+            if reset_cmap:
+                cm_min, cm_max = self.quadmesh.get_clim()
+                self.le_min.setText('%.2e' % cm_min)
+                self.le_max.setText('%.2e' % cm_max)
+
+                self.s_gamma.setValue(50)
+            else:
+                print 'plotting with existing cmap'
+                gamma = (self.s_gamma.value() / 100.0)
+                self.quadmesh.get_cmap().set_gamma(math.exp(gamma * 5) / 10.0)
+
+                self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
+        else:
+            gamma = (self.s_gamma.value() / 100.0)
+            self.quadmesh.get_cmap().set_gamma(math.exp(gamma * 5) / 10.0)
+
+            self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
+
         self.ax.axis('tight')
 
         # Create a colorbar, if there is already one draw it in the existing place
         if self.cb:
-            self.cb.ax.clear()
-            self.cb = self.fig.colorbar(self.quadmesh, cax=self.cb.ax)
+            #self.cb.ax.clear()
+            #self.cb.set_clim()
+            self.cb.update_bruteforce(self.quadmesh)
+            #self.cb = self.fig.colorbar(self.quadmesh, cax=self.cb.ax)
         else:
             self.cb = self.fig.colorbar(self.quadmesh)
 
@@ -489,13 +555,16 @@ class Window(QtGui.QMainWindow):
         if len(self.ax.lines) > 0:
             self.ax.lines.pop(0)
 
+        self.cmap_change = True
+
         # Very slow, maybe search for faster way
         # http://stackoverflow.com/questions/13552345/how-to-disable-multiple-auto-redrawing-at-resizing-widgets-in-pyqt
-        self.plot_2d_data()
+        self.plot_2d_data(data_change=False)
 
     def closeEvent(self, event):
         self.linecut.close()
         self.operations.close()
+        self.settings.close()
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
