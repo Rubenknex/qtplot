@@ -31,6 +31,11 @@ class Linecut(QtGui.QDialog):
 
         self.fig, self.ax = plt.subplots()
         self.x, self.y = None, None
+        self.line = self.ax.plot(0, 0, color='red', linewidth=0.5)[0]
+
+        self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
+        self.ax.yaxis.set_major_formatter(FixedOrderFormatter())
+        #self.ax.autoscale()
 
         self.init_ui()
 
@@ -41,6 +46,10 @@ class Linecut(QtGui.QDialog):
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
         hbox = QtGui.QHBoxLayout()
+
+        self.cb_reset_cmap = QtGui.QCheckBox('Reset on plot')
+        self.cb_reset_cmap.setCheckState(QtCore.Qt.Checked)
+        hbox.addWidget(self.cb_reset_cmap)
 
         self.b_save = QtGui.QPushButton('Copy data to clipboard', self)
         self.b_save.clicked.connect(self.on_clipboard)
@@ -62,6 +71,17 @@ class Linecut(QtGui.QDialog):
         self.setLayout(layout)
 
         self.move(800, 100)
+
+    def on_reset(self):
+        if self.x != None and self.y != None:
+            minx, maxx = np.min(self.x), np.max(self.x)
+            miny, maxy = np.min(self.y), np.max(self.y)
+
+            xdiff = (maxx - minx) * .1
+            ydiff = (maxy - miny) * .1
+
+            self.ax.axis([minx - xdiff, maxx + xdiff, miny - ydiff, maxy + ydiff])
+            self.canvas.draw()
 
     def on_clipboard(self):
         if self.x == None or self.y == None:
@@ -100,21 +120,25 @@ class Linecut(QtGui.QDialog):
         self.xlabel, self.ylabel = xlabel, ylabel
         self.x, self.y = x, y
 
-        if len(self.ax.lines) > 0:
-            self.ax.lines.pop(0)
-
-        self.ax.plot(x, y, color='red', linewidth=0.5)
+        self.line.set_xdata(x)
+        self.line.set_ydata(y)
 
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
 
-        self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
-        self.ax.yaxis.set_major_formatter(FixedOrderFormatter())
+        #self.ax.relim()
+        #self.ax.autoscale_view()
 
-        self.ax.relim()
-        self.ax.autoscale_view()
-        
+        if self.cb_reset_cmap.checkState() == QtCore.Qt.Checked:
+            minx, maxx = np.min(x), np.max(x)
+            miny, maxy = np.min(y), np.max(y)
+
+            xdiff = (maxx - minx) * .05
+            ydiff = (maxy - miny) * .05
+
+            self.ax.axis([minx - xdiff, maxx + xdiff, miny - ydiff, maxy + ydiff])
+
         self.ax.set_aspect('auto')
         self.fig.tight_layout()
 
