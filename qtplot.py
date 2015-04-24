@@ -270,19 +270,14 @@ class Window(QtGui.QMainWindow):
         if reset:
             config = ConfigParser.RawConfigParser()
             path = os.path.dirname(os.path.realpath(__file__))
-            print path
             config.read(os.path.join(path, 'qtplot.config'))
 
             combo_boxes = [self.cb_x, self.cb_order_x, self.cb_y, self.cb_order_y, self.cb_z]
             names = ['X', 'X Order', 'Y', 'Y Order', 'Data']
             default_indices = [0, 0, 1, 1, 3]
 
-            print config.has_section('Settings')
-
             if config.has_section('Settings'):
                 indices = [cb.findText(config.get('Settings', names[i])) for i,cb in enumerate(combo_boxes)]
-
-                print indices
 
                 for i, index in enumerate(indices):
                     if index != -1:
@@ -292,14 +287,6 @@ class Window(QtGui.QMainWindow):
             else:
                 for i, index in enumerate(default_indices):
                     combo_boxes[i].setCurrentIndex(index)
-
-            """
-            self.cb_x.setCurrentIndex(0)
-            self.cb_order_x.setCurrentIndex(0)
-            self.cb_y.setCurrentIndex(1)
-            self.cb_order_y.setCurrentIndex(1)
-            self.cb_z.setCurrentIndex(3)
-            """
 
     def load_file(self, filename):
         self.dat_file = DatFile(filename)
@@ -607,7 +594,8 @@ class Window(QtGui.QMainWindow):
             config.set('Settings', 'Y Order', order_y)
             config.set('Settings', 'Data', data_name)
 
-            with open('qtplot.config', 'wb') as config_file:
+            path = os.path.dirname(os.path.realpath(__file__))
+            with open(os.path.join(path, 'qtplot.config'), 'wb') as config_file:
                 config.write(config_file)
 
 if __name__ == '__main__':
