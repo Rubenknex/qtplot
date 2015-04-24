@@ -1,3 +1,4 @@
+import ConfigParser
 import math
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -58,7 +59,7 @@ class Window(QtGui.QMainWindow):
 
         if filename is not None:
             self.load_file(filename)
-            self.update_ui()
+            #self.update_ui()
 
     def init_ui(self):
         self.setWindowTitle('qtplot')
@@ -169,6 +170,9 @@ class Window(QtGui.QMainWindow):
         self.cb_z.activated.connect(self.on_data_change)
         grid.addWidget(self.cb_z, 3, 2)
 
+        self.cb_save_default = QtGui.QCheckBox('Save as default columns')
+        grid.addWidget(self.cb_save_default, 3, 3)
+
         # Colormap
         hbox_gamma = QtGui.QHBoxLayout()
         
@@ -264,11 +268,38 @@ class Window(QtGui.QMainWindow):
         self.cb_z.setCurrentIndex(i)
 
         if reset:
+            config = ConfigParser.RawConfigParser()
+            path = os.path.dirname(os.path.realpath(__file__))
+            print path
+            config.read(os.path.join(path, 'qtplot.config'))
+
+            combo_boxes = [self.cb_x, self.cb_order_x, self.cb_y, self.cb_order_y, self.cb_z]
+            names = ['X', 'X Order', 'Y', 'Y Order', 'Data']
+            default_indices = [0, 0, 1, 1, 3]
+
+            print config.has_section('Settings')
+
+            if config.has_section('Settings'):
+                indices = [cb.findText(config.get('Settings', names[i])) for i,cb in enumerate(combo_boxes)]
+
+                print indices
+
+                for i, index in enumerate(indices):
+                    if index != -1:
+                        combo_boxes[i].setCurrentIndex(index)
+                    else:
+                        combo_boxes[i].setCurrentIndex(default_indices[i])
+            else:
+                for i, index in enumerate(default_indices):
+                    combo_boxes[i].setCurrentIndex(index)
+
+            """
             self.cb_x.setCurrentIndex(0)
             self.cb_order_x.setCurrentIndex(0)
             self.cb_y.setCurrentIndex(1)
             self.cb_order_y.setCurrentIndex(1)
             self.cb_z.setCurrentIndex(3)
+            """
 
     def load_file(self, filename):
         self.dat_file = DatFile(filename)
@@ -565,6 +596,19 @@ class Window(QtGui.QMainWindow):
         self.linecut.close()
         self.operations.close()
         self.settings.close()
+
+        if self.cb_save_default.checkState() == QtCore.Qt.Checked:
+            config = ConfigParser.RawConfigParser()
+            config.add_section('Settings')
+            x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
+            config.set('Settings', 'X', x_name)
+            config.set('Settings', 'X Order', order_x)
+            config.set('Settings', 'Y', y_name)
+            config.set('Settings', 'Y Order', order_y)
+            config.set('Settings', 'Data', data_name)
+
+            with open('qtplot.config', 'wb') as config_file:
+                config.write(config_file)
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)

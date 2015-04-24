@@ -131,6 +131,7 @@ class Linecut(QtGui.QDialog):
         #self.ax.autoscale_view()
 
         if self.cb_reset_cmap.checkState() == QtCore.Qt.Checked:
+            x, y = np.ma.masked_invalid(x), np.ma.masked_invalid(y)
             minx, maxx = np.min(x), np.max(x)
             miny, maxy = np.min(y), np.max(y)
 
