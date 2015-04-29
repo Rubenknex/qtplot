@@ -35,7 +35,6 @@ class Linecut(QtGui.QDialog):
 
         self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
         self.ax.yaxis.set_major_formatter(FixedOrderFormatter())
-        #self.ax.autoscale()
 
         self.init_ui()
 
@@ -89,13 +88,6 @@ class Linecut(QtGui.QDialog):
 
         data = pd.DataFrame(np.column_stack((self.x, self.y)), columns=[self.xlabel, self.ylabel])
         data.to_clipboard(index=False)
-        """
-        path = os.path.dirname(os.path.realpath(__file__))
-        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save file', path, '.operations')
-
-        if filename != '':
-            data.to_csv(filename)
-        """
 
     def on_save(self):
         if self.x == None or self.y == None:
@@ -126,9 +118,6 @@ class Linecut(QtGui.QDialog):
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
-
-        #self.ax.relim()
-        #self.ax.autoscale_view()
 
         if self.cb_reset_cmap.checkState() == QtCore.Qt.Checked:
             x, y = np.ma.masked_invalid(x), np.ma.masked_invalid(y)

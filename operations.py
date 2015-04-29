@@ -332,8 +332,6 @@ class Operations(QtGui.QDialog):
                         operation.set_parameter('Row/Column', self.main.line_coord)
 
             kwargs = operation.get_parameters()[1]
-            #kwargs['linecut_type'] = self.main.line_type
-            #kwargs['linecut_coord'] = self.main.line_coord
 
             copy = operation.func(copy, **kwargs)
 
