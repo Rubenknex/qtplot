@@ -19,15 +19,6 @@ from linecut import Linecut, FixedOrderFormatter
 from operations import Operations
 from settings import Settings
 
-"""
-TODO
-
-Things for next iteration:
-- Unit tests for every operation with a test dataset (uniform, slope, sin/cos, gaussian distr)
-- Correct handling of horizontal/vertical linecuts in a non equidistant plot
-- Linecut line number/orientation or current line
-"""
-
 class Window(QtGui.QMainWindow):
     """The main window of the qtplot application."""
     def __init__(self, lc_window, op_window, filename=None):
@@ -185,12 +176,21 @@ class Window(QtGui.QMainWindow):
         self.le_min.returnPressed.connect(self.on_cmap_changed)
         hbox_gamma.addWidget(self.le_min)
 
+        self.s_min = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.s_min.valueChanged.connect(self.on_min_changed)
+        hbox_gamma.addWidget(self.s_min)
+
         self.s_gamma = QtGui.QSlider(QtCore.Qt.Horizontal)
-        self.s_gamma.setMinimum(0)
+        self.s_gamma.setMinimum(-100)
         self.s_gamma.setMaximum(100)
-        self.s_gamma.setValue(50)
+        self.s_gamma.setValue(0)
         self.s_gamma.valueChanged.connect(self.on_cmap_changed)
         hbox_gamma.addWidget(self.s_gamma)
+
+        self.s_max = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.s_max.setValue(self.s_max.maximum())
+        self.s_max.valueChanged.connect(self.on_max_changed)
+        hbox_gamma.addWidget(self.s_max)
 
         self.le_max = QtGui.QLineEdit(self)
         self.le_max.setMaximumWidth(100)
@@ -353,6 +353,22 @@ class Window(QtGui.QMainWindow):
 
         self.update_ui(reset=False)
 
+    def on_min_changed(self, value):
+        if self.data != None:
+            min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
+            new = min + ((max - min) / 100) * value
+            self.le_min.setText('%.2e' % new)
+
+            self.on_cmap_changed()
+
+    def on_max_changed(self, value):
+        if self.data != None:
+            min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
+            new = min + ((max - min) / 100) * value
+            self.le_max.setText('%.2e' % new)
+
+            self.on_cmap_changed()
+
     def on_cmap_changed(self):
         self.cmap_change = True
         self.plot_2d_data(data_change=False)
@@ -460,7 +476,6 @@ class Window(QtGui.QMainWindow):
         if y_flip:
             self.ax.invert_yaxis()
 
-        #self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap=cmap, edgecolors='black')
         self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap='seismic')
         #self.quadmesh = self.ax.pcolorfast(*self.pcolor_data, cmap='seismic')
         #if self.data.tri != None:
@@ -469,31 +484,33 @@ class Window(QtGui.QMainWindow):
 
         reset_cmap = self.cb_reset_cmap.checkState() == QtCore.Qt.Checked
         
-        print 'Replotting: ', initial_plot, data_change
-        
         if initial_plot:
             cm_min, cm_max = self.quadmesh.get_clim()
             self.le_min.setText('%.2e' % cm_min)
-            self.le_max.setText('%.2e' % cm_max)
+            self.s_min.setValue(self.s_min.minimum())
 
-            self.s_gamma.setValue(50)
+            self.le_max.setText('%.2e' % cm_max)
+            self.s_max.setValue(self.s_max.maximum())
+
+            self.s_gamma.setValue(0)
         elif data_change:
-            print 'data change'
             if reset_cmap:
                 cm_min, cm_max = self.quadmesh.get_clim()
                 self.le_min.setText('%.2e' % cm_min)
+                self.s_min.setValue(self.s_min.minimum())
+            
                 self.le_max.setText('%.2e' % cm_max)
+                self.s_max.setValue(self.s_max.maximum())
 
-                self.s_gamma.setValue(50)
+                self.s_gamma.setValue(0)
             else:
-                print 'plotting with existing cmap'
-                gamma = (self.s_gamma.value() / 100.0)
-                self.quadmesh.get_cmap().set_gamma(math.exp(gamma * 5) / 10.0)
+                gamma = 10.0**(self.s_gamma.value()/100.0)
+                self.quadmesh.get_cmap().set_gamma(gamma)
 
                 self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
         else:
-            gamma = (self.s_gamma.value() / 100.0)
-            self.quadmesh.get_cmap().set_gamma(math.exp(gamma * 5) / 10.0)
+            gamma = 10.0**(self.s_gamma.value()/100.0)
+            self.quadmesh.get_cmap().set_gamma(gamma)
 
             self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
 
@@ -501,10 +518,7 @@ class Window(QtGui.QMainWindow):
 
         # Create a colorbar, if there is already one draw it in the existing place
         if self.cb:
-            #self.cb.ax.clear()
-            #self.cb.set_clim()
             self.cb.update_bruteforce(self.quadmesh)
-            #self.cb = self.fig.colorbar(self.quadmesh, cax=self.cb.ax)
         else:
             self.cb = self.fig.colorbar(self.quadmesh)
 
