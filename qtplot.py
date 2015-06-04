@@ -462,6 +462,7 @@ class Window(QtGui.QMainWindow):
 
         #self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap=cmap, edgecolors='black')
         self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap='seismic')
+        #self.quadmesh = self.ax.pcolorfast(*self.pcolor_data, cmap='seismic')
         #if self.data.tri != None:
         #    print 'plotting delaunay'
         #    delaunay_plot_2d(self.data.tri, self.ax)

@@ -120,9 +120,9 @@ class Data:
         -   Add a row/column at the end to satisfy the 1 larger requirements of pcolor
         """
         # If we are dealing with data that is 2-dimensional
-        if len(xc[0,:]) > 1:
+        if xc.shape[1] > 1:
             # Pad both sides with a column of interpolated coordinates
-            xc = np.hstack((xc[:,[0]] - (xc[:,[1]] - xc[:,[0]]), xc, xc[:,[-1]] + (xc[:,[-1]] - xc[:,[-2]])))
+            xc = np.hstack((2*xc[:,[0]] - xc[:,[1]], xc, 2*xc[:,[-1]] - xc[:,[-2]]))
             # Create center points by adding the differences divided by 2 to the original coordinates
             x = xc[:,:-1] + np.diff(xc, axis=1) / 2.0
             # Add a row to the bottom so that the x coords have the same dimension as the y coords
@@ -133,8 +133,8 @@ class Data:
             # Duplicate the only row/column so that pcolor has something to actually plot
             x = np.vstack((x, x[0]))
         
-        if len(yc[:,0]) > 1:
-            yc = np.vstack([yc[0] - (yc[1] - yc[0]), yc, yc[-1] + (yc[-1] - yc[-2])])
+        if yc.shape[0] > 1:
+            yc = np.vstack([2*yc[0] - yc[1], yc, 2*yc[-1] - yc[-2]])
             y = yc[:-1,:] + np.diff(yc, axis=0) / 2.0
             y = np.hstack([y, y[:,[-1]]])
         else:
