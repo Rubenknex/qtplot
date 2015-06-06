@@ -132,7 +132,7 @@ class Linecut(QtGui.QDialog):
         self.ax.set_aspect('auto')
         self.fig.tight_layout()
 
-        self.canvas.draw()
+        self.fig.canvas.draw()
 
     def resizeEvent(self, event):
         self.fig.tight_layout()

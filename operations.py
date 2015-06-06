@@ -56,8 +56,8 @@ class Operation(QtGui.QWidget):
             layout.addWidget(b_current, height, 2)
 
     def on_current_linecut(self):
-        self.items['Horizontal'].setChecked(self.main.line_type == 'horizontal')
-        self.items['Row/Column'].setText(str(self.main.line_coord))
+        self.items['Horizontal'].setChecked(self.main.canvas.line_type == 'horizontal')
+        self.items['Row/Column'].setText(str(self.main.canvas.line_coord))
 
     def get_parameter(self, name, cast=str):
         """Return the casted value of a property."""
@@ -326,10 +326,10 @@ class Operations(QtGui.QDialog):
                     operation.set_parameter('Min', min)
                     operation.set_parameter('Max', max)
             elif operation.name == 'sub linecut':
-                if self.main.line_coord != None and self.main.line_type != None:
+                if self.main.canvas.line_coord != None and self.main.canvas.line_type != None:
                     if operation.get_parameter('Row/Column') == '':
-                        operation.set_parameter('Horizontal', self.main.line_type == 'horizontal')
-                        operation.set_parameter('Row/Column', self.main.line_coord)
+                        operation.set_parameter('Horizontal', self.main.canvas.line_type == 'horizontal')
+                        operation.set_parameter('Row/Column', self.main.canvas.line_coord)
 
             kwargs = operation.get_parameters()[1]
 

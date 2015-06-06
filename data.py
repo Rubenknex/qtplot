@@ -3,8 +3,6 @@ import pandas as pd
 from scipy import ndimage
 from scipy.spatial import qhull
 from scipy.interpolate import griddata
-import math
-import matplotlib.pyplot as plt
 
 class DatFile:
     """Class which contains the column based DataFrame of the data."""
@@ -27,6 +25,7 @@ class DatFile:
         """Pivot the column based data into matrices."""
         # Sometimes there are multiple datapoints for the same coordinate, but there is only one coordinate axis
         # In this case, fill the second coordinate with 1,2,3,... so the datapoints can be plotted in 2D
+        """
         if (self.df[x_order] == 0).all():
             self.df[x_order] = self.df.groupby(y_order)[x_order].apply(lambda x: pd.Series(range(len(x.values)), x.index))
 
@@ -36,8 +35,17 @@ class DatFile:
         x_coords = self.df.pivot(y_order, x_order, x).values
         y_coords = self.df.pivot(y_order, x_order, y).values
         values   = self.df.pivot(y_order, x_order, z).values
+        """
 
-        return Data(x_coords, y_coords, values, (x==x_order,y==y_order))
+        rows, row_ind = np.unique(self.df[y_order].values, return_inverse=True)
+        cols, col_ind = np.unique(self.df[x_order].values, return_inverse=True)
+        pivot = np.zeros((len(rows), len(cols), 3)) * np.nan
+        pivot[row_ind, col_ind] = self.df[[x, y, z]].values
+
+        return Data(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2], (x==x_order,y==y_order))
+        #return Data(x_coords, y_coords, values, (x==x_order,y==y_order))
+
+
 
 def create_kernel(x_dev, y_dev, cutoff, distr):
     distributions = {
@@ -48,8 +56,8 @@ def create_kernel(x_dev, y_dev, cutoff, distr):
     }
     func = distributions[distr]
 
-    hx = math.floor((x_dev * cutoff) / 2.0)
-    hy = math.floor((y_dev * cutoff) / 2.0)
+    hx = np.floor((x_dev * cutoff) / 2.0)
+    hy = np.floor((y_dev * cutoff) / 2.0)
 
     x = np.linspace(-hx, hx, hx * 2 + 1) / x_dev
     y = np.linspace(-hy, hy, hy * 2 + 1) / y_dev
@@ -63,6 +71,8 @@ def create_kernel(x_dev, y_dev, cutoff, distr):
     kernel /= np.sum(kernel)
 
     return kernel
+
+
 
 class Data:
     """Class which represents 2d data as two matrices with x and y coordinates and one with values."""
@@ -92,7 +102,7 @@ class Data:
 
         indices = np.take(self.tri.simplices, simplices, axis=0)
         transforms = np.take(self.tri.transform, simplices, axis=0)
-        
+
         delta = points - transforms[:,2]
         bary = np.einsum('njk,nk->nj', transforms[:,:2,:], delta)
 
@@ -179,7 +189,7 @@ class Data:
         return min(self.y_coords[:,0], key=lambda y:abs(y - y_coord))
 
     def get_dimensions(self):
-        return np.min(self.x_coords), np.max(self.x_coords), np.min(self.y_coords), np.max(self.y_coords)
+        return np.nanmin(self.x_coords), np.nanmax(self.x_coords), np.nanmin(self.y_coords), np.nanmax(self.y_coords)
 
     def flip_axes(self, x_flip, y_flip):
         if x_flip:
@@ -356,7 +366,9 @@ class Data:
         y = np.linspace(ymin, ymax, height)
         xv, yv = np.meshgrid(x, y)
 
+        print 'test'
         values = data.interpolate(np.column_stack((xv.flatten(), yv.flatten())))
+        print 'crash'
         #values = griddata(np.column_stack((data.x_coords.flatten(), data.y_coords.flatten())), data.values.flatten(), np.column_stack((xv.flatten(), yv.flatten())))
 
         return Data(xv, yv, np.reshape(values, xv.shape))
@@ -397,14 +409,14 @@ class Data:
     def norm_columns(data, **kwargs):
         """Transform the values of every column so that they use the full colormap."""
         copy = data.copy()
-        copy.values = np.apply_along_axis(lambda x: (x - np.min(x)) / (np.max(x) - np.min(x)), 0, copy.values)
+        copy.values = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 0, copy.values)
 
         return copy
 
     def norm_rows(data, **kwargs):
         """Transform the values of every row so that they use the full colormap."""
         copy = data.copy()
-        copy.values = np.apply_along_axis(lambda x: (x - np.min(x)) / (np.max(x) - np.min(x)), 1, copy.values)
+        copy.values = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 1, copy.values)
 
         return copy
 

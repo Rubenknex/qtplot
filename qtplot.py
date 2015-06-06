@@ -15,9 +15,11 @@ from scipy.interpolate import griddata
 from scipy.spatial import qhull, delaunay_plot_2d
 
 from data import DatFile, Data
+from export import ExportWidget
 from linecut import Linecut, FixedOrderFormatter
 from operations import Operations
 from settings import Settings
+from canvas import Canvas
 
 class Window(QtGui.QMainWindow):
     """The main window of the qtplot application."""
@@ -30,38 +32,27 @@ class Window(QtGui.QMainWindow):
         self.operations = op_window
         self.settings = Settings()
 
-        self.fig, self.ax = plt.subplots()
-        self.cb = None
-
-        self.line = None
-        self.line_type = None
-        self.line_coord = None
-        self.line_start = None
-        self.line_end = None
-        self.line_calculate = False
-
-        self.cmap_change = False
+        self.reset_cmap = False
 
         self.dat_file = None
         self.data = None
-        self.pcolor_data = None
 
         self.init_ui()
 
         if filename is not None:
             self.load_file(filename)
-            #self.update_ui()
 
     def init_ui(self):
         self.setWindowTitle('qtplot')
 
-        self.main_widget = QtGui.QWidget(self)
+        self.main_widget = QtGui.QTabWidget(self)
 
-        self.canvas = FigureCanvasQTAgg(self.fig)
-        self.canvas.mpl_connect('button_press_event', self.on_mouse_press)
-        self.canvas.mpl_connect('button_release_event', self.on_mouse_release)
-        self.canvas.mpl_connect('motion_notify_event', self.on_mouse_motion)
-        self.toolbar = NavigationToolbar2QT(self.canvas, self)
+        self.view_widget = QtGui.QWidget()
+        self.main_widget.addTab(self.view_widget, 'View')
+        self.export_widget = ExportWidget(self)
+        self.main_widget.addTab(self.export_widget, 'Export')
+
+        self.canvas = Canvas(self)
 
         # Top row buttons
         hbox = QtGui.QHBoxLayout()
@@ -173,28 +164,28 @@ class Window(QtGui.QMainWindow):
 
         self.le_min = QtGui.QLineEdit(self)
         self.le_min.setMaximumWidth(100)
-        self.le_min.returnPressed.connect(self.on_cmap_changed)
+        self.le_min.returnPressed.connect(self.on_min_entered)
         hbox_gamma.addWidget(self.le_min)
 
         self.s_min = QtGui.QSlider(QtCore.Qt.Horizontal)
-        self.s_min.valueChanged.connect(self.on_min_changed)
+        self.s_min.sliderMoved.connect(self.on_min_changed)
         hbox_gamma.addWidget(self.s_min)
 
         self.s_gamma = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.s_gamma.setMinimum(-100)
         self.s_gamma.setMaximum(100)
         self.s_gamma.setValue(0)
-        self.s_gamma.valueChanged.connect(self.on_cmap_changed)
+        self.s_gamma.valueChanged.connect(self.on_gamma_changed)
         hbox_gamma.addWidget(self.s_gamma)
 
         self.s_max = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.s_max.setValue(self.s_max.maximum())
-        self.s_max.valueChanged.connect(self.on_max_changed)
+        self.s_max.sliderMoved.connect(self.on_max_changed)
         hbox_gamma.addWidget(self.s_max)
 
         self.le_max = QtGui.QLineEdit(self)
         self.le_max.setMaximumWidth(100)
-        self.le_max.returnPressed.connect(self.on_cmap_changed)
+        self.le_max.returnPressed.connect(self.on_max_entered)
         hbox_gamma.addWidget(self.le_max)
 
         # Bottom row buttons
@@ -214,9 +205,9 @@ class Window(QtGui.QMainWindow):
         hbox4.addWidget(self.b_settings)
 
         # Main vertical box
-        vbox = QtGui.QVBoxLayout(self.main_widget)
-        vbox.addWidget(self.toolbar)
-        vbox.addWidget(self.canvas)
+        vbox = QtGui.QVBoxLayout(self.view_widget)
+        #vbox.addWidget(self.toolbar)
+        vbox.addWidget(self.canvas.native)
         vbox.addLayout(hbox)
         vbox.addLayout(r_hbox)
         vbox.addLayout(grid)
@@ -288,6 +279,12 @@ class Window(QtGui.QMainWindow):
                 for i, index in enumerate(default_indices):
                     combo_boxes[i].setCurrentIndex(index)
 
+    def on_load_dat(self, event):
+        filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
+
+        if filename != "":
+            self.load_file(filename)
+
     def load_file(self, filename):
         self.dat_file = DatFile(filename)
         self.settings.load_file(filename)
@@ -296,25 +293,9 @@ class Window(QtGui.QMainWindow):
             path, self.name = os.path.split(filename)
             self.filename = filename
 
-            self.line = None
-            self.line_type = None
-            self.line_coord = None
-            self.line_start = None
-            self.line_end = None
-
             self.update_ui()
 
-        self.data = None
-        self.pcolor_data = None
-
-        #self.on_data_change()
-        self.plot_2d_data(initial_plot=True)
-
-    def on_load_dat(self, event):
-        filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
-
-        if filename != "":
-            self.load_file(filename)
+        self.on_data_change()  
 
     def on_refresh(self, event):
         if self.filename:
@@ -325,14 +306,6 @@ class Window(QtGui.QMainWindow):
         self.cb_x.setCurrentIndex(y)
         self.cb_y.setCurrentIndex(x)
 
-        if len(self.ax.lines) > 0:
-            self.ax.lines.pop(0)
-
-        if self.line_type == 'horizontal':
-            self.line_type = 'vertical'
-        elif self.line_type == 'vertical':
-            self.line_type = 'horizontal'
-
         self.on_swap_order(event)
 
     def on_swap_order(self, event):
@@ -341,6 +314,31 @@ class Window(QtGui.QMainWindow):
         self.cb_order_y.setCurrentIndex(x)
 
         self.on_data_change()
+    
+    def on_data_change(self):
+        x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
+
+        self.export_widget.set_info(self.name, x_name, y_name, data_name)
+
+        t0 = time.clock()
+        self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
+        t1 = time.clock()
+        print 'get_data:', t1-t0
+        self.data = self.operations.apply_operations(self.data)
+        print 'operations:', time.clock()-t1
+
+        self.on_min_changed(0)
+        self.on_max_changed(100)
+
+        self.canvas.set_data(self.data)
+        self.canvas.update()
+
+        """
+        if self.data.values.mask.any():
+            self.status_bar.showMessage("Warning: Data contains NaN values")
+        else:
+            self.status_bar.showMessage("")
+        """
 
     def on_sub_series_r(self, event):
         if self.dat_file == None:
@@ -353,76 +351,55 @@ class Window(QtGui.QMainWindow):
 
         self.update_ui(reset=False)
 
+    def on_min_entered(self):
+        if self.data != None:
+            min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
+            newmin = float(self.le_min.text())
+            self.s_min.setValue((newmin - min) / ((max - min) / 100))
+            self.canvas.colormap.min = newmin
+            self.canvas.update()
+
     def on_min_changed(self, value):
         if self.data != None:
             min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
-            new = min + ((max - min) / 100) * value
-            self.le_min.setText('%.2e' % new)
+            newmin = min + ((max - min) / 100) * value
+            self.le_min.setText('%.2e' % newmin)
+            self.canvas.colormap.min = newmin
+            self.canvas.update()
 
-            self.on_cmap_changed()
+    def on_gamma_changed(self, value):
+        if self.data != None:
+            gamma = 10.0**(value / 100.0)
+            self.canvas.colormap.gamma = gamma
+            self.canvas.update()
 
     def on_max_changed(self, value):
         if self.data != None:
             min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
-            new = min + ((max - min) / 100) * value
-            self.le_max.setText('%.2e' % new)
+            newmax = min + ((max - min) / 100) * value
+            self.le_max.setText('%.2e' % newmax)
+            self.canvas.colormap.max = newmax
+            self.canvas.update()
 
-            self.on_cmap_changed()
-
-    def on_cmap_changed(self):
-        self.cmap_change = True
-        self.plot_2d_data(data_change=False)
-
-    def on_mouse_press(self, event):
-        if not event.inaxes or self.dat_file == None:
-            return
-
-        if event.button == 1:
-            self.line_coord = self.data.get_closest_y(event.ydata)
-            self.line_type = 'horizontal'
-        elif event.button == 2:
-            self.line_coord = self.data.get_closest_x(event.xdata)
-            self.line_type = 'vertical'
-        elif event.button == 3:
-            self.line_start = (event.xdata, event.ydata)
-            self.line_end = (event.xdata, event.ydata)
-            self.line_type = 'arbitrary'
-            self.line_calculate = False
-
-        self.plot_linecut()
-
-    def on_mouse_motion(self, event):
-        if not event.inaxes or self.dat_file == None or event.button == None:
-            return
-
-        if event.button == 1 or event.button == 2:
-            self.on_mouse_press(event)
-        elif event.button == 3:
-            self.line_end = (event.xdata, event.ydata)
-            self.plot_linecut()
-
-    def on_mouse_release(self, event):
-        if not event.inaxes or self.line_start == None:
-            return
-
-        if event.button == 3:
-            self.line_end = (event.xdata, event.ydata)
-            self.line_calculate = True
-            self.plot_linecut()
-
-    def on_data_change(self):
-        if self.dat_file is not None:
-            self.generate_data()
-            self.plot_2d_data(initial_plot=False)
-            self.plot_linecut()
+    def on_max_entered(self):
+        if self.data != None:
+            min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
+            newmax = float(self.le_max.text())
+            maxpos = (newmax - min) / ((max - min) / 100)
+            self.s_max.setValue(maxpos)
+            self.canvas.colormap.max = newmax
+            self.canvas.update()
 
     def on_copy_figure(self):
+        pass
+        """
         path = os.path.dirname(os.path.realpath(__file__))
         path = os.path.join(path, 'test.png')
         self.fig.savefig(path)
 
         img = QtGui.QImage(path)
         QtGui.QApplication.clipboard().setImage(img)
+        """
 
     def on_save_matrix(self):
         path = os.path.dirname(os.path.realpath(__file__))
@@ -441,158 +418,6 @@ class Window(QtGui.QMainWindow):
         order_y = str(self.cb_order_y.currentText())
 
         return x_name, y_name, data_name, order_x, order_y
-
-    def generate_data(self):
-        x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
-
-        self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
-        self.data = self.operations.apply_operations(self.data)
-        self.pcolor_data = self.data.get_pcolor()
-
-        pd.DataFrame(self.data.values).to_clipboard()
-
-        if self.pcolor_data[2].mask.any():
-            self.status_bar.showMessage("Warning: Data contains NaN values")
-        else:
-            self.status_bar.showMessage("")
-
-    def plot_2d_data(self, initial_plot=False, data_change=True):
-        if self.dat_file is None:
-            return
-
-        self.ax.clear()
-
-        x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
-
-        if self.pcolor_data == None:
-            self.generate_data()
-        
-        # Set the axis range to increase upwards or to the left, and reverse if necessary
-        self.ax.set_xlim(sorted(self.ax.get_xlim()))
-        self.ax.set_ylim(sorted(self.ax.get_ylim()))
-        x_flip, y_flip = self.data.is_flipped()
-        if x_flip:
-            self.ax.invert_xaxis()
-        if y_flip:
-            self.ax.invert_yaxis()
-
-        self.quadmesh = self.ax.pcolormesh(*self.pcolor_data, cmap='seismic')
-        #self.quadmesh = self.ax.pcolorfast(*self.pcolor_data, cmap='seismic')
-        #if self.data.tri != None:
-        #    print 'plotting delaunay'
-        #    delaunay_plot_2d(self.data.tri, self.ax)
-
-        reset_cmap = self.cb_reset_cmap.checkState() == QtCore.Qt.Checked
-        
-        if initial_plot:
-            cm_min, cm_max = self.quadmesh.get_clim()
-            self.le_min.setText('%.2e' % cm_min)
-            self.s_min.setValue(self.s_min.minimum())
-
-            self.le_max.setText('%.2e' % cm_max)
-            self.s_max.setValue(self.s_max.maximum())
-
-            self.s_gamma.setValue(0)
-        elif data_change:
-            if reset_cmap:
-                cm_min, cm_max = self.quadmesh.get_clim()
-                self.le_min.setText('%.2e' % cm_min)
-                self.s_min.setValue(self.s_min.minimum())
-            
-                self.le_max.setText('%.2e' % cm_max)
-                self.s_max.setValue(self.s_max.maximum())
-
-                self.s_gamma.setValue(0)
-            else:
-                gamma = 10.0**(self.s_gamma.value()/100.0)
-                self.quadmesh.get_cmap().set_gamma(gamma)
-
-                self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
-        else:
-            gamma = 10.0**(self.s_gamma.value()/100.0)
-            self.quadmesh.get_cmap().set_gamma(gamma)
-
-            self.quadmesh.set_clim(vmin=float(self.le_min.text()), vmax=float(self.le_max.text()))
-
-        self.ax.axis('tight')
-
-        # Create a colorbar, if there is already one draw it in the existing place
-        if self.cb:
-            self.cb.update_bruteforce(self.quadmesh)
-        else:
-            self.cb = self.fig.colorbar(self.quadmesh)
-
-        self.cb.set_label(data_name)
-        self.cb.formatter = FixedOrderFormatter(1)
-        self.cb.update_ticks()
-
-        # Set the various labels
-        self.ax.set_title(self.name)
-        self.ax.set_xlabel(x_name)
-        self.ax.set_ylabel(y_name)
-        self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
-        self.ax.yaxis.set_major_formatter(FixedOrderFormatter())
-        self.ax.set_aspect('auto')
-
-        self.fig.tight_layout()
-        
-        self.canvas.draw()
-
-        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-
-        self.cmap_change = False
-
-    def plot_linecut(self):
-        if self.dat_file == None or self.line_type == None:
-            return
-
-        x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
-
-        if len(self.ax.lines) == 0:
-            self.line = self.ax.axvline(color='red')
-
-        if self.line_type == 'horizontal':
-            self.line.set_transform(self.ax.get_yaxis_transform())
-            self.line.set_data([0, 1], [self.line_coord, self.line_coord])
-
-            x, y = self.data.get_row_at(self.line_coord)
-            self.linecut.plot_linecut(x, y, self.name, x_name, data_name)
-        elif self.line_type == 'vertical':
-            self.line.set_transform(self.ax.get_xaxis_transform())
-            self.line.set_data([self.line_coord, self.line_coord], [0, 1])
-
-            x, y = self.data.get_column_at(self.line_coord)
-            self.linecut.plot_linecut(x, y, self.name, y_name, data_name)
-        elif self.line_type == 'arbitrary':
-            self.line.set_transform(self.ax.transData)
-            self.line.set_data([self.line_start[0], self.line_end[0]], [self.line_start[1], self.line_end[1]])
-
-            if self.line_calculate:
-                x = np.linspace(self.line_start[0], self.line_end[0], 1000)
-                y = np.linspace(self.line_start[1], self.line_end[1], 1000)
-                xi = np.column_stack((x, y))
-                data = self.data.interpolate(xi)
-
-                x -= x[0]
-                y -= y[0]
-                positions = np.sqrt(x**2 + y**2)
-                
-                self.linecut.plot_linecut(positions, data, self.name, 'Distance', data_name)
-
-        # Redraw both plots to update them
-        self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.line)
-        self.canvas.blit(self.ax.bbox)
-
-    def resizeEvent(self, event):
-        if len(self.ax.lines) > 0:
-            self.ax.lines.pop(0)
-
-        self.cmap_change = True
-
-        # Very slow, maybe search for faster way
-        # http://stackoverflow.com/questions/13552345/how-to-disable-multiple-auto-redrawing-at-resizing-widgets-in-pyqt
-        self.plot_2d_data(data_change=False)
 
     def closeEvent(self, event):
         self.linecut.close()
@@ -614,6 +439,11 @@ class Window(QtGui.QMainWindow):
                 config.write(config_file)
 
 if __name__ == '__main__':
+    mpl.rcParams['mathtext.fontset'] = 'custom'
+    mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
+    mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
+    mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
+
     app = QtGui.QApplication(sys.argv)
 
     linecut = Linecut()
@@ -622,7 +452,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         main = Window(linecut, operations, filename=sys.argv[1])
     else:
-        main = Window(linecut, operations)
+        main = Window(linecut, operations, filename='../data/Dev1_183.dat')
 
     linecut.main = main
     operations.main = main
