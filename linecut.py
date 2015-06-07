@@ -7,23 +7,7 @@ from PyQt4 import QtGui, QtCore
 import os
 import pandas as pd
 
-class FixedOrderFormatter(ScalarFormatter):
-    """Format numbers using engineering notation."""
-    def __init__(self, significance=0):
-        ScalarFormatter.__init__(self, useOffset=None, useMathText=None)
-        self.format = '%.' + str(significance) + 'f'
-
-    def __call__(self, x, pos=None):
-        if x == 0:
-            return '0'
-
-        exp = self.orderOfMagnitude
-
-        return self.format % (x / (10 ** exp))
-
-    def _set_orderOfMagnitude(self, range):
-        exp = math.floor(math.log10(range))
-        self.orderOfMagnitude = exp - (exp % 3)
+from util import FixedOrderFormatter
 
 class Linecut(QtGui.QDialog):
     def __init__(self, parent=None):
@@ -69,7 +53,8 @@ class Linecut(QtGui.QDialog):
         layout.addLayout(hbox)
         self.setLayout(layout)
 
-        self.move(800, 100)
+        self.resize(500, 500)
+        self.move(720, 100)
 
     def on_reset(self):
         if self.x != None and self.y != None:

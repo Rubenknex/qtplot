@@ -118,11 +118,13 @@ class Operations(QtGui.QDialog):
             'highpass':     [Data.highpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
             'hist2d':       [Data.hist2d, [('textbox', 'Min', ''), ('textbox', 'Max', ''), ('textbox', 'Bins', '')]],
             'interp grid':  [Data.interp_grid, [('textbox', 'Width', '100'), ('textbox', 'Height', '100')]],
+            'interp x':     [Data.interp_x, [('textbox', 'Points', '100')]],
+            'interp y':     [Data.interp_y, [('textbox', 'Points', '100')]],
             'log':          [Data.log, [('checkbox', 'Subtract offset', False), ('textbox', 'New min', '0.0001')]],
             'lowpass':      [Data.lowpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
             'neg':          [Data.neg],
-            'norm columns': [Data.norm_columns],
-            'norm rows':    [Data.norm_rows],
+            'norm y':       [Data.norm_columns],
+            'norm x':       [Data.norm_rows],
             'offset':       [Data.offset, [('textbox', 'Offset', '0')]],
             'offset axes':  [Data.offset_axes, [('textbox', 'X Offset', '0'), ('textbox', 'Y Offset', '0')]],
             'power':        [Data.power, [('textbox', 'Power', '1')]],
@@ -197,7 +199,8 @@ class Operations(QtGui.QDialog):
         
         self.setLayout(main_vbox)
 
-        self.setGeometry(800, 700, 400, 200)
+        self.resize(400, 200)
+        self.move(720, 640)
 
     def update_plot(func):
         def wrapper(self):

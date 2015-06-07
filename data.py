@@ -4,6 +4,8 @@ from scipy import ndimage
 from scipy.spatial import qhull
 from scipy.interpolate import griddata
 
+from util import create_kernel
+
 class DatFile:
     """Class which contains the column based DataFrame of the data."""
     def __init__(self, filename):
@@ -39,6 +41,7 @@ class DatFile:
 
         rows, row_ind = np.unique(self.df[y_order].values, return_inverse=True)
         cols, col_ind = np.unique(self.df[x_order].values, return_inverse=True)
+
         pivot = np.zeros((len(rows), len(cols), 3)) * np.nan
         pivot[row_ind, col_ind] = self.df[[x, y, z]].values
 
@@ -47,35 +50,11 @@ class DatFile:
 
 
 
-def create_kernel(x_dev, y_dev, cutoff, distr):
-    distributions = {
-        'gaussian': lambda r: np.exp(-(r**2) / 2.0),
-        'exponential': lambda r: np.exp(-abs(r) * np.sqrt(2.0)),
-        'lorentzian': lambda r: 1.0 / (r**2+1.0),
-        'thermal': lambda r: np.exp(r) / (1 * (1+np.exp(r))**2)
-    }
-    func = distributions[distr]
-
-    hx = np.floor((x_dev * cutoff) / 2.0)
-    hy = np.floor((y_dev * cutoff) / 2.0)
-
-    x = np.linspace(-hx, hx, hx * 2 + 1) / x_dev
-    y = np.linspace(-hy, hy, hy * 2 + 1) / y_dev
-
-    if x.size == 1: x = np.zeros(1)
-    if y.size == 1: y = np.zeros(1)
-    
-    xv, yv = np.meshgrid(x, y)
-
-    kernel = func(np.sqrt(xv**2+yv**2))
-    kernel /= np.sum(kernel)
-
-    return kernel
-
-
-
 class Data:
-    """Class which represents 2d data as two matrices with x and y coordinates and one with values."""
+    """
+    Class which represents 2d data as two matrices with x and y coordinates 
+    and one with values.
+    """
     def __init__(self, x_coords, y_coords, values, equidistant=(False, False)):
         self.x_coords = x_coords
         self.y_coords = y_coords
@@ -83,6 +62,19 @@ class Data:
 
         self.equidistant = equidistant
         self.tri = None
+
+    def gen_delaunay(self):
+        xc = self.x_coords.flatten()
+        yc = self.y_coords.flatten()
+        self.no_nan_values = self.values.flatten()
+
+        if np.isnan(xc).any() and np.isnan(yc).any():
+            xc = xc[~np.isnan(xc)]
+            yc = yc[~np.isnan(yc)]
+            self.no_nan_values = self.no_nan_values[~np.isnan(self.no_nan_values)]
+
+        # Default: Qbb Qc Qz 
+        self.tri = qhull.Delaunay(np.column_stack((xc, yc)), qhull_options='')
 
     def interpolate(self, points):
         if self.tri == None:
@@ -96,7 +88,7 @@ class Data:
                 self.no_nan_values = self.no_nan_values[~np.isnan(self.no_nan_values)]
 
             # Default: Qbb Qc Qz 
-            self.tri = qhull.Delaunay(np.column_stack((xc, yc)), qhull_options='')
+            self.tri = qhull.Delaunay(np.column_stack((xc, yc)), qhull_options='QbB')
 
         simplices = self.tri.find_simplex(points)
 
@@ -111,7 +103,10 @@ class Data:
         values = np.einsum('nj,nj->n', np.take(self.no_nan_values, indices), temp)
 
         #print values[np.any(temp<0, axis=1)]
-        values[np.any(temp < 0.0, axis=1)] = np.nan
+
+        # This should put a NaN for points outside of any simplices
+        # but is for some reason sometimes also true inside a simplex
+        #values[np.any(temp < 0.0, axis=1)] = np.nan
 
         return values
 
@@ -366,12 +361,27 @@ class Data:
         y = np.linspace(ymin, ymax, height)
         xv, yv = np.meshgrid(x, y)
 
-        print 'test'
         values = data.interpolate(np.column_stack((xv.flatten(), yv.flatten())))
-        print 'crash'
         #values = griddata(np.column_stack((data.x_coords.flatten(), data.y_coords.flatten())), data.values.flatten(), np.column_stack((xv.flatten(), yv.flatten())))
 
         return Data(xv, yv, np.reshape(values, xv.shape))
+
+    def interp_x(data, **kwargs):
+        # TODO: Figure out what to do with other (y) coordinates
+        points = int(kwargs.get('Points'))
+        xmin, xmax, ymin, ymax = data.get_dimensions()
+
+        x = np.linspace(xmin, xmax, points)
+
+        rows = data.values.shape[0]
+        values = np.zeros((rows, points))
+        for i in range(rows):
+            values[i] = np.interp(x, data.x_coords[i], data.values[i])
+
+        return Data(np.tile(x, (rows,1)), data.y_coords, values)
+
+    def interp_y(data, **kwargs):
+        pass
 
     def log(data, **kwargs):
         """The base-10 logarithm of every datapoint."""

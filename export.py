@@ -3,6 +3,7 @@ import numpy as np
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.ticker import ScalarFormatter
+from scipy.spatial import qhull, delaunay_plot_2d
 from PyQt4 import QtGui, QtCore
 
 class FixedOrderFormatter(ScalarFormatter):
@@ -104,7 +105,11 @@ class ExportWidget(QtGui.QWidget):
 				self.cb = self.fig.colorbar(quadmesh)
 			else:
 				self.cb.set_clim(quadmesh.get_clim())
-				
+			
+			self.main.data.gen_delaunay()
+			if self.main.data.tri != None:
+				print 'plotting triang'
+				delaunay_plot_2d(self.main.data.tri, self.ax)
 
 			self.cb.set_label(self.le_z_label.text())
 			self.cb.draw_all()

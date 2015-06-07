@@ -7,6 +7,7 @@ from vispy import app, gloo
 from vispy.util.transforms import ortho, translate
 
 from colormap import ColorMap
+from util import FixedOrderFormatter, eng_format
 
 import time
 
@@ -64,15 +65,13 @@ class Canvas(app.Canvas):
     Handles the fast drawing of data using OpenGL for real-time editing.
 
     A data point is drawn using two triangles to form a quad, it is colored
-    by using the data value and a colormap texture in the fragment shader.
+    by using the normalized data value and a colormap texture in the fragment shader.
     """
     def __init__(self, parent=None):
         app.Canvas.__init__(self, parent=parent)
 
         self.parent = parent
         self.has_redrawn = True
-
-        #self.native.setToolTip('test')
 
         self.data = None
         self.program = gloo.Program(vert, frag)
@@ -82,8 +81,9 @@ class Canvas(app.Canvas):
         self.line_type = None
         self.line_coord = 0
         self.line_positions = [(0, 0), (0, 0)]
+
         self.program_line = gloo.Program(basic_vert, basic_frag)
-        self.program_line['a_position'] = [(0, 0), (0, 0)]
+        self.program_line['a_position'] = self.line_positions
 
         gloo.set_clear_color((1, 1, 1, 1))
 
@@ -94,8 +94,8 @@ class Canvas(app.Canvas):
         self.ymin, self.ymax = np.nanmin(data.y_coords), np.nanmax(data.y_coords)
         self.zmin, self.zmax = np.nanmin(data.values), np.nanmax(data.values)
 
-        self.colormap.min = self.zmin
-        self.colormap.max = self.zmax
+        #self.colormap.min = self.zmin
+        #self.colormap.max = self.zmax
 
         self.view = translate((0, 0, 0))
         self.projection = ortho(self.xmin, self.xmax, self.ymin, self.ymax, -1, 1)
@@ -107,10 +107,9 @@ class Canvas(app.Canvas):
         self.program_line['u_view'] = self.view
         self.program_line['u_projection'] = self.projection
 
-
         t0 = time.clock()
         vertices = self.generate_vertices(data)
-        print 'generate_vertices: ', time.clock()-t0
+        #print 'generate_vertices: ', time.clock()-t0
         self.vbo = gloo.VertexBuffer(vertices)
         self.program.bind(self.vbo)
 
@@ -198,17 +197,16 @@ class Canvas(app.Canvas):
         self.draw_linecut(event)
 
     def on_mouse_move(self, event):
-        """
-        QtGui.QToolTip.hideText()
-        #print event.pos
-        #QtGui.QToolTip.showText(QtCore.QPoint(event.pos[0], event.pos[1]), '', self.native)
-        QtGui.QToolTip.showText(QtCore.QPoint(event.pos[0], event.pos[1]), 'test', self.native, QtCore.QRect(0, 0, 0, 0))
-        """
+        if self.data != None:
+            sw, sh = self.size
+            sx, sy = event.pos
 
-        x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
-        self.parent.status_bar.showMessage('%.2e\t%.2e' % (x, y))
+            if 0 <= sx < sw and 0 <= sy < sh:
+                x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
+                xstr, ystr = eng_format(x, 1), eng_format(y, 1)
+                self.parent.status_bar.showMessage('X: %s\t\t\tY: %s' % (xstr, ystr))
 
-        self.draw_linecut(event)
+                self.draw_linecut(event)
 
     def on_resize(self, event):
         width, height = event.physical_size

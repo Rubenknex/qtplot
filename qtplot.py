@@ -164,7 +164,7 @@ class Window(QtGui.QMainWindow):
 
         self.le_min = QtGui.QLineEdit(self)
         self.le_min.setMaximumWidth(100)
-        self.le_min.returnPressed.connect(self.on_min_entered)
+        self.le_min.returnPressed.connect(self.on_min_max_entered)
         hbox_gamma.addWidget(self.le_min)
 
         self.s_min = QtGui.QSlider(QtCore.Qt.Horizontal)
@@ -185,7 +185,7 @@ class Window(QtGui.QMainWindow):
 
         self.le_max = QtGui.QLineEdit(self)
         self.le_max.setMaximumWidth(100)
-        self.le_max.returnPressed.connect(self.on_max_entered)
+        self.le_max.returnPressed.connect(self.on_min_max_entered)
         hbox_gamma.addWidget(self.le_max)
 
         # Bottom row buttons
@@ -220,6 +220,7 @@ class Window(QtGui.QMainWindow):
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
 
+        self.resize(600, 700)
         self.move(100, 100)
 
     def update_ui(self, reset=True):
@@ -259,22 +260,23 @@ class Window(QtGui.QMainWindow):
         self.cb_z.setCurrentIndex(i)
 
         if reset:
-            config = ConfigParser.RawConfigParser()
-            path = os.path.dirname(os.path.realpath(__file__))
-            config.read(os.path.join(path, 'qtplot.config'))
-
             combo_boxes = [self.cb_x, self.cb_order_x, self.cb_y, self.cb_order_y, self.cb_z]
             names = ['X', 'X Order', 'Y', 'Y Order', 'Data']
             default_indices = [0, 0, 1, 1, 3]
 
-            if config.has_section('Settings'):
-                indices = [cb.findText(config.get('Settings', names[i])) for i,cb in enumerate(combo_boxes)]
+            if os.path.isfile('qtplot.config'):
+                config = ConfigParser.RawConfigParser()
+                path = os.path.dirname(os.path.realpath(__file__))
+                config.read(os.path.join(path, 'qtplot.config'))
 
-                for i, index in enumerate(indices):
-                    if index != -1:
-                        combo_boxes[i].setCurrentIndex(index)
-                    else:
-                        combo_boxes[i].setCurrentIndex(default_indices[i])
+                if config.has_section('Settings'):
+                    indices = [cb.findText(config.get('Settings', names[i])) for i,cb in enumerate(combo_boxes)]
+
+                    for i, index in enumerate(indices):
+                        if index != -1:
+                            combo_boxes[i].setCurrentIndex(index)
+                        else:
+                            combo_boxes[i].setCurrentIndex(default_indices[i])
             else:
                 for i, index in enumerate(default_indices):
                     combo_boxes[i].setCurrentIndex(index)
@@ -323,12 +325,14 @@ class Window(QtGui.QMainWindow):
         t0 = time.clock()
         self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
         t1 = time.clock()
-        print 'get_data:', t1-t0
+        #print 'get_data:', t1-t0
         self.data = self.operations.apply_operations(self.data)
-        print 'operations:', time.clock()-t1
+        #print 'operations:', time.clock()-t1
 
-        self.on_min_changed(0)
-        self.on_max_changed(100)
+        if self.cb_reset_cmap.checkState() == QtCore.Qt.Checked:
+            self.on_min_changed(0)
+            self.s_gamma.setValue(0)
+            self.on_max_changed(100)
 
         self.canvas.set_data(self.data)
         self.canvas.update()
@@ -351,42 +355,45 @@ class Window(QtGui.QMainWindow):
 
         self.update_ui(reset=False)
 
-    def on_min_entered(self):
+    def on_min_max_entered(self):
         if self.data != None:
-            min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
-            newmin = float(self.le_min.text())
-            self.s_min.setValue((newmin - min) / ((max - min) / 100))
-            self.canvas.colormap.min = newmin
+            zmin, zmax = np.nanmin(self.data.values), np.nanmax(self.data.values)
+
+            newmin, newmax = float(self.le_min.text()), float(self.le_max.text())
+
+            # Convert the entered bounds into slider positions (0 - 100)
+            self.s_min.setValue((newmin - zmin) / ((zmax - zmin) / 100))
+            self.s_max.setValue((newmax - zmin) / ((zmax - zmin) / 100))
+
+            cm = self.canvas.colormap
+            cm.min, cm.max = newmin, newmax
+
             self.canvas.update()
 
     def on_min_changed(self, value):
         if self.data != None:
             min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
-            newmin = min + ((max - min) / 100) * value
+
+            newmin = min + ((max - min) / 100.0) * value
             self.le_min.setText('%.2e' % newmin)
+
             self.canvas.colormap.min = newmin
             self.canvas.update()
 
     def on_gamma_changed(self, value):
         if self.data != None:
             gamma = 10.0**(value / 100.0)
+
             self.canvas.colormap.gamma = gamma
             self.canvas.update()
 
     def on_max_changed(self, value):
         if self.data != None:
             min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
-            newmax = min + ((max - min) / 100) * value
-            self.le_max.setText('%.2e' % newmax)
-            self.canvas.colormap.max = newmax
-            self.canvas.update()
 
-    def on_max_entered(self):
-        if self.data != None:
-            min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
-            newmax = float(self.le_max.text())
-            maxpos = (newmax - min) / ((max - min) / 100)
-            self.s_max.setValue(maxpos)
+            newmax = min + ((max - min) / 100.0) * value
+            self.le_max.setText('%.2e' % newmax)
+
             self.canvas.colormap.max = newmax
             self.canvas.update()
 
@@ -452,7 +459,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         main = Window(linecut, operations, filename=sys.argv[1])
     else:
-        main = Window(linecut, operations, filename='../data/Dev1_183.dat')
+        main = Window(linecut, operations)
 
     linecut.main = main
     operations.main = main
