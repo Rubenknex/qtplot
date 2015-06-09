@@ -125,9 +125,19 @@ class Data:
         -   Add a row/column at the end to satisfy the 1 larger requirements of pcolor
         """
         # If we are dealing with data that is 2-dimensional
+        # -2 rows: both coords need non-nan values
         if xc.shape[1] > 1:
             # Pad both sides with a column of interpolated coordinates
-            xc = np.hstack((2*xc[:,[0]] - xc[:,[1]], xc, 2*xc[:,[-1]] - xc[:,[-2]]))
+
+            l0, l1, l2 = xc[:,[0]], xc[:,[1]], xc[:,[2]]
+            nans = np.isnan(l0)
+            l0[nans] = 2*l1[nans] - l2[nans]
+
+            r2, r1, r0 = xc[:,[-3]], xc[:,[-2]], xc[:,[-1]]
+            nans = np.isnan(r0)
+            r0[nans] = 2*r1[nans] - r2[nans]
+
+            xc = np.hstack((2*l0 - l1, xc, 2*r0 - r1))
             # Create center points by adding the differences divided by 2 to the original coordinates
             x = xc[:,:-1] + np.diff(xc, axis=1) / 2.0
             # Add a row to the bottom so that the x coords have the same dimension as the y coords
@@ -139,7 +149,15 @@ class Data:
             x = np.vstack((x, x[0]))
         
         if yc.shape[0] > 1:
-            yc = np.vstack([2*yc[0] - yc[1], yc, 2*yc[-1] - yc[-2]])
+            t0, t1, t2 = yc[0], yc[1], yc[2]
+            nans = np.isnan(t0)
+            t0[nans] = 2*t1[nans] - t2[nans]
+
+            b2, b1, b0 = yc[-3], yc[-2], yc[-1]
+            nans = np.isnan(b0)
+            b0[nans] = 2*b1[nans] - b2[nans]
+
+            yc = np.vstack([2*t0 - t1, yc, 2*b0 - b1])
             y = yc[:-1,:] + np.diff(yc, axis=0) / 2.0
             y = np.hstack([y, y[:,[-1]]])
         else:
@@ -367,7 +385,6 @@ class Data:
         return Data(xv, yv, np.reshape(values, xv.shape))
 
     def interp_x(data, **kwargs):
-        # TODO: Figure out what to do with other (y) coordinates
         points = int(kwargs.get('Points'))
         xmin, xmax, ymin, ymax = data.get_dimensions()
 
@@ -376,12 +393,26 @@ class Data:
         rows = data.values.shape[0]
         values = np.zeros((rows, points))
         for i in range(rows):
-            values[i] = np.interp(x, data.x_coords[i], data.values[i])
+            values[i] = np.interp(x, data.x_coords[i], data.values[i], left=np.nan, right=np.nan)
 
-        return Data(np.tile(x, (rows,1)), data.y_coords, values)
+        y_avg = np.average(data.y_coords, axis=1)[np.newaxis].T
+
+        return Data(np.tile(x, (rows,1)), np.tile(y_avg, (1, points)), values)
 
     def interp_y(data, **kwargs):
-        pass
+        points = int(kwargs.get('Points'))
+        xmin, xmax, ymin, ymax = data.get_dimensions()
+
+        y = np.linspace(ymin, ymax, points)[np.newaxis].T
+
+        cols = data.values.shape[1]
+        values = np.zeros((points, cols))
+        for i in range(cols):
+            values[:,i] = np.interp(y.ravel(), data.y_coords[:,i].ravel(), data.values[:,i].ravel(), left=np.nan, right=np.nan)
+
+        x_avg = np.average(data.x_coords, axis=0)
+
+        return Data(np.tile(x_avg, (points,1)), np.tile(y, (1,cols)), values)
 
     def log(data, **kwargs):
         """The base-10 logarithm of every datapoint."""

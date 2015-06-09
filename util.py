@@ -48,9 +48,11 @@ def eng_format(number, significance):
 
 class FixedOrderFormatter(ScalarFormatter):
     """Format numbers using engineering notation."""
-    def __init__(self, significance=0):
+    def __init__(self, format='%.0f'):
         ScalarFormatter.__init__(self, useOffset=None, useMathText=None)
-        self.format = '%.' + str(significance) + 'f'
+        #self.format = '%.' + str(significance) + 'f'
+        #print format
+        self.format = format
 
     def __call__(self, x, pos=None):
         if x == 0:
@@ -58,7 +60,11 @@ class FixedOrderFormatter(ScalarFormatter):
 
         exp = self.orderOfMagnitude
 
+        #print self.format
         return self.format % (x / (10 ** exp))
+
+    def _set_format(self, vmin, vmax):
+        pass
 
     def _set_orderOfMagnitude(self, range):
         exp = np.floor(np.log10(range/2))

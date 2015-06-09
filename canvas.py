@@ -3,11 +3,12 @@ import sys
 
 from PyQt4 import QtGui, QtCore
 
-from vispy import app, gloo
+from vispy import app, gloo, scene, visuals
 from vispy.util.transforms import ortho, translate
 
 from colormap import ColorMap
 from util import FixedOrderFormatter, eng_format
+from axis import AxisVisual
 
 import time
 
@@ -27,6 +28,33 @@ basic_frag = """
 void main()
 {
     gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+}
+"""
+
+cm_vert = """
+attribute vec2 a_position;
+attribute float a_texcoord;
+
+uniform mat4 u_view;
+uniform mat4 u_projection;
+
+varying float v_texcoord;
+
+void main (void) {
+    v_texcoord = a_texcoord;
+    gl_Position = u_projection * u_view * vec4(a_position.x, a_position.y, 0.0, 1.0);
+}
+"""
+
+cm_frag = """
+uniform sampler1D u_colormap;
+
+varying float v_texcoord;
+
+void main()
+{
+    gl_FragColor = texture1D(u_colormap, v_texcoord);
+    //gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
 }
 """
 
@@ -60,7 +88,7 @@ void main()
 }
 """
 
-class Canvas(app.Canvas):
+class Canvas(scene.SceneCanvas):
     """
     Handles the fast drawing of data using OpenGL for real-time editing.
 
@@ -68,7 +96,7 @@ class Canvas(app.Canvas):
     by using the normalized data value and a colormap texture in the fragment shader.
     """
     def __init__(self, parent=None):
-        app.Canvas.__init__(self, parent=parent)
+        scene.SceneCanvas.__init__(self, parent=parent)
 
         self.parent = parent
         self.has_redrawn = True
@@ -77,6 +105,9 @@ class Canvas(app.Canvas):
         self.program = gloo.Program(vert, frag)
 
         self.colormap = ColorMap('colormaps/transform/Seismic.ppm')
+
+        self.program_cm = gloo.Program(cm_vert, cm_frag)
+        #self.
         
         self.line_type = None
         self.line_coord = 0
@@ -86,6 +117,15 @@ class Canvas(app.Canvas):
         self.program_line['a_position'] = self.line_positions
 
         gloo.set_clear_color((1, 1, 1, 1))
+
+        canvas_size = (1000, 800)
+        graph_size = (900, 700)
+        margin_x = (canvas_size[0]-graph_size[0]) / 2.
+        margin_y = (canvas_size[1]-graph_size[1]) / 2.
+        pos_xax = np.array([[margin_x, canvas_size[1]-margin_y],
+                   [canvas_size[0]-margin_x, canvas_size[1]-margin_y]])
+        self.axis_x = AxisVisual(pos_xax, (0, 100), (0., 1.))
+        self.tr_sys = visuals.transforms.TransformSystem(self)
 
     def set_data(self, data):
         self.data = data
@@ -97,13 +137,19 @@ class Canvas(app.Canvas):
         #self.colormap.min = self.zmin
         #self.colormap.max = self.zmax
 
+        self.cm_dx = (self.xmax-self.xmin)*0.1
+
         self.view = translate((0, 0, 0))
-        self.projection = ortho(self.xmin, self.xmax, self.ymin, self.ymax, -1, 1)
+        self.projection = ortho(self.xmin, self.xmax + self.cm_dx, self.ymin, self.ymax, -1, 1)
+        #self.projection = ortho(0, 1, 0, 1, -1, 1)
 
         self.program['u_view'] = self.view
         self.program['u_projection'] = self.projection
         self.program['u_colormap'] = gloo.Texture1D(self.colormap.get_colors(), interpolation='linear')
         
+        self.program_cm['u_view'] = self.view
+        self.program_cm['u_projection'] = self.projection
+
         self.program_line['u_view'] = self.view
         self.program_line['u_projection'] = self.projection
 
@@ -155,7 +201,7 @@ class Canvas(app.Canvas):
         sw, sh = self.size
         sx, sy = pos
 
-        relx, rely = float(sx) / sw, float(sh - sy) / sh
+        relx, rely = float(sx*1.1) / sw, float(sh - sy) / sh
 
         dx = self.xmin + (relx) * (self.xmax - self.xmin)
         dy = self.ymin + (rely) * (self.ymax - self.ymin)
@@ -176,7 +222,7 @@ class Canvas(app.Canvas):
                 self.line_positions = [(self.xmin, self.line_coord), (self.xmax, self.line_coord)]
 
                 x, y = self.data.get_row_at(y)
-                self.parent.linecut.plot_linecut(x, y, 'tets', x_name, data_name)
+                self.parent.linecut.plot_linecut(x, y, self.parent.name, x_name, data_name)
                 self.has_redrawn = False
             elif event.button == 3:
                 self.line_type = 'vertical'
@@ -184,7 +230,7 @@ class Canvas(app.Canvas):
                 self.line_positions = [(self.line_coord, self.ymin), (self.line_coord, self.ymax)]
                 
                 x, y = self.data.get_column_at(x)
-                self.parent.linecut.plot_linecut(x, y, 'test', y_name, data_name)
+                self.parent.linecut.plot_linecut(x, y, self.parent.name, y_name, data_name)
                 self.has_redrawn = False
 
             self.program_line['a_position'] = self.line_positions
@@ -220,7 +266,17 @@ class Canvas(app.Canvas):
             self.program['z_min'] = self.colormap.min
             self.program['z_max'] = self.colormap.max
 
+            self.program_cm['u_colormap'] = gloo.Texture1D(self.colormap.get_colors())
+            self.program_cm['a_position'] = [(self.xmax + self.cm_dx*.2, self.ymax), 
+                                             (self.xmax + self.cm_dx*.2, self.ymin), 
+                                             (self.xmax + self.cm_dx, self.ymax), 
+                                             (self.xmax + self.cm_dx, self.ymin)]
+            self.program_cm['a_texcoord'] = [[1], [0], [1], [0]]
+
             self.program.draw('triangles')
+            self.program_cm.draw('triangle_strip')
             self.program_line.draw('lines')
+
+            #self.axis_x.draw(self.tr_sys)
 
         self.has_redrawn = True

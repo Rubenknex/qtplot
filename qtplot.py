@@ -32,8 +32,6 @@ class Window(QtGui.QMainWindow):
         self.operations = op_window
         self.settings = Settings()
 
-        self.reset_cmap = False
-
         self.dat_file = None
         self.data = None
 
