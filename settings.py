@@ -13,12 +13,12 @@ class Settings(QtGui.QDialog):
     def init_ui(self):
         self.setWindowTitle("Settings")
 
-        hbox = QtGui.QHBoxLayout()
+        hbox = QtGui.QVBoxLayout()
 
         self.tree = QtGui.QTreeWidget(self)
         self.tree.setHeaderLabels(['Name', 'Value'])
         self.tree.setColumnWidth(0, 200)
-        self.tree.itemChanged.connect(self.on_item_changed)
+        self.tree.itemClicked.connect(self.on_item_changed)
 
         self.b_copy = QtGui.QPushButton('Copy')
         self.b_copy.clicked.connect(self.on_copy)
@@ -30,7 +30,7 @@ class Settings(QtGui.QDialog):
         layout.addLayout(hbox)
         self.setLayout(layout)
 
-        self.setGeometry(900, 300, 400, 600)
+        self.setGeometry(900, 300, 400, 500)
 
     def load_file(self, filename):
         path, ext = os.path.splitext(filename)
@@ -75,6 +75,9 @@ class Settings(QtGui.QDialog):
         for i in range(widget.childCount()):
             child = widget.child(i)
             child.setCheckState(0, state)
+
+        if widget.childCount() == 0 and state == QtCore.Qt.Checked and widget.parent() != None:
+            widget.parent().setCheckState(0, state)
 
     def on_copy(self):
         text = ''
