@@ -34,9 +34,7 @@ Install with `pip install <.whl file>`
 Download the right .whl for your Python version and 32/64 bits:
 http://www.lfd.uci.edu/~gohlke/pythonlibs/#pyqt4
 
+Install with `pip install <.whl file>`
+
 ### matplotlib / pandas / vispy / pyopengl
 Install with `pip install matplotlib pandas vispy pyopengl`
-
-
-
-Install with `pip install <.whl file>`
