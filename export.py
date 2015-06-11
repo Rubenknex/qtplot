@@ -154,11 +154,6 @@ class ExportWidget(QtGui.QWidget):
 
             self.cb.formatter   = FixedOrderFormatter(str(self.le_z_format.text()))
             self.cb.update_ticks()
-            
-            #self.main.data.gen_delaunay()
-            if self.main.data.tri != None:
-                print 'plotting triang'
-                #delaunay_plot_2d(self.main.data.tri, self.ax)
 
             self.cb.set_label(self.le_z_label.text())
             self.cb.draw_all()

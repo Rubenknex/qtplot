@@ -333,6 +333,7 @@ class Window(QtGui.QMainWindow):
             self.on_max_changed(100)
 
         self.canvas.set_data(self.data)
+        self.canvas.draw_linecut(None, old_position=True)
         self.canvas.update()
 
         """

@@ -134,14 +134,10 @@ class Canvas(scene.SceneCanvas):
         self.ymin, self.ymax = np.nanmin(data.y_coords), np.nanmax(data.y_coords)
         self.zmin, self.zmax = np.nanmin(data.values), np.nanmax(data.values)
 
-        #self.colormap.min = self.zmin
-        #self.colormap.max = self.zmax
-
         self.cm_dx = (self.xmax-self.xmin)*0.1
 
         self.view = translate((0, 0, 0))
         self.projection = ortho(self.xmin, self.xmax + self.cm_dx, self.ymin, self.ymax, -1, 1)
-        #self.projection = ortho(0, 1, 0, 1, -1, 1)
 
         self.program['u_view'] = self.view
         self.program['u_projection'] = self.projection
@@ -208,30 +204,45 @@ class Canvas(scene.SceneCanvas):
 
         return dx, dy
 
-    def draw_linecut(self, event):
+    def draw_linecut(self, event, old_position=False):
         # We need to check wether the canvas has had time to redraw itself 
         # because continuous mouse movement events surpress the redrawing.
         if self.data != None and self.has_redrawn:
-            x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
-
             x_name, y_name, data_name, order_x, order_y = self.parent.get_axis_names()
 
-            if event.button == 1:
-                self.line_type = 'horizontal'
-                self.line_coord = self.data.get_closest_y(y)
-                self.line_positions = [(self.xmin, self.line_coord), (self.xmax, self.line_coord)]
-
-                x, y = self.data.get_row_at(y)
-                self.parent.linecut.plot_linecut(x, y, self.parent.name, x_name, data_name)
-                self.has_redrawn = False
-            elif event.button == 3:
-                self.line_type = 'vertical'
-                self.line_coord = self.data.get_closest_x(x)
-                self.line_positions = [(self.line_coord, self.ymin), (self.line_coord, self.ymax)]
+            if not old_position:
+                x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
                 
-                x, y = self.data.get_column_at(x)
-                self.parent.linecut.plot_linecut(x, y, self.parent.name, y_name, data_name)
-                self.has_redrawn = False
+                if event.button == 1:
+                    self.line_type = 'horizontal'
+                    self.line_coord = self.data.get_closest_y(y)
+                    self.line_positions = [(self.xmin, self.line_coord), (self.xmax, self.line_coord)]
+
+                    x, y = self.data.get_row_at(y)
+                    self.parent.linecut.plot_linecut(x, y, self.parent.name, x_name, data_name)
+                    self.has_redrawn = False
+                elif event.button == 3:
+                    self.line_type = 'vertical'
+                    self.line_coord = self.data.get_closest_x(x)
+                    self.line_positions = [(self.line_coord, self.ymin), (self.line_coord, self.ymax)]
+                    
+                    x, y = self.data.get_column_at(x)
+                    self.parent.linecut.plot_linecut(x, y, self.parent.name, y_name, data_name)
+                    self.has_redrawn = False
+            else:
+                    #self.line_type = 'horizontal'
+                    #self.line_coord = self.data.get_closest_y(y)
+                    
+
+                    if self.line_type == 'horizontal':
+                        self.line_positions = [(self.xmin, self.line_coord), (self.xmax, self.line_coord)]
+                        x, y = self.data.get_row_at(self.line_coord)
+                    else:
+                        self.line_positions = [(self.line_coord, self.ymin), (self.line_coord, self.ymax)]
+                        x, y = self.data.get_column_at(self.line_coord)
+                    
+                    self.parent.linecut.plot_linecut(x, y, self.parent.name, x_name, data_name)
+                    self.has_redrawn = False
 
             self.program_line['a_position'] = self.line_positions
 

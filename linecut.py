@@ -16,6 +16,7 @@ class Linecut(QtGui.QDialog):
         self.fig, self.ax = plt.subplots()
         self.x, self.y = None, None
         self.line = self.ax.plot(0, 0, color='red', linewidth=0.5)[0]
+        self.lines = []
 
         self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
         self.ax.yaxis.set_major_formatter(FixedOrderFormatter())
@@ -28,29 +29,33 @@ class Linecut(QtGui.QDialog):
         self.canvas = FigureCanvasQTAgg(self.fig)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
-        hbox = QtGui.QHBoxLayout()
+        grid = QtGui.QGridLayout()
 
         self.cb_reset_cmap = QtGui.QCheckBox('Reset on plot')
         self.cb_reset_cmap.setCheckState(QtCore.Qt.Checked)
-        hbox.addWidget(self.cb_reset_cmap)
+        grid.addWidget(self.cb_reset_cmap, 1, 1)
 
-        self.b_save = QtGui.QPushButton('Copy data to clipboard', self)
+        self.b_save = QtGui.QPushButton('Data to clipboard', self)
         self.b_save.clicked.connect(self.on_clipboard)
-        hbox.addWidget(self.b_save)
+        grid.addWidget(self.b_save, 1, 2)
 
         self.b_save_dat = QtGui.QPushButton('Save data...', self)
         self.b_save_dat.clicked.connect(self.on_save)
-        hbox.addWidget(self.b_save_dat)
+        grid.addWidget(self.b_save_dat, 1, 3)
 
-        self.b_copy = QtGui.QPushButton('Copy figure to clipboard (Ctrl+C)', self)
+        self.b_copy = QtGui.QPushButton('Figure to clipboard', self)
         self.b_copy.clicked.connect(self.on_copy_figure)
         QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_figure)
-        hbox.addWidget(self.b_copy)
+        grid.addWidget(self.b_copy, 1, 4)
+
+        self.cb_incremental = QtGui.QCheckBox('Incremental')
+        self.cb_incremental.setCheckState(QtCore.Qt.Unchecked)
+        grid.addWidget(self.cb_incremental, 2, 1)
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
-        layout.addLayout(hbox)
+        layout.addLayout(grid)
         self.setLayout(layout)
 
         self.resize(500, 500)
@@ -97,8 +102,22 @@ class Linecut(QtGui.QDialog):
         self.xlabel, self.ylabel = xlabel, ylabel
         self.x, self.y = x, y
 
-        self.line.set_xdata(x)
-        self.line.set_ydata(y)
+        # Remove all the existing lines and only plot one if we uncheck the incremental box
+        # Else, add a new line to the collection
+        if self.cb_incremental.checkState() == QtCore.Qt.Unchecked:
+            for i, line in enumerate(self.lines):
+                print i, line
+                self.ax.lines.remove(line)
+            self.lines = []
+
+            self.line.set_xdata(x)
+            self.line.set_ydata(y)
+        else:
+            self.line.set_xdata([])
+            self.line.set_ydata([])
+
+            line = self.ax.plot(x, y)[0]
+            self.lines.append(line)
 
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
