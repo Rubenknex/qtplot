@@ -22,22 +22,21 @@ http://www.lfd.uci.edu/~gohlke/pythonlibs/#numpy
 Install with `pip install <.whl file>`
 
 ### SciPy
-Download the right .whl for your Python version and 32/64 bits:
+Download the .exe installer at 
+http://sourceforge.net/projects/scipy/
+
+OR, Download the right .whl for your Python version and 32/64 bits:
 http://www.lfd.uci.edu/~gohlke/pythonlibs/#scipy
 
 Install with `pip install <.whl file>`
 
-### matplotlib
-Install with `pip install matplotlib`
-
-### pandas
-Install with `pip install pandas`
-
-### vispy
-Install with `pip install vispy`
-
 ### PyQt4
 Download the right .whl for your Python version and 32/64 bits:
 http://www.lfd.uci.edu/~gohlke/pythonlibs/#pyqt4
+
+### matplotlib / pandas / vispy / pyopengl
+Install with `pip install matplotlib pandas vispy pyopengl`
+
+
 
 Install with `pip install <.whl file>`
