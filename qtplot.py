@@ -11,6 +11,7 @@ import time
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.ticker import ScalarFormatter
 from PyQt4 import QtGui, QtCore
+from scipy import interpolate, spatial, io
 from scipy.interpolate import griddata
 from scipy.spatial import qhull, delaunay_plot_2d
 
@@ -186,13 +187,12 @@ class Window(QtGui.QMainWindow):
         self.le_max.returnPressed.connect(self.on_min_max_entered)
         hbox_gamma.addWidget(self.le_max)
 
+        self.b_reset = QtGui.QPushButton('Reset')
+        self.b_reset.clicked.connect(self.on_cm_reset)
+        hbox_gamma.addWidget(self.b_reset)
+
         # Bottom row buttons
         hbox4 = QtGui.QHBoxLayout()
-
-        self.b_copy_colorplot = QtGui.QPushButton('Copy figure to clipboard (Ctrl+C)', self)
-        self.b_copy_colorplot.clicked.connect(self.on_copy_figure)
-        hbox4.addWidget(self.b_copy_colorplot)
-        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_figure)
 
         self.b_save_matrix = QtGui.QPushButton('Save data...')
         self.b_save_matrix.clicked.connect(self.on_save_matrix)
@@ -396,25 +396,32 @@ class Window(QtGui.QMainWindow):
             self.canvas.colormap.max = newmax
             self.canvas.update()
 
-    def on_copy_figure(self):
-        pass
-        """
-        path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(path, 'test.png')
-        self.fig.savefig(path)
+    def on_cm_reset(self):
+        if self.data != None:
+            zmin, zmax = np.nanmin(self.data.values), np.nanmax(self.data.values)
 
-        img = QtGui.QImage(path)
-        QtGui.QApplication.clipboard().setImage(img)
-        """
+            self.s_min.setValue(0)
+            self.on_min_changed(0)
+            self.s_gamma.setValue(0)
+            self.s_max.setValue(100)
+            self.on_max_changed(100)
 
     def on_save_matrix(self):
         path = os.path.dirname(os.path.realpath(__file__))
-        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save file', path, '.dat')
+        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save file', path, 'NumPy matrix format (*.npy);;MATLAB matrix format (*.mat)')
+        filename = str(filename)
 
         if filename != '' and self.dat_file != None:
+            base = os.path.basename(filename)
+            name, ext = os.path.splitext(base)
+
             mat = np.dstack((self.data.x_coords, self.data.y_coords, self.data.values))
 
-            mat.dump(str(filename))
+            if ext == '.npy':
+                np.save(filename, mat)
+                #mat.dump(filename)
+            elif ext == '.mat':
+                io.savemat(filename, {'data':mat})
 
     def get_axis_names(self):
         x_name = str(self.cb_x.currentText())

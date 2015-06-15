@@ -105,9 +105,9 @@ class Linecut(QtGui.QDialog):
         # Remove all the existing lines and only plot one if we uncheck the incremental box
         # Else, add a new line to the collection
         if self.cb_incremental.checkState() == QtCore.Qt.Unchecked:
-            for i, line in enumerate(self.lines):
-                print i, line
+            for line in self.lines:
                 self.ax.lines.remove(line)
+                
             self.lines = []
 
             self.line.set_xdata(x)

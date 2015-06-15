@@ -1,3 +1,4 @@
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -65,8 +66,8 @@ class ExportWidget(QtGui.QWidget):
         grid.addWidget(self.le_y_format, 3, 4)
 
         grid.addWidget(QtGui.QLabel('Y Div'), 3, 5)
-        self.le_x_div = QtGui.QLineEdit('1e0')
-        grid.addWidget(self.le_x_div, 3, 6)
+        self.le_y_div = QtGui.QLineEdit('1e0')
+        grid.addWidget(self.le_y_div, 3, 6)
 
 
         grid.addWidget(QtGui.QLabel('Z Label'), 4, 1)
@@ -78,8 +79,8 @@ class ExportWidget(QtGui.QWidget):
         grid.addWidget(self.le_z_format, 4, 4)
 
         grid.addWidget(QtGui.QLabel('Z Div'), 4, 5)
-        self.le_x_div = QtGui.QLineEdit('1e0')
-        grid.addWidget(self.le_x_div, 4, 6)
+        self.le_z_div = QtGui.QLineEdit('1e0')
+        grid.addWidget(self.le_z_div, 4, 6)
 
 
         grid.addWidget(QtGui.QLabel('Font'), 5, 1)
@@ -102,7 +103,7 @@ class ExportWidget(QtGui.QWidget):
 
         grid.addWidget(QtGui.QLabel('CB Orient'), 5, 5)
         self.cb_cb_orient = QtGui.QComboBox()
-        self.cb_cb_orient.addItems(['Vertical', 'Horizontal'])
+        self.cb_cb_orient.addItems(['vertical', 'horizontal'])
         grid.addWidget(self.cb_cb_orient, 5, 6)
 
         grid.addWidget(QtGui.QLabel('CB Pos'), 6, 5)
@@ -115,7 +116,7 @@ class ExportWidget(QtGui.QWidget):
         grid.addWidget(self.cb_rasterize, 7, 2)
 
         grid.addWidget(QtGui.QLabel('DPI'), 7, 3)
-        self.le_dpi = QtGui.QLineEdit('100')
+        self.le_dpi = QtGui.QLineEdit('80')
         grid.addWidget(self.le_dpi, 7, 4)
 
         vbox = QtGui.QVBoxLayout(self)
@@ -135,24 +136,26 @@ class ExportWidget(QtGui.QWidget):
             self.ax.clear()
 
             x, y, z = self.main.data.get_pcolor()
-            quadmesh = self.ax.pcolormesh(x, y, z, cmap='seismic')
-            quadmesh.get_cmap().set_gamma(self.main.canvas.colormap.gamma)
+
+            cmap = self.main.canvas.colormap.get_mpl_colormap()
+            quadmesh = self.ax.pcolormesh(x, y, z, cmap=cmap, rasterized=True)
             quadmesh.set_clim(self.main.canvas.colormap.get_limits())
+
             self.ax.axis('tight')
 
             self.ax.set_title(self.le_title.text())
             self.ax.set_xlabel(self.le_x_label.text())
             self.ax.set_ylabel(self.le_y_label.text())
             
-            self.ax.xaxis.set_major_formatter(FixedOrderFormatter(str(self.le_x_format.text())))
-            self.ax.yaxis.set_major_formatter(FixedOrderFormatter(str(self.le_y_format.text())))
+            self.ax.xaxis.set_major_formatter(FixedOrderFormatter(str(self.le_x_format.text()), float(self.le_x_div.text())))
+            self.ax.yaxis.set_major_formatter(FixedOrderFormatter(str(self.le_y_format.text()), float(self.le_y_div.text())))
 
-            if self.cb == None:
-                self.cb = self.fig.colorbar(quadmesh)
-            else:
-                self.cb.set_clim(quadmesh.get_clim())
+            if self.cb != None:
+                self.cb.remove()
 
-            self.cb.formatter   = FixedOrderFormatter(str(self.le_z_format.text()))
+            self.cb = self.fig.colorbar(quadmesh, orientation=str(self.cb_cb_orient.currentText()))
+
+            self.cb.formatter  = FixedOrderFormatter(str(self.le_z_format.text()), float(self.le_z_div.text()))
             self.cb.update_ticks()
 
             self.cb.set_label(self.le_z_label.text())

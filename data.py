@@ -27,17 +27,11 @@ class DatFile:
         """Pivot the column based data into matrices."""
         # Sometimes there are multiple datapoints for the same coordinate, but there is only one coordinate axis
         # In this case, fill the second coordinate with 1,2,3,... so the datapoints can be plotted in 2D
-        """
         if (self.df[x_order] == 0).all():
             self.df[x_order] = self.df.groupby(y_order)[x_order].apply(lambda x: pd.Series(range(len(x.values)), x.index))
 
         if (self.df[y_order] == 0).all():
             self.df[y_order] = self.df.groupby(x_order)[y_order].apply(lambda x: pd.Series(range(len(x.values)), x.index))
-
-        x_coords = self.df.pivot(y_order, x_order, x).values
-        y_coords = self.df.pivot(y_order, x_order, y).values
-        values   = self.df.pivot(y_order, x_order, z).values
-        """
 
         rows, row_ind = np.unique(self.df[y_order].values, return_inverse=True)
         cols, col_ind = np.unique(self.df[x_order].values, return_inverse=True)
@@ -46,7 +40,6 @@ class DatFile:
         pivot[row_ind, col_ind] = self.df[[x, y, z]].values
 
         return Data(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2], (x==x_order,y==y_order))
-        #return Data(x_coords, y_coords, values, (x==x_order,y==y_order))
 
 
 

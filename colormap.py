@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib as mpl
 
 def read_ppm_colormap(filename):
     with open(filename) as f:
@@ -11,7 +12,9 @@ def read_ppm_colormap(filename):
 
         return pixels.reshape((len(pixels) / 3, 3))
 
-class ColorMap:
+
+
+class Colormap:
 	def __init__(self, filename):
 		self.colors = read_ppm_colormap(filename)
 		self.gamma = 1
@@ -32,3 +35,6 @@ class ColorMap:
 		b = np.interp(y, colors_x, self.colors[:,2])
 		
 		return np.dstack((r, g, b)).reshape(len(r), 3).astype(np.uint8)
+
+	def get_mpl_colormap(self):
+		return mpl.colors.ListedColormap(self.get_colors().astype(float) / 255.0)

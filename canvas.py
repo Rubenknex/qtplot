@@ -6,7 +6,7 @@ from PyQt4 import QtGui, QtCore
 from vispy import app, gloo, scene, visuals
 from vispy.util.transforms import ortho, translate
 
-from colormap import ColorMap
+from colormap import Colormap
 from util import FixedOrderFormatter, eng_format
 from axis import AxisVisual
 
@@ -104,7 +104,7 @@ class Canvas(scene.SceneCanvas):
         self.data = None
         self.program = gloo.Program(vert, frag)
 
-        self.colormap = ColorMap('colormaps/transform/Seismic.ppm')
+        self.colormap = Colormap('colormaps/transform/Seismic.ppm')
 
         self.program_cm = gloo.Program(cm_vert, cm_frag)
         #self.
