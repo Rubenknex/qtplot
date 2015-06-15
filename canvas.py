@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+import os
 
 from PyQt4 import QtGui, QtCore
 
@@ -104,7 +105,9 @@ class Canvas(scene.SceneCanvas):
         self.data = None
         self.program = gloo.Program(vert, frag)
 
-        self.colormap = Colormap('colormaps/transform/Seismic.ppm')
+        path = os.path.dirname(os.path.realpath(__file__))
+        path = os.path.join(path, 'colormaps/transform/Seismic.ppm')
+        self.colormap = Colormap(path)
 
         self.program_cm = gloo.Program(cm_vert, cm_frag)
         #self.
