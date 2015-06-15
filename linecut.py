@@ -17,6 +17,7 @@ class Linecut(QtGui.QDialog):
         self.x, self.y = None, None
         self.line = self.ax.plot(0, 0, color='red', linewidth=0.5)[0]
         self.lines = []
+        self.total_offset = 0
 
         self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
         self.ax.yaxis.set_major_formatter(FixedOrderFormatter())
@@ -51,6 +52,11 @@ class Linecut(QtGui.QDialog):
         self.cb_incremental = QtGui.QCheckBox('Incremental')
         self.cb_incremental.setCheckState(QtCore.Qt.Unchecked)
         grid.addWidget(self.cb_incremental, 2, 1)
+
+        grid.addWidget(QtGui.QLabel('Offset:'), 2, 2)
+
+        self.le_offset = QtGui.QLineEdit('0', self)
+        grid.addWidget(self.le_offset, 2, 3)
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
@@ -112,12 +118,16 @@ class Linecut(QtGui.QDialog):
 
             self.line.set_xdata(x)
             self.line.set_ydata(y)
+
+            self.total_offset = 0
         else:
             self.line.set_xdata([])
             self.line.set_ydata([])
 
-            line = self.ax.plot(x, y)[0]
+            line = self.ax.plot(x, y + self.total_offset)[0]
             self.lines.append(line)
+
+            self.total_offset += float(self.le_offset.text())
 
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
