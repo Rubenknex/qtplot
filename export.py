@@ -33,6 +33,10 @@ class ExportWidget(QtGui.QWidget):
         self.b_copy.clicked.connect(self.on_copy)
         hbox.addWidget(self.b_copy)
 
+        self.b_export = QtGui.QPushButton('Export...', self)
+        self.b_export.clicked.connect(self.on_export)
+        hbox.addWidget(self.b_export)
+
         grid = QtGui.QGridLayout()
 
         grid.addWidget(QtGui.QLabel('Title'), 1, 1)
@@ -93,11 +97,11 @@ class ExportWidget(QtGui.QWidget):
 
 
         grid.addWidget(QtGui.QLabel('Width'), 5, 3)
-        self.le_width = QtGui.QLineEdit('-')
+        self.le_width = QtGui.QLineEdit('3')
         grid.addWidget(self.le_width, 5, 4)
 
         grid.addWidget(QtGui.QLabel('Height'), 6, 3)
-        self.le_height = QtGui.QLineEdit('-')
+        self.le_height = QtGui.QLineEdit('3')
         grid.addWidget(self.le_height, 6, 4)
 
 
@@ -109,7 +113,6 @@ class ExportWidget(QtGui.QWidget):
         grid.addWidget(QtGui.QLabel('CB Pos'), 6, 5)
         self.le_cb_pos = QtGui.QLineEdit('0 0 1 1')
         grid.addWidget(self.le_cb_pos, 6, 6)
-
 
         grid.addWidget(QtGui.QLabel('Rasterize'), 7, 1)
         self.cb_rasterize = QtGui.QCheckBox('')
@@ -131,6 +134,10 @@ class ExportWidget(QtGui.QWidget):
         self.le_y_label.setText(y)
         self.le_z_label.setText(z)
 
+    def keyPressEvent(self, e):
+        if e.key() == QtCore.Qt.Key_Return:
+            self.on_update()
+
     def on_update(self):
         if self.main.data != None:
             self.ax.clear()
@@ -141,7 +148,11 @@ class ExportWidget(QtGui.QWidget):
             quadmesh = self.ax.pcolormesh(x, y, z, cmap=cmap, rasterized=True)
             quadmesh.set_clim(self.main.canvas.colormap.get_limits())
 
+            #self.fig.set_size_inches(float(self.le_width.text()), float(self.le_height.text()), forward=True)
+            #self.fig.set_dpi(int(self.le_dpi.text()))
+
             self.ax.axis('tight')
+            
 
             self.ax.set_title(self.le_title.text())
             self.ax.set_xlabel(self.le_x_label.text())
@@ -161,6 +172,8 @@ class ExportWidget(QtGui.QWidget):
             self.cb.set_label(self.le_z_label.text())
             self.cb.draw_all()
 
+            self.fig.tight_layout()
+
             self.canvas.draw()
 
     def on_copy(self):
@@ -170,3 +183,16 @@ class ExportWidget(QtGui.QWidget):
 
         img = QtGui.QImage(path)
         QtGui.QApplication.clipboard().setImage(img)
+
+    def on_export(self):
+        path = os.path.dirname(os.path.realpath(__file__))
+        filename = QtGui.QFileDialog.getSaveFileName(self, 'Export figure', path, 'Portable Network Graphics (*.png);;Portable Document Format (*.pdf);;Postscript (*.ps);;Encapsulated Postscript (*.eps);;Scalable Vector Graphics (*.svg)')
+        filename = str(filename)
+
+        if filename != None:
+            previous_size = self.fig.get_size_inches()
+            self.fig.set_size_inches(float(self.le_width.text()), float(self.le_height.text()))
+            dpi = int(self.le_dpi.text())
+
+            self.fig.savefig(filename, dpi=dpi, bbox_inches='tight')
+            self.fig.set_size_inches(previous_size)

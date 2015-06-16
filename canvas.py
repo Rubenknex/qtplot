@@ -9,7 +9,6 @@ from vispy.util.transforms import ortho, translate
 
 from colormap import Colormap
 from util import FixedOrderFormatter, eng_format
-from axis import AxisVisual
 
 import time
 
@@ -121,15 +120,6 @@ class Canvas(scene.SceneCanvas):
 
         gloo.set_clear_color((1, 1, 1, 1))
 
-        canvas_size = (1000, 800)
-        graph_size = (900, 700)
-        margin_x = (canvas_size[0]-graph_size[0]) / 2.
-        margin_y = (canvas_size[1]-graph_size[1]) / 2.
-        pos_xax = np.array([[margin_x, canvas_size[1]-margin_y],
-                   [canvas_size[0]-margin_x, canvas_size[1]-margin_y]])
-        self.axis_x = AxisVisual(pos_xax, (0, 100), (0., 1.))
-        self.tr_sys = visuals.transforms.TransformSystem(self)
-
     def set_data(self, data):
         self.data = data
 
@@ -233,10 +223,6 @@ class Canvas(scene.SceneCanvas):
                     self.parent.linecut.plot_linecut(x, y, self.parent.name, y_name, data_name)
                     self.has_redrawn = False
             else:
-                    #self.line_type = 'horizontal'
-                    #self.line_coord = self.data.get_closest_y(y)
-                    
-
                     if self.line_type == 'horizontal':
                         self.line_positions = [(self.xmin, self.line_coord), (self.xmax, self.line_coord)]
                         x, y = self.data.get_row_at(self.line_coord)
@@ -290,7 +276,5 @@ class Canvas(scene.SceneCanvas):
             self.program.draw('triangles')
             self.program_cm.draw('triangle_strip')
             self.program_line.draw('lines')
-
-            #self.axis_x.draw(self.tr_sys)
 
         self.has_redrawn = True

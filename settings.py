@@ -35,14 +35,17 @@ class Settings(QtGui.QDialog):
     def load_file(self, filename):
         path, ext = os.path.splitext(filename)
         settings_file = path + '.set'
+        settings_file_name = os.path.split(settings_file)[1]
 
         if os.path.exists(settings_file):
             with open(settings_file) as f:
                 self.lines = f.readlines()
             
             self.fill_tree(self.lines)
+
+            self.setWindowTitle(settings_file_name)
         else:
-            pass
+            self.setWindowTitle('Could not find ' + settings_file_name)
 
     def fill_tree(self, lines):
         self.tree.clear()

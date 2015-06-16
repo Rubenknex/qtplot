@@ -1,11 +1,13 @@
 import math
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
-from matplotlib.ticker import ScalarFormatter
 import matplotlib.pyplot as plt
 import numpy as np
-from PyQt4 import QtGui, QtCore
 import os
 import pandas as pd
+
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
+from matplotlib.ticker import ScalarFormatter
+
+from PyQt4 import QtGui, QtCore
 
 from util import FixedOrderFormatter
 

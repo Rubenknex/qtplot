@@ -39,9 +39,13 @@ class Window(QtGui.QMainWindow):
         self.init_ui()
 
         if filename is not None:
+            print 'Loading file'
             self.load_file(filename)
+            print 'Finished'
 
     def init_ui(self):
+        print 'Initializing UI'
+
         self.setWindowTitle('qtplot')
 
         self.main_widget = QtGui.QTabWidget(self)
@@ -221,6 +225,8 @@ class Window(QtGui.QMainWindow):
         self.resize(600, 700)
         self.move(100, 100)
 
+        print 'Finished'
+
     def update_ui(self, reset=True):
         self.setWindowTitle(self.name)
 
@@ -286,8 +292,10 @@ class Window(QtGui.QMainWindow):
             self.load_file(filename)
 
     def load_file(self, filename):
+        print 'Loading .dat'
         self.dat_file = DatFile(filename)
         self.settings.load_file(filename)
+        print 'Finished'
 
         if filename != self.filename:
             path, self.name = os.path.split(filename)
@@ -458,15 +466,16 @@ if __name__ == '__main__':
     mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
 
     app = QtGui.QApplication(sys.argv)
+    print '1'
 
     linecut = Linecut()
     operations = Operations()
-    
+    print '2'
     if len(sys.argv) > 1:
         main = Window(linecut, operations, filename=sys.argv[1])
     else:
-        main = Window(linecut, operations)
-
+        main = Window(linecut, operations, filename='K:\\ns\\qt\\qt-shared\\Ruben\\data\\Dev1_183.dat')
+    print '3'
     linecut.main = main
     operations.main = main
 

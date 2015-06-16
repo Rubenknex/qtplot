@@ -9,9 +9,11 @@ from util import create_kernel
 class DatFile:
     """Class which contains the column based DataFrame of the data."""
     def __init__(self, filename):
+        print 'DatFile constructor...'
         self.filename = filename
 
         self.columns = []
+        self.sizes = []
 
         with open(filename, 'r') as f:
             for line in f:
@@ -20,8 +22,15 @@ class DatFile:
                 if line.startswith('#\tname'):
                     name = line.split(': ', 1)[1]
                     self.columns.append(name)
+                elif line.startswith('#\tsize'):
+                    size = int(line.split(': ', 1)[1])
+                    self.sizes.append(size)
+
+                if len(line) > 0 and line[0].isdigit():
+                    break
 
         self.df = pd.read_table(filename, engine='c', sep='\t', comment='#', names=self.columns)
+        print 'Finished'
 
     def get_data(self, x, y, z, x_order, y_order):
         """Pivot the column based data into matrices."""
@@ -378,6 +387,7 @@ class Data:
         return Data(xv, yv, np.reshape(values, xv.shape))
 
     def interp_x(data, **kwargs):
+        """Interpolate every row onto a uniformly spaced grid."""
         points = int(kwargs.get('Points'))
         xmin, xmax, ymin, ymax = data.get_dimensions()
 
@@ -393,6 +403,7 @@ class Data:
         return Data(np.tile(x, (rows,1)), np.tile(y_avg, (1, points)), values)
 
     def interp_y(data, **kwargs):
+        """Interpolate every column onto a uniformly spaced grid."""
         points = int(kwargs.get('Points'))
         xmin, xmax, ymin, ymax = data.get_dimensions()
 
