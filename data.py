@@ -216,9 +216,6 @@ class Data:
     def get_closest_y(self, y_coord):
         return min(self.y_coords[:,0], key=lambda y:abs(y - y_coord))
 
-    def get_dimensions(self):
-        return np.nanmin(self.x_coords), np.nanmax(self.x_coords), np.nanmin(self.y_coords), np.nanmax(self.y_coords)
-
     def flip_axes(self, x_flip, y_flip):
         if x_flip:
             self.set_data(np.fliplr(self.x_coords), np.fliplr(self.y_coords), np.fliplr(self.values))
@@ -251,7 +248,7 @@ class Data:
         if x2 < 0: x2 = data.values.shape[1] + x2 + 1
         if y2 < 0: y2 = data.values.shape[0] + y2 + 1
 
-        self.set_data(data.x_coords[y1:y2,x1:x2], data.y_coords[y1:y2,x1:x2], data.values[y1:y2,x1:x2])
+        data.set_data(data.x_coords[y1:y2,x1:x2], data.y_coords[y1:y2,x1:x2], data.values[y1:y2,x1:x2])
 
     def dderiv(data, **kwargs):
         """Calculate the component of the gradient in a specific direction."""
@@ -296,9 +293,7 @@ class Data:
         indices = np.arange(0, data.values.shape[0], 2)
         if not even: indices = np.arange(1, data.values.shape[0], 2)
 
-        data.values = data.values[indices]
-        data.x_coords = data.x_coords[indices]
-        data.y_coords = data.y_coords[indices]
+        data.set_data(data.x_coords[indices], data.y_coords[indices], data.values[indices])
 
     def flip(data, **kwargs):
         """Flip the X or Y axes."""
@@ -338,8 +333,6 @@ class Data:
         kernel = create_kernel(sx, sy, 7, kernel_type)
         data.values = data.values - ndimage.filters.convolve(data.values, kernel)
 
-        #copy.values = np.ma.masked_invalid(copy.values)
-
     def hist2d(data, **kwargs):
         """Convert every column into a histogram, default bin amount is sqrt(n)."""
         hmin, hmax = float(kwargs.get('Min')), float(kwargs.get('Max'))
@@ -352,24 +345,24 @@ class Data:
 
         data.x_coords = np.tile(data.x_coords[0,:], (hist.shape[0], 1))
         data.y_coords = np.tile(bincoords[:,np.newaxis], (1, hist.shape[1]))
+        data.values = hist
 
     def interp_grid(data, **kwargs):
         """Interpolate the data onto a uniformly spaced grid using barycentric interpolation."""
         width, height = int(kwargs.get('Width')), int(kwargs.get('Height'))
-        xmin, xmax, ymin, ymax = data.get_dimensions()
+        xmin, xmax, ymin, ymax, _, _ = data.get_limits()
 
         x = np.linspace(xmin, xmax, width)
         y = np.linspace(ymin, ymax, height)
         xv, yv = np.meshgrid(x, y)
 
-        data.x_coords = xv
-        data.y_coords = yv
+        data.x_coords, data.y_coords = xv, yv
         data.values = np.reshape(data.interpolate(np.column_stack((xv.flatten(), yv.flatten()))), xv.shape)
 
     def interp_x(data, **kwargs):
         """Interpolate every row onto a uniformly spaced grid."""
         points = int(kwargs.get('Points'))
-        xmin, xmax, ymin, ymax = data.get_dimensions()
+        xmin, xmax, ymin, ymax, _, _ = data.get_limits()
 
         x = np.linspace(xmin, xmax, points)
 
@@ -380,12 +373,12 @@ class Data:
 
         y_avg = np.average(data.y_coords, axis=1)[np.newaxis].T
 
-        return Data(np.tile(x, (rows,1)), np.tile(y_avg, (1, points)), values)
+        data.set_data(np.tile(x, (rows,1)), np.tile(y_avg, (1, points)), values)
 
     def interp_y(data, **kwargs):
         """Interpolate every column onto a uniformly spaced grid."""
         points = int(kwargs.get('Points'))
-        xmin, xmax, ymin, ymax = data.get_dimensions()
+        xmin, xmax, ymin, ymax, _, _ = data.get_limits()
 
         y = np.linspace(ymin, ymax, points)[np.newaxis].T
 
@@ -396,84 +389,63 @@ class Data:
 
         x_avg = np.average(data.x_coords, axis=0)
 
-        return Data(np.tile(x_avg, (points,1)), np.tile(y, (1,cols)), values)
+        data.set_data(np.tile(x_avg, (points,1)), np.tile(y, (1,cols)), values)
 
     def log(data, **kwargs):
         """The base-10 logarithm of every datapoint."""
         subtract = bool(kwargs.get('Subtract offset'))
         newmin = float(kwargs.get('New min'))
 
-        copy = data.copy()
-        min = np.min(copy.values)
+        min = np.nanmin(data.values)
 
         if subtract:
-            copy.values = (copy.values - min) + newmin
+            data.values = (data.values - min) + newmin
 
-        copy.values = np.log10(copy.values)
-
-        return copy
+        data.values = np.log10(data.values)
 
     def lowpass(data, **kwargs):
         """Perform a low-pass filter."""
-        copy = data.copy()
-
         sx, sy = float(kwargs.get('X Width')), float(kwargs.get('Y Height'))
         kernel_type = str(kwargs.get('Type')).lower()
 
         kernel = create_kernel(sx, sy, 7, kernel_type)
-        copy.values = ndimage.filters.convolve(copy.values, kernel)
+        data.values = ndimage.filters.convolve(data.values, kernel)
 
-        copy.values = np.ma.masked_invalid(copy.values)
-
-        return copy
+        data.values = np.ma.masked_invalid(data.values)
 
     def neg(data, **kwargs):
         """Negate every datapoint."""
-        return Data(data.x_coords, data.y_coords, np.negative(data.values), data.equidistant)
+        data.values *= -1
 
     def norm_columns(data, **kwargs):
         """Transform the values of every column so that they use the full colormap."""
-        copy = data.copy()
-        copy.values = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 0, copy.values)
-
-        return copy
+        data.values = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 0, data.values)
 
     def norm_rows(data, **kwargs):
         """Transform the values of every row so that they use the full colormap."""
-        copy = data.copy()
-        copy.values = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 1, copy.values)
-
-        return copy
+        data.values = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 1, data.values)
 
     def offset(data, **kwargs):
         """Add a value to every datapoint."""
-        offset = float(kwargs.get('Offset'))
-
-        return Data(data.x_coords, data.y_coords, data.values + offset, data.equidistant)
+        data.values += float(kwargs.get('Offset'))
 
     def offset_axes(data, **kwargs):
         """Add an offset value to the axes."""
-        x_off, y_off = float(kwargs.get('X Offset')), float(kwargs.get('Y Offset'))
-
-        return Data(data.x_coords + x_off, data.y_coords + y_off, data.values, data.equidistant)
+        data.x_coords += float(kwargs.get('X Offset'))
+        data.y_coords += float(kwargs.get('Y Offset'))
 
     def power(data, **kwargs):
         """Raise the datapoints to a power."""
-        power = float(kwargs.get('Power'))
-
-        return Data(data.x_coords, data.y_coords, np.power(data.values, power), data.equidistant)
+        data.values = np.power(data.values, float(kwargs.get('Power')))
 
     def scale_axes(data, **kwargs):
         """Multiply the axes values by a number."""
-        x_sc, y_sc = float(kwargs.get('X Scale')), float(kwargs.get('Y Scale'))
-
-        return Data(data.x_coords * x_sc, data.y_coords * y_sc, data.values, data.equidistant)
+        data.x_coords *= float(kwargs.get('X Scale'))
+        data.y_coords *= float(kwargs.get('Y Scale'))
 
     def scale_data(data, **kwargs):
         """Multiply the datapoints by a number."""
-        factor = float(kwargs.get('Factor'))
-
-        return Data(data.x_coords, data.y_coords, data.values * factor, data.equidistant)
+        data.values *= float(kwargs.get('Factor'))
 
     def sub_linecut(data, **kwargs):
         """Subtract a horizontal/vertical linecut from every row/column."""
@@ -489,52 +461,43 @@ class Data:
             x, y = data.get_column_at(linecut_coord)
             y = y[:,np.newaxis]
 
-        return Data(data.x_coords, data.y_coords, data.values - y, data.equidistant)
+        data.values -= y
 
     def sub_plane(data, **kwargs):
         """Subtract a plane with x and y slopes centered in the middle."""
         xs, ys = float(kwargs.get('X Slope')), float(kwargs.get('Y Slope'))
-        xmin, xmax, ymin, ymax = data.get_dimensions()
+        xmin, xmax, ymin, ymax, _, _ = data.get_limits()
 
-        copy = data.copy()
-        copy.values -= xs*(copy.x_coords - (xmax - xmin)/2) + ys*(copy.y_coords - (ymax - ymin)/2)
-        
-        return copy
+        data.values -= xs*(data.x_coords - (xmax - xmin)/2) + ys*(data.y_coords - (ymax - ymin)/2)
 
     def xderiv(data, **kwargs):
         """Find the rate of change between every datapoint in the x-direction."""
         method = str(kwargs.get('Method'))
-        copy = data.copy()
 
         if method == 'midpoint':
-            dx = np.diff(copy.x_coords, axis=1)
-            ddata = np.diff(copy.values, axis=1)
+            dx = np.diff(data.x_coords, axis=1)
+            ddata = np.diff(data.values, axis=1)
 
-            copy.x_coords = copy.x_coords[:,:-1] + dx / 2.0
-            copy.y_coords = copy.y_coords[:,:-1]
-            copy.values = ddata / dx
+            data.x_coords = data.x_coords[:,:-1] + dx / 2.0
+            data.y_coords = data.y_coords[:,:-1]
+            data.values = ddata / dx
         elif method == '2nd order central diff':
-            copy.values = (copy.values[:,2:] - copy.values[:,:-2]) / (copy.x_coords[:,2:] - copy.x_coords[:,:-2])
-            copy.x_coords = copy.x_coords[:,1:-1]
-            copy.y_coords = copy.y_coords[:,1:-1]
-
-        return copy
+            data.values = (data.values[:,2:] - data.values[:,:-2]) / (data.x_coords[:,2:] - data.x_coords[:,:-2])
+            data.x_coords = data.x_coords[:,1:-1]
+            data.y_coords = data.y_coords[:,1:-1]
 
     def yderiv(data, **kwargs):
         """Find the rate of change between every datapoint in the y-direction."""
         method = str(kwargs.get('Method'))
-        copy = data.copy()
 
         if method == 'midpoint':
-            dy = np.diff(copy.y_coords, axis=0)
-            ddata = np.diff(copy.values, axis=0)
+            dy = np.diff(data.y_coords, axis=0)
+            ddata = np.diff(data.values, axis=0)
 
-            copy.x_coords = copy.x_coords[:-1,:]
-            copy.y_coords = copy.y_coords[:-1,:] + dy / 2.0
-            copy.values = ddata / dy
+            data.x_coords = data.x_coords[:-1,:]
+            data.y_coords = data.y_coords[:-1,:] + dy / 2.0
+            data.values = ddata / dy
         elif method == '2nd order central diff':
-            copy.values = (copy.values[2:] - copy.values[:-2]) / (copy.y_coords[2:] - copy.y_coords[:-2])
-            copy.x_coords = copy.x_coords[1:-1]
-            copy.y_coords = copy.y_coords[1:-1]
-
-        return copy
+            data.values = (data.values[2:] - data.values[:-2]) / (data.y_coords[2:] - data.y_coords[:-2])
+            data.x_coords = data.x_coords[1:-1]
+            data.y_coords = data.y_coords[1:-1]
