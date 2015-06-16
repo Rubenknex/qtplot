@@ -123,9 +123,7 @@ class Canvas(scene.SceneCanvas):
     def set_data(self, data):
         self.data = data
 
-        self.xmin, self.xmax = np.nanmin(data.x_coords), np.nanmax(data.x_coords)
-        self.ymin, self.ymax = np.nanmin(data.y_coords), np.nanmax(data.y_coords)
-        self.zmin, self.zmax = np.nanmin(data.values), np.nanmax(data.values)
+        self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax = data.get_limits()
 
         self.cm_dx = (self.xmax-self.xmin)*0.1
 
@@ -151,7 +149,7 @@ class Canvas(scene.SceneCanvas):
         self.update()
 
     def generate_vertices(self, data):
-        x, y, z = data.get_sorted()
+        x, y, z = data.get_sorted_by_coordinates()
         xq, yq = data.get_quadrilaterals(x, y)
 
         # Top left

@@ -9,7 +9,6 @@ from util import create_kernel
 class DatFile:
     """Class which contains the column based DataFrame of the data."""
     def __init__(self, filename):
-        print 'DatFile constructor...'
         self.filename = filename
 
         self.columns = []
@@ -30,12 +29,10 @@ class DatFile:
                     break
 
         self.df = pd.read_table(filename, engine='c', sep='\t', comment='#', names=self.columns)
-        print 'Finished'
 
     def get_data(self, x, y, z, x_order, y_order):
         """Pivot the column based data into matrices."""
-        # Sometimes there are multiple datapoints for the same coordinate, but there is only one coordinate axis
-        # In this case, fill the second coordinate with 1,2,3,... so the datapoints can be plotted in 2D
+        # If an order column is filled with zeros, fill them with an increasing count based on the other order.
         if (self.df[x_order] == 0).all():
             self.df[x_order] = self.df.groupby(y_order)[x_order].apply(lambda x: pd.Series(range(len(x.values)), x.index))
 
@@ -45,6 +42,7 @@ class DatFile:
         rows, row_ind = np.unique(self.df[y_order].values, return_inverse=True)
         cols, col_ind = np.unique(self.df[x_order].values, return_inverse=True)
 
+        # Initially, fill the array with NaN values before placing all the existing values
         pivot = np.zeros((len(rows), len(cols), 3)) * np.nan
         pivot[row_ind, col_ind] = self.df[[x, y, z]].values
 
@@ -64,6 +62,21 @@ class Data:
 
         self.equidistant = equidistant
         self.tri = None
+
+    def set_data(self, x_coords, y_coords, values):
+        self.x_coords, self.y_coords, self.values = x_coords, y_coords, values
+
+    def get_limits(self):
+        self.xmin, self.xmax = np.nanmin(self.x_coords), np.nanmax(self.x_coords)
+        self.ymin, self.ymax = np.nanmin(self.y_coords), np.nanmax(self.y_coords)
+        self.zmin, self.zmax = np.nanmin(self.values), np.nanmax(self.values)
+
+        if self.xmin == self.xmax:
+            self.xmin, self.xmax = -0.5, 0.5
+        if self.ymin == self.ymax:
+            self.ymin, self.ymax = -0.5, 0.5
+
+        return self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax
 
     def gen_delaunay(self):
         xc = self.x_coords.flatten()
@@ -112,7 +125,7 @@ class Data:
 
         return values
 
-    def get_sorted(self):
+    def get_sorted_by_coordinates(self):
         """Return the data sorted so that every coordinate increases."""
         x_indices = np.argsort(self.x_coords[0,:])
         y_indices = np.argsort(self.y_coords[:,0])
@@ -208,14 +221,10 @@ class Data:
 
     def flip_axes(self, x_flip, y_flip):
         if x_flip:
-            self.x_coords = np.fliplr(self.x_coords)
-            self.y_coords = np.fliplr(self.y_coords)
-            self.values = np.fliplr(self.values)
+            self.set_data(np.fliplr(self.x_coords), np.fliplr(self.y_coords), np.fliplr(self.values))
 
         if y_flip:
-            self.x_coords = np.flipud(self.x_coords)
-            self.y_coords = np.flipud(self.y_coords)
-            self.values = np.flipud(self.values)
+            self.set_data(np.flipud(self.x_coords), np.fliplr(self.y_coords), np.fliplr(self.values))
 
     def is_flipped(self):
         x_flip = self.x_coords[0,0] > self.x_coords[0,-1]
@@ -228,32 +237,21 @@ class Data:
 
     def abs(data, **kwargs):
         """Take the absolute value of every datapoint."""
-        return Data(data.x_coords, data.y_coords, np.absolute(data.values), data.equidistant)
+        data.values = np.absolute(data.values)
 
     def autoflip(data, **kwargs):
         """Flip the data so that the X and Y-axes increase to the top and right."""
-        copy = data.copy()
-
-        copy.flip_axes(*copy.is_flipped())
-        
-        return copy
+        data.flip_axes(*data.is_flipped())
 
     def crop(data, **kwargs):
         """Crop a region of the data by the columns and rows."""
         x1, x2 = int(kwargs.get('Left')), int(kwargs.get('Right'))
         y1, y2 = int(kwargs.get('Bottom')), int(kwargs.get('Top'))
 
-        if x2 < 0: 
-            x2 = data.values.shape[1] + x2 + 1
-        if y2 < 0: 
-            y2 = data.values.shape[0] + y2 + 1
+        if x2 < 0: x2 = data.values.shape[1] + x2 + 1
+        if y2 < 0: y2 = data.values.shape[0] + y2 + 1
 
-        copy = data.copy()
-        copy.x_coords = copy.x_coords[y1:y2,x1:x2]
-        copy.y_coords = copy.y_coords[y1:y2,x1:x2]
-        copy.values = copy.values[y1:y2,x1:x2]
-
-        return copy
+        self.set_data(data.x_coords[y1:y2,x1:x2], data.y_coords[y1:y2,x1:x2], data.values[y1:y2,x1:x2])
 
     def dderiv(data, **kwargs):
         """Calculate the component of the gradient in a specific direction."""
@@ -280,46 +278,35 @@ class Data:
 
     def equalize(data, **kwargs):
         """Perform histogramic equalization on the image."""
-        copy = data.copy()
-
         binn = 65535
 
         # Create a density histogram with surface area 1
-        hist, bins = np.histogram(copy.values.flatten(), binn)
+        hist, bins = np.histogram(data.values.flatten(), binn)
         cdf = hist.cumsum()
 
         cdf = bins[0] + (bins[-1]-bins[0]) * (cdf / float(cdf[-1]))
 
-        new = np.interp(copy.values.flatten(), bins[:-1], cdf)
-        copy.values = np.reshape(new, data.values.shape)
-
-        return copy
+        new = np.interp(data.values.flatten(), bins[:-1], cdf)
+        data.values = np.reshape(new, data.values.shape)
 
     def even_odd(data, **kwargs):
         """Extract even or odd rows, optionally flipping odd rows."""
         even = bool(kwargs.get('Even'))
 
-        copy = data.copy()
         indices = np.arange(0, data.values.shape[0], 2)
         if not even: indices = np.arange(1, data.values.shape[0], 2)
 
-        copy.values = copy.values[indices]
-        copy.x_coords = copy.x_coords[indices]
-        copy.y_coords = copy.y_coords[indices]
-
-        return copy
+        data.values = data.values[indices]
+        data.x_coords = data.x_coords[indices]
+        data.y_coords = data.y_coords[indices]
 
     def flip(data, **kwargs):
         """Flip the X or Y axes."""
-        copy = data.copy()
-
         if bool(kwargs.get('X Axis')):
-            copy.flip_axes(True, False)
+            data.flip_axes(True, False)
 
         if bool(kwargs.get('Y Axis')):
-            copy.flip_axes(False, True)
-
-        return copy
+            data.flip_axes(False, True)
 
     def gradmag(data, **kwargs):
         """Calculate the length of every gradient vector."""
@@ -344,18 +331,14 @@ class Data:
 
     def highpass(data, **kwargs):
         """Perform a high-pass filter."""
-        copy = data.copy()
-
         # X and Y sigma order?
         sx, sy = float(kwargs.get('X Width')), float(kwargs.get('Y Height'))
         kernel_type = str(kwargs.get('Type')).lower()
 
         kernel = create_kernel(sx, sy, 7, kernel_type)
-        copy.values = copy.values - ndimage.filters.convolve(copy.values, kernel)
+        data.values = data.values - ndimage.filters.convolve(data.values, kernel)
 
-        copy.values = np.ma.masked_invalid(copy.values)
-
-        return copy
+        #copy.values = np.ma.masked_invalid(copy.values)
 
     def hist2d(data, **kwargs):
         """Convert every column into a histogram, default bin amount is sqrt(n)."""
@@ -367,10 +350,8 @@ class Data:
         binedges = np.linspace(hmin, hmax, hbins + 1)
         bincoords = (binedges[:-1] + binedges[1:]) / 2
 
-        xcoords = np.tile(data.x_coords[0,:], (hist.shape[0], 1))
-        ycoords = np.tile(bincoords[:,np.newaxis], (1, hist.shape[1]))
-        
-        return Data(xcoords, ycoords, hist, equidistant=(True, True))
+        data.x_coords = np.tile(data.x_coords[0,:], (hist.shape[0], 1))
+        data.y_coords = np.tile(bincoords[:,np.newaxis], (1, hist.shape[1]))
 
     def interp_grid(data, **kwargs):
         """Interpolate the data onto a uniformly spaced grid using barycentric interpolation."""
@@ -381,10 +362,9 @@ class Data:
         y = np.linspace(ymin, ymax, height)
         xv, yv = np.meshgrid(x, y)
 
-        values = data.interpolate(np.column_stack((xv.flatten(), yv.flatten())))
-        #values = griddata(np.column_stack((data.x_coords.flatten(), data.y_coords.flatten())), data.values.flatten(), np.column_stack((xv.flatten(), yv.flatten())))
-
-        return Data(xv, yv, np.reshape(values, xv.shape))
+        data.x_coords = xv
+        data.y_coords = yv
+        data.values = np.reshape(data.interpolate(np.column_stack((xv.flatten(), yv.flatten()))), xv.shape)
 
     def interp_x(data, **kwargs):
         """Interpolate every row onto a uniformly spaced grid."""

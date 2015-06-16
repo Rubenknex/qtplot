@@ -466,16 +466,15 @@ if __name__ == '__main__':
     mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
 
     app = QtGui.QApplication(sys.argv)
-    print '1'
 
     linecut = Linecut()
     operations = Operations()
-    print '2'
+
     if len(sys.argv) > 1:
         main = Window(linecut, operations, filename=sys.argv[1])
     else:
-        main = Window(linecut, operations, filename='K:\\ns\\qt\\qt-shared\\Ruben\\data\\Dev1_183.dat')
-    print '3'
+        main = Window(linecut, operations, filename='K:\\ns\\qt\\qt-shared\\BasH\\804311_20150604\\891016_1.dat')
+
     linecut.main = main
     operations.main = main
 

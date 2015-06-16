@@ -336,7 +336,8 @@ class Operations(QtGui.QDialog):
 
             kwargs = operation.get_parameters()[1]
 
-            copy = operation.func(copy, **kwargs)
+            #copy = operation.func(copy, **kwargs)
+            operation.func(copy, **kwargs)
 
         return copy
 
