@@ -188,7 +188,7 @@ class Data:
         -   Coordinates are converted to coordinates of quadrilaterals
         -   NaN values are masked to ignore them when plotting
         """
-        xc, yc, c = self.get_sorted()
+        xc, yc, c = self.get_sorted_by_coordinates()
 
         x, y = self.get_quadrilaterals(xc, yc)
 
