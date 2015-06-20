@@ -209,26 +209,26 @@ class Canvas(scene.SceneCanvas):
                     self.line_coord = self.data.get_closest_y(y)
                     self.line_positions = [(self.xmin, self.line_coord), (self.xmax, self.line_coord)]
 
-                    x, y = self.data.get_row_at(y)
-                    self.parent.linecut.plot_linecut(x, y, self.parent.name, x_name, data_name)
+                    x, y, index = self.data.get_row_at(y)
+                    self.parent.linecut.plot_linetrace(x, y, self.line_type, self.line_coord, self.parent.name, x_name, data_name)
                     self.has_redrawn = False
                 elif event.button == 3:
                     self.line_type = 'vertical'
                     self.line_coord = self.data.get_closest_x(x)
                     self.line_positions = [(self.line_coord, self.ymin), (self.line_coord, self.ymax)]
                     
-                    x, y = self.data.get_column_at(x)
-                    self.parent.linecut.plot_linecut(x, y, self.parent.name, y_name, data_name)
+                    x, y, index = self.data.get_column_at(x)
+                    self.parent.linecut.plot_linetrace(x, y, self.line_type, self.line_coord, self.parent.name, x_name, data_name)
                     self.has_redrawn = False
             else:
                     if self.line_type == 'horizontal':
                         self.line_positions = [(self.xmin, self.line_coord), (self.xmax, self.line_coord)]
-                        x, y = self.data.get_row_at(self.line_coord)
+                        x, y, index = self.data.get_row_at(self.line_coord)
                     else:
                         self.line_positions = [(self.line_coord, self.ymin), (self.line_coord, self.ymax)]
-                        x, y = self.data.get_column_at(self.line_coord)
+                        x, y, index = self.data.get_column_at(self.line_coord)
                     
-                    self.parent.linecut.plot_linecut(x, y, self.parent.name, x_name, data_name)
+                    self.parent.linecut.plot_linetrace(x, y, self.line_type, self.line_coord, self.parent.name, x_name, data_name)
                     self.has_redrawn = False
 
             self.program_line['a_position'] = self.line_positions

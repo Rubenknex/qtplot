@@ -148,12 +148,8 @@ class ExportWidget(QtGui.QWidget):
             quadmesh = self.ax.pcolormesh(x, y, z, cmap=cmap, rasterized=True)
             quadmesh.set_clim(self.main.canvas.colormap.get_limits())
 
-            #self.fig.set_size_inches(float(self.le_width.text()), float(self.le_height.text()), forward=True)
-            #self.fig.set_dpi(int(self.le_dpi.text()))
-
             self.ax.axis('tight')
             
-
             self.ax.set_title(self.le_title.text())
             self.ax.set_xlabel(self.le_x_label.text())
             self.ax.set_ylabel(self.le_y_label.text())
@@ -172,6 +168,13 @@ class ExportWidget(QtGui.QWidget):
             self.cb.set_label(self.le_z_label.text())
             self.cb.draw_all()
 
+            if self.cb_linecut.checkState() == QtCore.Qt.Checked:
+                for linetrace in self.main.linecut.linetraces:
+                    if linetrace.type == 'horizontal':
+                        plt.axhline(linetrace.position, color='red')
+                    elif linetrace.type == 'vertical':
+                        plt.axvline(linetrace.position, color='red')
+
             self.fig.tight_layout()
 
             self.canvas.draw()
@@ -189,10 +192,12 @@ class ExportWidget(QtGui.QWidget):
         filename = QtGui.QFileDialog.getSaveFileName(self, 'Export figure', path, 'Portable Network Graphics (*.png);;Portable Document Format (*.pdf);;Postscript (*.ps);;Encapsulated Postscript (*.eps);;Scalable Vector Graphics (*.svg)')
         filename = str(filename)
 
-        if filename != None:
+        if filename != '':
             previous_size = self.fig.get_size_inches()
             self.fig.set_size_inches(float(self.le_width.text()), float(self.le_height.text()))
             dpi = int(self.le_dpi.text())
 
             self.fig.savefig(filename, dpi=dpi, bbox_inches='tight')
             self.fig.set_size_inches(previous_size)
+
+            self.canvas.draw()

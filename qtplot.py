@@ -15,7 +15,7 @@ from scipy import interpolate, spatial, io
 from scipy.interpolate import griddata
 from scipy.spatial import qhull, delaunay_plot_2d
 
-from data import DatFile, Data
+from data import DatFile, Data2D
 from export import ExportWidget
 from linecut import Linecut, FixedOrderFormatter
 from operations import Operations
@@ -39,13 +39,9 @@ class Window(QtGui.QMainWindow):
         self.init_ui()
 
         if filename is not None:
-            print 'Loading file'
             self.load_file(filename)
-            print 'Finished'
 
     def init_ui(self):
-        print 'Initializing UI'
-
         self.setWindowTitle('qtplot')
 
         self.main_widget = QtGui.QTabWidget(self)
@@ -110,6 +106,7 @@ class Window(QtGui.QMainWindow):
 
         self.le_r = QtGui.QLineEdit(self)
         self.le_r.setMaximumWidth(100)
+        self.le_r.returnPressed.connect(self.on_sub_series_r)
         r_hbox.addWidget(self.le_r)
 
         self.b_ok = QtGui.QPushButton('Ok', self)
@@ -155,7 +152,7 @@ class Window(QtGui.QMainWindow):
         self.cb_z.activated.connect(self.on_data_change)
         grid.addWidget(self.cb_z, 3, 2)
 
-        self.cb_save_default = QtGui.QCheckBox('Save as default columns')
+        self.cb_save_default = QtGui.QCheckBox('Remember columns')
         grid.addWidget(self.cb_save_default, 3, 3)
 
         # Colormap
@@ -225,18 +222,20 @@ class Window(QtGui.QMainWindow):
         self.resize(600, 700)
         self.move(100, 100)
 
-        print 'Finished'
-
     def update_ui(self, reset=True):
         self.setWindowTitle(self.name)
 
         columns = self.dat_file.df.columns.values
 
+        i = self.cb_v.currentIndex()
         self.cb_v.clear()
         self.cb_v.addItems(columns)
+        self.cb_v.setCurrentIndex(i)
 
+        i = self.cb_i.currentIndex()
         self.cb_i.clear()
         self.cb_i.addItems(columns)
+        self.cb_i.setCurrentIndex(i)
 
         i = self.cb_x.currentIndex()
         self.cb_x.clear()
@@ -292,10 +291,8 @@ class Window(QtGui.QMainWindow):
             self.load_file(filename)
 
     def load_file(self, filename):
-        print 'Loading .dat'
         self.dat_file = DatFile(filename)
         self.settings.load_file(filename)
-        print 'Finished'
 
         if filename != self.filename:
             path, self.name = os.path.split(filename)
@@ -328,12 +325,15 @@ class Window(QtGui.QMainWindow):
 
         self.export_widget.set_info(self.name, x_name, y_name, data_name)
 
-        t0 = time.clock()
+        not_found = self.dat_file.has_columns([x_name, y_name, data_name, order_x, order_y])
+        if not_found != None:
+            self.status_bar.showMessage('ERROR: Could not find column \'' + not_found + '\', try saving the correct one using \'Remember columns\'')
+
+            return
+
         self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
-        t1 = time.clock()
-        #print 'get_data:', t1-t0
+
         self.data = self.operations.apply_operations(self.data)
-        #print 'operations:', time.clock()-t1
 
         if self.cb_reset_cmap.checkState() == QtCore.Qt.Checked:
             self.on_min_changed(0)
@@ -351,20 +351,30 @@ class Window(QtGui.QMainWindow):
             self.status_bar.showMessage("")
         """
 
-    def on_sub_series_r(self, event):
+    def on_sub_series_r(self, event=None):
         if self.dat_file == None:
             return
 
         V, I = str(self.cb_v.currentText()), str(self.cb_i.currentText())
         R = float(self.le_r.text())
 
-        self.dat_file.df['SUB SERIES R'] = self.dat_file.df[V] - self.dat_file.df[I] * R
+        self.dat_file.df[V + ' - Sub series R'] = self.dat_file.df[V] - self.dat_file.df[I] * R
 
         self.update_ui(reset=False)
 
+        x_col = str(self.cb_x.currentText())
+        y_col = str(self.cb_y.currentText())
+
+        if V == x_col:
+            self.cb_x.setCurrentIndex(self.cb_x.count() - 1)
+        elif V == y_col:
+            self.cb_y.setCurrentIndex(self.cb_y.count() - 1)
+
+        self.on_data_change()
+
     def on_min_max_entered(self):
         if self.data != None:
-            zmin, zmax = np.nanmin(self.data.values), np.nanmax(self.data.values)
+            zmin, zmax = np.nanmin(self.data.z), np.nanmax(self.data.z)
 
             newmin, newmax = float(self.le_min.text()), float(self.le_max.text())
 
@@ -379,7 +389,8 @@ class Window(QtGui.QMainWindow):
 
     def on_min_changed(self, value):
         if self.data != None:
-            min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
+            min, max = np.nanmin(self.data.z), np.nanmax(self.data.z)
+            print min, max
 
             newmin = min + ((max - min) / 100.0) * value
             self.le_min.setText('%.2e' % newmin)
@@ -396,7 +407,7 @@ class Window(QtGui.QMainWindow):
 
     def on_max_changed(self, value):
         if self.data != None:
-            min, max = np.nanmin(self.data.values), np.nanmax(self.data.values)
+            min, max = np.nanmin(self.data.z), np.nanmax(self.data.z)
 
             newmax = min + ((max - min) / 100.0) * value
             self.le_max.setText('%.2e' % newmax)
@@ -406,7 +417,7 @@ class Window(QtGui.QMainWindow):
 
     def on_cm_reset(self):
         if self.data != None:
-            zmin, zmax = np.nanmin(self.data.values), np.nanmax(self.data.values)
+            zmin, zmax = np.nanmin(self.data.z), np.nanmax(self.data.z)
 
             self.s_min.setValue(0)
             self.on_min_changed(0)
@@ -423,11 +434,10 @@ class Window(QtGui.QMainWindow):
             base = os.path.basename(filename)
             name, ext = os.path.splitext(base)
 
-            mat = np.dstack((self.data.x_coords, self.data.y_coords, self.data.values))
+            mat = np.dstack((self.data.x, self.data.y, self.data.z))
 
             if ext == '.npy':
                 np.save(filename, mat)
-                #mat.dump(filename)
             elif ext == '.mat':
                 io.savemat(filename, {'data':mat})
 
@@ -473,7 +483,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         main = Window(linecut, operations, filename=sys.argv[1])
     else:
-        main = Window(linecut, operations, filename='K:\\ns\\qt\\qt-shared\\BasH\\804311_20150604\\891016_1.dat')
+        main = Window(linecut, operations, filename='K:\\ns\\qt\\qt-shared\\Ruben\\deconvolution\\Dev4_30.dat')
 
     linecut.main = main
     operations.main = main

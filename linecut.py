@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+from itertools import cycle
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.ticker import ScalarFormatter
@@ -11,15 +12,30 @@ from PyQt4 import QtGui, QtCore
 
 from util import FixedOrderFormatter
 
+class Linetrace(plt.Line2D):
+    """
+    Represents a linetrace from the data
+
+    x/y: Arrays containing x and y data
+    type: Type of linetrace, 'horizontal' or 'vertical'
+    position: The position of the linetrace in x or y direction depending on the type
+    """
+    def __init__(self, x, y, type, position):
+        plt.Line2D.__init__(self, x, y, color='red', linewidth=0.5)
+
+        self.type = type
+        self.position = position
+
+
+
 class Linecut(QtGui.QDialog):
     def __init__(self, parent=None):
         super(Linecut, self).__init__(parent)
 
         self.fig, self.ax = plt.subplots()
         self.x, self.y = None, None
-        self.line = self.ax.plot(0, 0, color='red', linewidth=0.5)[0]
-        self.lines = []
-        self.total_offset = 0
+        self.linetraces = []
+        self.colors = cycle('bgrcmykw')
 
         self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
         self.ax.yaxis.set_major_formatter(FixedOrderFormatter())
@@ -59,6 +75,10 @@ class Linecut(QtGui.QDialog):
 
         self.le_offset = QtGui.QLineEdit('0', self)
         grid.addWidget(self.le_offset, 2, 3)
+
+        self.b_clear = QtGui.QPushButton('Clear', self)
+        self.b_clear.clicked.connect(self.on_clear)
+        grid.addWidget(self.b_clear, 2, 4)
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
@@ -105,31 +125,49 @@ class Linecut(QtGui.QDialog):
 
         img = QtGui.QImage(path)
         QtGui.QApplication.clipboard().setImage(img)
+
+    def on_clear(self):
+        for line in self.linetraces:
+            line.remove()
+
+        self.linetraces = []
+
+        self.fig.canvas.draw()
     
-    def plot_linecut(self, x, y, title, xlabel, ylabel):
+    def plot_linetrace(self, x, y, type, position, title, xlabel, ylabel):
+        # Don't draw lines consisting of one point
+        if len(x) <= 1 or len(y) <= 1:
+            return
+
         self.xlabel, self.ylabel = xlabel, ylabel
         self.x, self.y = x, y
 
         # Remove all the existing lines and only plot one if we uncheck the incremental box
         # Else, add a new line to the collection
         if self.cb_incremental.checkState() == QtCore.Qt.Unchecked:
-            for line in self.lines:
-                self.ax.lines.remove(line)
+            for line in self.linetraces:
+                line.remove()
                 
-            self.lines = []
+            self.linetraces = []
 
-            self.line.set_xdata(x)
-            self.line.set_ydata(y)
+            line = Linetrace(x, y, type, position)
+            self.linetraces.append(line)
+            self.ax.add_line(line)
 
             self.total_offset = 0
         else:
-            self.line.set_xdata([])
-            self.line.set_ydata([])
+            if len(self.ax.lines) > 0:
+                if self.ax.lines[-1].position == position:
+                    return
 
-            line = self.ax.plot(x, y + self.total_offset)[0]
-            self.lines.append(line)
+            index = len(self.linetraces) - 1
 
-            self.total_offset += float(self.le_offset.text())
+            offset = float(self.le_offset.text())
+            line = Linetrace(x, y + index * offset, type, position)
+            line.set_color(self.colors.next())
+
+            self.linetraces.append(line)
+            self.ax.add_line(line)
 
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)

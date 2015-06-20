@@ -3,11 +3,12 @@ import numpy as np
 import os
 import pandas as pd
 import json
+import math
 
 from PyQt4 import QtGui, QtCore
 from scipy import ndimage
 
-from data import Data
+from data import Data2D
 
 class Operation(QtGui.QWidget):
     """Contains the name and GUI widgets for the parameters of an operation."""
@@ -19,27 +20,28 @@ class Operation(QtGui.QWidget):
         self.main = main
         self.func = func
         self.items = {}
+        self.types = {}
 
         height = 1
 
         for widget in widgets:
-            typ, w_name, data = widget
+            w_name, data = widget
 
-            if typ == 'checkbox':
+            if type(data) == bool:
                 checkbox = QtGui.QCheckBox(w_name)
                 checkbox.setChecked(data)
                 checkbox.stateChanged.connect(self.main.on_data_change)
                 layout.addWidget(checkbox, height, 2)
 
                 self.items[w_name] = checkbox
-            elif typ == 'textbox':
-                lineedit = QtGui.QLineEdit(data)
+            elif type(data) == int or type(data) == float:
+                lineedit = QtGui.QLineEdit(str(data))
                 lineedit.setValidator(QtGui.QDoubleValidator())
                 layout.addWidget(QtGui.QLabel(w_name), height, 1)
                 layout.addWidget(lineedit, height, 2)
 
                 self.items[w_name] = lineedit
-            elif typ == 'combobox':
+            elif type(data) == list:
                 layout.addWidget(QtGui.QLabel(w_name), height, 1)
                 combobox = QtGui.QComboBox()
                 combobox.activated.connect(self.main.on_data_change)
@@ -48,24 +50,28 @@ class Operation(QtGui.QWidget):
 
                 self.items[w_name] = combobox
 
+            self.types[w_name] = type(data)
+
             height += 1
 
         if name == 'sub linecut':
-            b_current = QtGui.QPushButton('Get current linecut')
+            b_current = QtGui.QPushButton('Current linecut')
             b_current.clicked.connect(self.on_current_linecut)
             layout.addWidget(b_current, height, 2)
 
     def on_current_linecut(self):
-        self.items['Horizontal'].setChecked(self.main.canvas.line_type == 'horizontal')
-        self.items['Row/Column'].setText(str(self.main.canvas.line_coord))
+        index = self.items['type'].findText(self.main.canvas.line_type)
+        self.items['type'].setCurrentIndex(index)
+        self.items['position'].setText(str(self.main.canvas.line_coord))
 
-    def get_parameter(self, name, cast=str):
+    def get_parameter(self, name):
         """Return the casted value of a property."""
         if name in self.items:
             widget = self.items[name]
+            cast = self.types[name]
 
             if type(widget) is QtGui.QCheckBox:
-                return widget.isChecked()
+                return cast(widget.isChecked())
             elif type(widget) is QtGui.QLineEdit:
                 return cast(str(widget.text()))
             elif type(widget) is QtGui.QComboBox:
@@ -95,6 +101,8 @@ class Operation(QtGui.QWidget):
         for name, value in params.iteritems():
             self.set_parameter(name, value)
 
+
+
 class Operations(QtGui.QDialog):
     def __init__(self, parent=None):
         super(Operations, self).__init__(parent)
@@ -107,33 +115,33 @@ class Operations(QtGui.QDialog):
         self.setWindowTitle("Operations")
 
         self.items = {
-            'abs':          [Data.abs],
-            'autoflip':     [Data.autoflip],
-            'crop':         [Data.crop, [('textbox', 'Left', '0'), ('textbox', 'Right', '-1'), ('textbox', 'Bottom', '0'), ('textbox', 'Top', '-1')]],
-            'dderiv':       [Data.dderiv, [('textbox', 'Theta', '0'), ('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
-            'equalize':     [Data.equalize],
-            'even odd':     [Data.even_odd, [('checkbox', 'Even', True)]],
-            'flip':         [Data.flip, [('checkbox', 'X Axis', False), ('checkbox', 'Y Axis', False)]],
-            'gradmag':      [Data.gradmag, [('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
-            'highpass':     [Data.highpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
-            'hist2d':       [Data.hist2d, [('textbox', 'Min', ''), ('textbox', 'Max', ''), ('textbox', 'Bins', '')]],
-            'interp grid':  [Data.interp_grid, [('textbox', 'Width', '100'), ('textbox', 'Height', '100')]],
-            'interp x':     [Data.interp_x, [('textbox', 'Points', '100')]],
-            'interp y':     [Data.interp_y, [('textbox', 'Points', '100')]],
-            'log':          [Data.log, [('checkbox', 'Subtract offset', False), ('textbox', 'New min', '0.0001')]],
-            'lowpass':      [Data.lowpass, [('textbox', 'X Width', '3'), ('textbox', 'Y Height', '3'), ('combobox', 'Type', ['Gaussian', 'Lorentzian', 'Exponential', 'Thermal'])]],
-            'neg':          [Data.neg],
-            'norm y':       [Data.norm_columns],
-            'norm x':       [Data.norm_rows],
-            'offset':       [Data.offset, [('textbox', 'Offset', '0')]],
-            'offset axes':  [Data.offset_axes, [('textbox', 'X Offset', '0'), ('textbox', 'Y Offset', '0')]],
-            'power':        [Data.power, [('textbox', 'Power', '1')]],
-            'scale axes':   [Data.scale_axes, [('textbox', 'X Scale', '1'), ('textbox', 'Y Scale', '1')]],
-            'scale data':   [Data.scale_data, [('textbox', 'Factor', '1')]],
-            'sub linecut':  [Data.sub_linecut, [('checkbox', 'Horizontal', False), ('textbox', 'Row/Column', '')]],
-            'sub plane':    [Data.sub_plane, [('textbox', 'X Slope', '0'), ('textbox', 'Y Slope', '0')]],
-            'xderiv':       [Data.xderiv, [('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
-            'yderiv':       [Data.yderiv, [('combobox', 'Method', ['midpoint', '2nd order central diff'])]],
+            'abs':          [Data2D.abs],
+            'autoflip':     [Data2D.autoflip],
+            'crop':         [Data2D.crop,         [('left', 0), ('right', -1), ('bottom', 0), ('top', -1)]],
+            'dderiv':       [Data2D.dderiv,       [('theta', 0), ('method', ['midpoint', '2nd order central diff'])]],
+            'equalize':     [Data2D.equalize],
+            'even odd':     [Data2D.even_odd,     [('even', True)]],
+            'flip':         [Data2D.flip,         [('x_flip', False), ('y_flip', False)]],
+            'gradmag':      [Data2D.gradmag,      [('method', ['midpoint', '2nd order central diff'])]],
+            'highpass':     [Data2D.highpass,     [('x_width', 3.0), ('y_height', 3.0), ('method', ['gaussian', 'lorentzian', 'exponential', 'thermal'])]],
+            'hist2d':       [Data2D.hist2d,       [('min', 0.0), ('max', 0.0), ('bins', 0)]],
+            'interp grid':  [Data2D.interp_grid,  [('width', 100), ('height', 100)]],
+            'interp x':     [Data2D.interp_x,     [('points', 100)]],
+            'interp y':     [Data2D.interp_y,     [('points', 100)]],
+            'log':          [Data2D.log,          [('subtract', False), ('min', 0.0001)]],
+            'lowpass':      [Data2D.lowpass,      [('x_width', 3.0), ('y_height', 3.0), ('method', ['gaussian', 'lorentzian', 'exponential', 'thermal'])]],
+            'negate':       [Data2D.negate],
+            'norm y':       [Data2D.norm_columns],
+            'norm x':       [Data2D.norm_rows],
+            'offset':       [Data2D.offset,       [('offset', 0.0)]],
+            'offset axes':  [Data2D.offset_axes,  [('x_offset', 0.0), ('y_offset', 0.0)]],
+            'power':        [Data2D.power,        [('power', 1.0)]],
+            'scale axes':   [Data2D.scale_axes,   [('x_scale', 1.0), ('y_scale', 1.0)]],
+            'scale data':   [Data2D.scale_data,   [('factor', 1.0)]],
+            'sub linecut':  [Data2D.sub_linecut,  [('type', ['horizontal', 'vertical']), ('position', float('nan'))]],
+            'sub plane':    [Data2D.sub_plane,    [('x_slope', 0.0), ('y_slope', 0.0)]],
+            'xderiv':       [Data2D.xderiv,       [('method', ['midpoint', '2nd order central diff'])]],
+            'yderiv':       [Data2D.yderiv,       [('method', ['midpoint', '2nd order central diff'])]],
         }
 
         self.options = QtGui.QListWidget(self)
@@ -320,23 +328,23 @@ class Operations(QtGui.QDialog):
             operation = item.data(QtCore.Qt.UserRole).toPyObject()
 
             if operation.name == 'hist2d':
-                if operation.get_parameter('Bins') == '':
-                    bins = np.round(np.sqrt(copy.values.shape[0]))
-                    operation.set_parameter('Bins', int(bins))
+                if operation.get_parameter('bins') == 0:
+                    bins = np.round(np.sqrt(copy.z.shape[0]))
+                    operation.set_parameter('bins', int(bins))
 
-                if operation.get_parameter('Min') == '':
-                    min, max = np.min(copy.values), np.max(copy.values)
-                    operation.set_parameter('Min', min)
-                    operation.set_parameter('Max', max)
+                if operation.get_parameter('min') == 0:
+                    min, max = np.nanmin(copy.z), np.nanmax(copy.z)
+                    operation.set_parameter('min', min)
+                    operation.set_parameter('max', max)
             elif operation.name == 'sub linecut':
                 if self.main.canvas.line_coord != None and self.main.canvas.line_type != None:
-                    if operation.get_parameter('Row/Column') == '':
-                        operation.set_parameter('Horizontal', self.main.canvas.line_type == 'horizontal')
-                        operation.set_parameter('Row/Column', self.main.canvas.line_coord)
+                    if math.isnan(operation.get_parameter('position')):
+                        operation.set_parameter('type', self.main.canvas.line_type)
+                        operation.set_parameter('position', self.main.canvas.line_coord)
 
             kwargs = operation.get_parameters()[1]
-
             #copy = operation.func(copy, **kwargs)
+
             operation.func(copy, **kwargs)
 
         return copy

@@ -4,8 +4,6 @@ from scipy import ndimage
 from scipy.spatial import qhull
 from scipy.interpolate import griddata
 
-from util import create_kernel
-
 class DatFile:
     """Class which contains the column based DataFrame of the data."""
     def __init__(self, filename):
@@ -30,14 +28,25 @@ class DatFile:
 
         self.df = pd.read_table(filename, engine='c', sep='\t', comment='#', names=self.columns)
 
+    def has_columns(self, columns):
+        existance = [col in self.df.columns for col in columns]
+
+        if False in existance:
+            return columns[existance.index(False)]
+
+        return None
+
     def get_data(self, x, y, z, x_order, y_order):
         """Pivot the column based data into matrices."""
-        # If an order column is filled with zeros, fill them with an increasing count based on the other order.
+        # If an order column is filled with zeros, generate a series of 0...N for every block of data
+        def generate_series(column):
+            return pd.Series(range(len(column.values)), column.index)
+
         if (self.df[x_order] == 0).all():
-            self.df[x_order] = self.df.groupby(y_order)[x_order].apply(lambda x: pd.Series(range(len(x.values)), x.index))
+            self.df[x_order] = self.df.groupby(y_order)[x_order].apply(generate_series)
 
         if (self.df[y_order] == 0).all():
-            self.df[y_order] = self.df.groupby(x_order)[y_order].apply(lambda x: pd.Series(range(len(x.values)), x.index))
+            self.df[y_order] = self.df.groupby(x_order)[y_order].apply(generate_series)
 
         rows, row_ind = np.unique(self.df[y_order].values, return_inverse=True)
         cols, col_ind = np.unique(self.df[x_order].values, return_inverse=True)
@@ -46,42 +55,67 @@ class DatFile:
         pivot = np.zeros((len(rows), len(cols), 3)) * np.nan
         pivot[row_ind, col_ind] = self.df[[x, y, z]].values
 
-        return Data(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2], (x==x_order,y==y_order))
+        return Data2D(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2], (x==x_order,y==y_order))
 
 
+def create_kernel(x_dev, y_dev, cutoff, distr):
+    distributions = {
+        'gaussian': lambda r: np.exp(-(r**2) / 2.0),
+        'exponential': lambda r: np.exp(-abs(r) * np.sqrt(2.0)),
+        'lorentzian': lambda r: 1.0 / (r**2+1.0),
+        'thermal': lambda r: np.exp(r) / (1 * (1+np.exp(r))**2)
+    }
+    func = distributions[distr]
 
-class Data:
+    hx = np.floor((x_dev * cutoff) / 2.0)
+    hy = np.floor((y_dev * cutoff) / 2.0)
+
+    x = np.linspace(-hx, hx, hx * 2 + 1) / x_dev
+    y = np.linspace(-hy, hy, hy * 2 + 1) / y_dev
+
+    if x.size == 1: x = np.zeros(1)
+    if y.size == 1: y = np.zeros(1)
+    
+    xv, yv = np.meshgrid(x, y)
+
+    kernel = func(np.sqrt(xv**2+yv**2))
+    kernel /= np.sum(kernel)
+
+    return kernel
+
+
+class Data2D:
     """
     Class which represents 2d data as two matrices with x and y coordinates 
     and one with values.
     """
-    def __init__(self, x_coords, y_coords, values, equidistant=(False, False)):
-        self.x_coords = x_coords
-        self.y_coords = y_coords
-        self.values = values
+    def __init__(self, x, y, z, equidistant=(False, False)):
+        self.x, self.y, self.z = x, y, z
 
         self.equidistant = equidistant
         self.tri = None
 
-    def set_data(self, x_coords, y_coords, values):
-        self.x_coords, self.y_coords, self.values = x_coords, y_coords, values
+    def set_data(self, x, y, z):
+        self.x, self.y, self.z = x, y, z
 
     def get_limits(self):
-        self.xmin, self.xmax = np.nanmin(self.x_coords), np.nanmax(self.x_coords)
-        self.ymin, self.ymax = np.nanmin(self.y_coords), np.nanmax(self.y_coords)
-        self.zmin, self.zmax = np.nanmin(self.values), np.nanmax(self.values)
+        xmin, xmax = np.nanmin(self.x), np.nanmax(self.x)
+        ymin, ymax = np.nanmin(self.y), np.nanmax(self.y)
+        zmin, zmax = np.nanmin(self.z), np.nanmax(self.z)
 
-        if self.xmin == self.xmax:
-            self.xmin, self.xmax = -0.5, 0.5
-        if self.ymin == self.ymax:
-            self.ymin, self.ymax = -0.5, 0.5
+        # Thickness for 1d scans, should we do this here or in the drawing code?
+        if xmin == xmax:
+            xmin, xmax = -1, 1
 
-        return self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax
+        if ymin == ymax:
+            ymin, ymax = -1, 1
+
+        return xmin, xmax, ymin, ymax, zmin, zmax
 
     def gen_delaunay(self):
-        xc = self.x_coords.flatten()
-        yc = self.y_coords.flatten()
-        self.no_nan_values = self.values.flatten()
+        xc = self.x.flatten()
+        yc = self.y.flatten()
+        self.no_nan_values = self.z.flatten()
 
         if np.isnan(xc).any() and np.isnan(yc).any():
             xc = xc[~np.isnan(xc)]
@@ -93,9 +127,9 @@ class Data:
 
     def interpolate(self, points):
         if self.tri == None:
-            xc = self.x_coords.flatten()
-            yc = self.y_coords.flatten()
-            self.no_nan_values = self.values.flatten()
+            xc = self.x.flatten()
+            yc = self.y.flatten()
+            self.no_nan_values = self.z.flatten()
 
             if np.isnan(xc).any() and np.isnan(yc).any():
                 xc = xc[~np.isnan(xc)]
@@ -127,10 +161,10 @@ class Data:
 
     def get_sorted_by_coordinates(self):
         """Return the data sorted so that every coordinate increases."""
-        x_indices = np.argsort(self.x_coords[0,:])
-        y_indices = np.argsort(self.y_coords[:,0])
+        x_indices = np.argsort(self.x[0,:])
+        y_indices = np.argsort(self.y[:,0])
 
-        return self.x_coords[:,x_indices], self.y_coords[y_indices,:], self.values[:,x_indices][y_indices,:]
+        return self.x[:,x_indices], self.y[y_indices,:], self.z[:,x_indices][y_indices,:]
 
     def get_quadrilaterals(self, xc, yc):
         """
@@ -159,7 +193,7 @@ class Data:
             x = np.vstack((x, x[-1]))
         else:
             # If data is 1d, make one axis range from -.5 to .5
-            x = np.hstack((xc - 0.5, xc[:,[0]] + 0.5))
+            x = np.hstack((xc - 1, xc[:,[0]] + 1))
             # Duplicate the only row/column so that pcolor has something to actually plot
             x = np.vstack((x, x[0]))
         
@@ -176,7 +210,7 @@ class Data:
             y = yc[:-1,:] + np.diff(yc, axis=0) / 2.0
             y = np.hstack([y, y[:,[-1]]])
         else:
-            y = np.vstack([yc - 0.5, yc[0] + 0.5])
+            y = np.vstack([yc - 1, yc[0] + 1])
             y = np.hstack([y, y[:,[0]]])
 
         return x, y
@@ -185,319 +219,288 @@ class Data:
         """
         Return a version of the coordinates and values that can be plotted by pcolor, this means:
         -   Points are sorted by increasing coordinates
-        -   Coordinates are converted to coordinates of quadrilaterals
+        -   Quadrilaterals are generated for every datapoint
         -   NaN values are masked to ignore them when plotting
+
+        Can be plotted using matplotlib's pcolor/pcolormesh(*data.get_pcolor())
         """
-        xc, yc, c = self.get_sorted_by_coordinates()
+        xc, yc, z = self.get_sorted_by_coordinates()
 
         x, y = self.get_quadrilaterals(xc, yc)
 
-        return np.ma.masked_invalid(x), np.ma.masked_invalid(y), np.ma.masked_invalid(c)
+        return np.ma.masked_invalid(x), np.ma.masked_invalid(y), np.ma.masked_invalid(z)
 
     def get_column_at(self, x):
-        x_index = np.where(self.x_coords[0,:]==self.get_closest_x(x))[0][0]
+        x_index = np.where(self.x[0,:]==self.get_closest_x(x))[0][0]
 
         if self.equidistant[0]:
-            return self.y_coords[:,x_index], self.values[:,x_index]
+            return self.y[:,x_index], self.z[:,x_index], x_index
         else:
-            return self.y_coords[:,x_index], self.values[:,x_index]
+            return self.y[:,x_index], self.z[:,x_index], x_index
 
     def get_row_at(self, y):
-        y_index = np.where(self.y_coords[:,0]==self.get_closest_y(y))[0][0]
+        y_index = np.where(self.y[:,0]==self.get_closest_y(y))[0][0]
 
         if self.equidistant[1]:
-            return self.x_coords[y_index], self.values[y_index]
+            return self.x[y_index], self.z[y_index], y_index
         else:
-            return self.x_coords[y_index], self.values[y_index]
+            return self.x[y_index], self.z[y_index], y_index
 
     def get_closest_x(self, x_coord):
-        return min(self.x_coords[0,:], key=lambda x:abs(x - x_coord))
+        return min(self.x[0,:], key=lambda x:abs(x - x_coord))
 
     def get_closest_y(self, y_coord):
-        return min(self.y_coords[:,0], key=lambda y:abs(y - y_coord))
+        return min(self.y[:,0], key=lambda y:abs(y - y_coord))
 
     def flip_axes(self, x_flip, y_flip):
         if x_flip:
-            self.set_data(np.fliplr(self.x_coords), np.fliplr(self.y_coords), np.fliplr(self.values))
+            self.set_data(np.fliplr(self.x), np.fliplr(self.y), np.fliplr(self.z))
 
         if y_flip:
-            self.set_data(np.flipud(self.x_coords), np.fliplr(self.y_coords), np.fliplr(self.values))
+            self.set_data(np.flipud(self.x), np.fliplr(self.y), np.fliplr(self.z))
 
     def is_flipped(self):
-        x_flip = self.x_coords[0,0] > self.x_coords[0,-1]
-        y_flip = self.y_coords[0,0] > self.y_coords[-1,0]
+        x_flip = self.x[0,0] > self.x[0,-1]
+        y_flip = self.y[0,0] > self.y[-1,0]
 
         return x_flip, y_flip
 
     def copy(self):
-        return Data(np.copy(self.x_coords), np.copy(self.y_coords), np.copy(self.values), self.equidistant)
+        return Data2D(np.copy(self.x), np.copy(self.y), np.copy(self.z), self.equidistant)
 
-    def abs(data, **kwargs):
+    def abs(self):
         """Take the absolute value of every datapoint."""
-        data.values = np.absolute(data.values)
+        self.z = np.absolute(self.z)
 
-    def autoflip(data, **kwargs):
+    def autoflip(self):
         """Flip the data so that the X and Y-axes increase to the top and right."""
-        data.flip_axes(*data.is_flipped())
+        self.flip_axes(*self.is_flipped())
 
-    def crop(data, **kwargs):
+    def crop(self, left=0, right=-1, bottom=0, top=-1):
         """Crop a region of the data by the columns and rows."""
-        x1, x2 = int(kwargs.get('Left')), int(kwargs.get('Right'))
-        y1, y2 = int(kwargs.get('Bottom')), int(kwargs.get('Top'))
+        if right < 0: 
+            right = self.z.shape[1] + right + 1
 
-        if x2 < 0: x2 = data.values.shape[1] + x2 + 1
-        if y2 < 0: y2 = data.values.shape[0] + y2 + 1
+        if top < 0: 
+            top = self.z.shape[0] + top + 1
 
-        data.set_data(data.x_coords[y1:y2,x1:x2], data.y_coords[y1:y2,x1:x2], data.values[y1:y2,x1:x2])
+        self.set_data(self.x[bottom:top,left:right], self.y[bottom:top,left:right], self.z[bottom:top,left:right])
 
-    def dderiv(data, **kwargs):
+    def dderiv(self, theta=0.0, method='midpoint'):
         """Calculate the component of the gradient in a specific direction."""
-        theta = np.radians(float(kwargs.get('Theta')))
         xdir, ydir = np.cos(theta), np.sin(theta)
-        method = str(kwargs.get('Method'))
+
+        xcomp = self.copy()
+        xcomp.xderiv(method=method)
+        ycomp = self.copy()
+        ycomp.yderiv(method=method)
 
         if method == 'midpoint':
-            xcomp = Data.xderiv(data, Method=method)
-            ycomp = Data.yderiv(data, Method=method)
+            xvalues = xcomp.z[:-1,:]
+            yvalues = ycomp.z[:,:-1]
 
-            xvalues = xcomp.values[:-1,:]
-            yvalues = ycomp.values[:,:-1]
-
-            return Data(xcomp.x_coords[:-1,:], ycomp.y_coords[:,:-1], xvalues * xdir + yvalues * ydir, data.equidistant)
+            self.set_data(xcomp.x[:-1,:], ycomp.y[:,:-1], xvalues * xdir + yvalues * ydir)
         elif method == '2nd order central diff':
-            xcomp = Data.xderiv(data, Method=method)
-            ycomp = Data.yderiv(data, Method=method)
+            xvalues = xcomp.z[1:-1,:]
+            yvalues = ycomp.z[:,1:-1]
 
-            xvalues = xcomp.values[1:-1,:]
-            yvalues = ycomp.values[:,1:-1]
+            self.set_data(xcomp.x[1:-1,:], ycomp.y[:,1:-1], xvalues * xdir + yvalues * ydir)
 
-            return Data(xcomp.x_coords[1:-1,:], ycomp.y_coords[:,1:-1], xvalues * xdir + yvalues * ydir, data.equidistant)
-
-    def equalize(data, **kwargs):
+    def equalize(self):
         """Perform histogramic equalization on the image."""
         binn = 65535
 
         # Create a density histogram with surface area 1
-        hist, bins = np.histogram(data.values.flatten(), binn)
+        no_nans = self.z[~np.isnan(self.z)]
+        hist, bins = np.histogram(no_nans.flatten(), binn)
         cdf = hist.cumsum()
 
         cdf = bins[0] + (bins[-1]-bins[0]) * (cdf / float(cdf[-1]))
 
-        new = np.interp(data.values.flatten(), bins[:-1], cdf)
-        data.values = np.reshape(new, data.values.shape)
+        new = np.interp(self.z.flatten(), bins[:-1], cdf)
+        self.z = np.reshape(new, self.z.shape)
 
-    def even_odd(data, **kwargs):
+    def even_odd(self, even):
         """Extract even or odd rows, optionally flipping odd rows."""
-        even = bool(kwargs.get('Even'))
+        indices = np.arange(0, self.z.shape[0], 2)
 
-        indices = np.arange(0, data.values.shape[0], 2)
-        if not even: indices = np.arange(1, data.values.shape[0], 2)
+        if not even: 
+            indices = np.arange(1, self.z.shape[0], 2)
 
-        data.set_data(data.x_coords[indices], data.y_coords[indices], data.values[indices])
+        self.set_data(self.x[indices], self.y[indices], self.z[indices])
 
-    def flip(data, **kwargs):
+    def flip(self, x_flip, y_flip):
         """Flip the X or Y axes."""
-        if bool(kwargs.get('X Axis')):
-            data.flip_axes(True, False)
+        self.flip_axes(x_flip, y_flip)
 
-        if bool(kwargs.get('Y Axis')):
-            data.flip_axes(False, True)
-
-    def gradmag(data, **kwargs):
+    def gradmag(self, method='midpoint'):
         """Calculate the length of every gradient vector."""
-        method = str(kwargs.get('Method'))
+        xcomp = self.copy()
+        xcomp.xderiv(method=method)
+        ycomp = self.copy()
+        ycomp.yderiv(method=method)
 
         if method == 'midpoint':
-            xcomp = Data.xderiv(data, Method=method)
-            ycomp = Data.yderiv(data, Method=method)
+            xvalues = xcomp.z[:-1,:]
+            yvalues = ycomp.z[:,:-1]
 
-            xvalues = xcomp.values[:-1,:]
-            yvalues = ycomp.values[:,:-1]
-
-            return Data(xcomp.x_coords[:-1,:], ycomp.y_coords[:,:-1], np.sqrt(xvalues**2 + yvalues**2), data.equidistant)
+            self.set_data(xcomp.x[:-1,:], ycomp.y[:,:-1], np.sqrt(xvalues**2 + yvalues**2))
         elif method == '2nd order central diff':
-            xcomp = Data.xderiv(data, Method=method)
-            ycomp = Data.yderiv(data, Method=method)
+            xvalues = xcomp.z[1:-1,:]
+            yvalues = ycomp.z[:,1:-1]
 
-            xvalues = xcomp.values[1:-1,:]
-            yvalues = ycomp.values[:,1:-1]
+            self.set_data(xcomp.x[1:-1,:], ycomp.y[:,1:-1], np.sqrt(xvalues**2 + yvalues**2))
 
-            return Data(xcomp.x_coords[1:-1,:], ycomp.y_coords[:,1:-1], np.sqrt(xvalues**2 + yvalues**2), data.equidistant)
-
-    def highpass(data, **kwargs):
+    def highpass(self, x_width=3, y_height=3, method='gaussian'):
         """Perform a high-pass filter."""
-        # X and Y sigma order?
-        sx, sy = float(kwargs.get('X Width')), float(kwargs.get('Y Height'))
-        kernel_type = str(kwargs.get('Type')).lower()
+        kernel = create_kernel(x_width, y_height, 7, method)
+        self.z = self.z - ndimage.filters.convolve(self.z, kernel)
 
-        kernel = create_kernel(sx, sy, 7, kernel_type)
-        data.values = data.values - ndimage.filters.convolve(data.values, kernel)
-
-    def hist2d(data, **kwargs):
+    def hist2d(self, min, max, bins):
         """Convert every column into a histogram, default bin amount is sqrt(n)."""
-        hmin, hmax = float(kwargs.get('Min')), float(kwargs.get('Max'))
-        hbins = int(kwargs.get('Bins'))
+        hist = np.apply_along_axis(lambda x: np.histogram(x, bins=bins, range=(min, max))[0], 0, self.z)
 
-        hist = np.apply_along_axis(lambda x: np.histogram(x, bins=hbins, range=(hmin, hmax))[0], 0, data.values)
-
-        binedges = np.linspace(hmin, hmax, hbins + 1)
+        binedges = np.linspace(min, max, bins + 1)
         bincoords = (binedges[:-1] + binedges[1:]) / 2
 
-        data.x_coords = np.tile(data.x_coords[0,:], (hist.shape[0], 1))
-        data.y_coords = np.tile(bincoords[:,np.newaxis], (1, hist.shape[1]))
-        data.values = hist
+        self.x = np.tile(self.x[0,:], (hist.shape[0], 1))
+        self.y = np.tile(bincoords[:,np.newaxis], (1, hist.shape[1]))
+        self.z = hist
 
-    def interp_grid(data, **kwargs):
+    def interp_grid(self, width, height):
         """Interpolate the data onto a uniformly spaced grid using barycentric interpolation."""
-        width, height = int(kwargs.get('Width')), int(kwargs.get('Height'))
-        xmin, xmax, ymin, ymax, _, _ = data.get_limits()
+        # NOT WOKRING FOR SOME REASON
+        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
 
         x = np.linspace(xmin, xmax, width)
         y = np.linspace(ymin, ymax, height)
         xv, yv = np.meshgrid(x, y)
 
-        data.x_coords, data.y_coords = xv, yv
-        data.values = np.reshape(data.interpolate(np.column_stack((xv.flatten(), yv.flatten()))), xv.shape)
+        self.x, self.y = xv, yv
+        self.z = np.reshape(self.interpolate(np.column_stack((xv.flatten(), yv.flatten()))), xv.shape)
 
-    def interp_x(data, **kwargs):
+    def interp_x(self, points):
         """Interpolate every row onto a uniformly spaced grid."""
-        points = int(kwargs.get('Points'))
-        xmin, xmax, ymin, ymax, _, _ = data.get_limits()
+        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
 
         x = np.linspace(xmin, xmax, points)
 
-        rows = data.values.shape[0]
+        rows = self.z.shape[0]
         values = np.zeros((rows, points))
         for i in range(rows):
-            values[i] = np.interp(x, data.x_coords[i], data.values[i], left=np.nan, right=np.nan)
+            values[i] = np.interp(x, self.x[i], self.z[i], left=np.nan, right=np.nan)
 
-        y_avg = np.average(data.y_coords, axis=1)[np.newaxis].T
+        y_avg = np.average(self.y, axis=1)[np.newaxis].T
 
-        data.set_data(np.tile(x, (rows,1)), np.tile(y_avg, (1, points)), values)
+        self.set_data(np.tile(x, (rows,1)), np.tile(y_avg, (1, points)), values)
 
-    def interp_y(data, **kwargs):
+    def interp_y(self, points):
         """Interpolate every column onto a uniformly spaced grid."""
-        points = int(kwargs.get('Points'))
-        xmin, xmax, ymin, ymax, _, _ = data.get_limits()
+        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
 
         y = np.linspace(ymin, ymax, points)[np.newaxis].T
 
-        cols = data.values.shape[1]
+        cols = self.z.shape[1]
         values = np.zeros((points, cols))
         for i in range(cols):
-            values[:,i] = np.interp(y.ravel(), data.y_coords[:,i].ravel(), data.values[:,i].ravel(), left=np.nan, right=np.nan)
+            values[:,i] = np.interp(y.ravel(), self.y[:,i].ravel(), self.z[:,i].ravel(), left=np.nan, right=np.nan)
 
-        x_avg = np.average(data.x_coords, axis=0)
+        x_avg = np.average(self.x, axis=0)
 
-        data.set_data(np.tile(x_avg, (points,1)), np.tile(y, (1,cols)), values)
+        self.set_data(np.tile(x_avg, (points,1)), np.tile(y, (1,cols)), values)
 
-    def log(data, **kwargs):
+    def log(self, subtract, min):
         """The base-10 logarithm of every datapoint."""
-        subtract = bool(kwargs.get('Subtract offset'))
-        newmin = float(kwargs.get('New min'))
-
-        min = np.nanmin(data.values)
+        minimum = np.nanmin(self.z)
 
         if subtract:
-            data.values = (data.values - min) + newmin
+            #self.z[self.z < 0] = newmin
+            self.z += (min - minimum)
 
-        data.values = np.log10(data.values)
+        self.z = np.log10(self.z)
 
-    def lowpass(data, **kwargs):
+    def lowpass(self, x_width=3, y_height=3, method='gaussian'):
         """Perform a low-pass filter."""
-        sx, sy = float(kwargs.get('X Width')), float(kwargs.get('Y Height'))
-        kernel_type = str(kwargs.get('Type')).lower()
+        kernel = create_kernel(x_width, y_height, 7, method)
+        self.z = ndimage.filters.convolve(self.z, kernel)
 
-        kernel = create_kernel(sx, sy, 7, kernel_type)
-        data.values = ndimage.filters.convolve(data.values, kernel)
+        self.z = np.ma.masked_invalid(self.z)
 
-        data.values = np.ma.masked_invalid(data.values)
-
-    def neg(data, **kwargs):
+    def negate(self):
         """Negate every datapoint."""
-        data.values *= -1
+        self.z *= -1
 
-    def norm_columns(data, **kwargs):
+    def norm_columns(self):
         """Transform the values of every column so that they use the full colormap."""
-        data.values = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 0, data.values)
+        self.z = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 0, self.z)
 
-    def norm_rows(data, **kwargs):
+    def norm_rows(self):
         """Transform the values of every row so that they use the full colormap."""
-        data.values = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 1, data.values)
+        self.z = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 1, self.z)
 
-    def offset(data, **kwargs):
+    def offset(self, offset=0):
         """Add a value to every datapoint."""
-        data.values += float(kwargs.get('Offset'))
+        self.z += offset
 
-    def offset_axes(data, **kwargs):
+    def offset_axes(self, x_offset=0, y_offset=0):
         """Add an offset value to the axes."""
-        data.x_coords += float(kwargs.get('X Offset'))
-        data.y_coords += float(kwargs.get('Y Offset'))
+        self.x += x_offset
+        self.y += y_offset
 
-    def power(data, **kwargs):
+    def power(self, power=1):
         """Raise the datapoints to a power."""
-        data.values = np.power(data.values, float(kwargs.get('Power')))
+        self.z = np.power(self.z, power)
 
-    def scale_axes(data, **kwargs):
+    def scale_axes(self, x_scale=1, y_scale=1):
         """Multiply the axes values by a number."""
-        data.x_coords *= float(kwargs.get('X Scale'))
-        data.y_coords *= float(kwargs.get('Y Scale'))
+        self.x *= x_scale
+        self.y *= y_scale
 
-    def scale_data(data, **kwargs):
+    def scale_data(self, factor):
         """Multiply the datapoints by a number."""
-        data.values *= float(kwargs.get('Factor'))
+        self.z *= factor
 
-    def sub_linecut(data, **kwargs):
+    def sub_linecut(self, type, position):
         """Subtract a horizontal/vertical linecut from every row/column."""
-        linecut_type = kwargs.get('Horizontal')
-        linecut_coord = float(kwargs.get('Row/Column'))
-
-        if linecut_type == None:
-            return data
-
-        if linecut_type:
-            x, y = data.get_row_at(linecut_coord)
-        else:
-            x, y = data.get_column_at(linecut_coord)
+        if type == 'horizontal':
+            x, y, index = self.get_row_at(position)
+            y = np.tile(y, (self.z.shape[0],1))
+        elif type == 'vertical':
+            x, y, index = self.get_column_at(position)
             y = y[:,np.newaxis]
 
-        data.values -= y
+        self.z -= y
 
-    def sub_plane(data, **kwargs):
+    def sub_plane(self, x_slope, y_slope):
         """Subtract a plane with x and y slopes centered in the middle."""
-        xs, ys = float(kwargs.get('X Slope')), float(kwargs.get('Y Slope'))
-        xmin, xmax, ymin, ymax, _, _ = data.get_limits()
+        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
 
-        data.values -= xs*(data.x_coords - (xmax - xmin)/2) + ys*(data.y_coords - (ymax - ymin)/2)
+        self.z -= x_slope*(self.x - (xmax - xmin)/2) + y_slope*(self.y - (ymax - ymin)/2)
 
-    def xderiv(data, **kwargs):
+    def xderiv(self, method='midpoint'):
         """Find the rate of change between every datapoint in the x-direction."""
-        method = str(kwargs.get('Method'))
-
         if method == 'midpoint':
-            dx = np.diff(data.x_coords, axis=1)
-            ddata = np.diff(data.values, axis=1)
+            dx = np.diff(self.x, axis=1)
+            ddata = np.diff(self.z, axis=1)
 
-            data.x_coords = data.x_coords[:,:-1] + dx / 2.0
-            data.y_coords = data.y_coords[:,:-1]
-            data.values = ddata / dx
+            self.x = self.x[:,:-1] + dx / 2.0
+            self.y = self.y[:,:-1]
+            self.z = ddata / dx
         elif method == '2nd order central diff':
-            data.values = (data.values[:,2:] - data.values[:,:-2]) / (data.x_coords[:,2:] - data.x_coords[:,:-2])
-            data.x_coords = data.x_coords[:,1:-1]
-            data.y_coords = data.y_coords[:,1:-1]
+            self.z = (self.z[:,2:] - self.z[:,:-2]) / (self.x[:,2:] - self.x[:,:-2])
+            self.x = self.x[:,1:-1]
+            self.y = self.y[:,1:-1]
 
-    def yderiv(data, **kwargs):
+    def yderiv(self, method='midpoint'):
         """Find the rate of change between every datapoint in the y-direction."""
-        method = str(kwargs.get('Method'))
-
         if method == 'midpoint':
-            dy = np.diff(data.y_coords, axis=0)
-            ddata = np.diff(data.values, axis=0)
+            dy = np.diff(self.y, axis=0)
+            ddata = np.diff(self.z, axis=0)
 
-            data.x_coords = data.x_coords[:-1,:]
-            data.y_coords = data.y_coords[:-1,:] + dy / 2.0
-            data.values = ddata / dy
+            self.x = self.x[:-1,:]
+            self.y = self.y[:-1,:] + dy / 2.0
+            self.z = ddata / dy
         elif method == '2nd order central diff':
-            data.values = (data.values[2:] - data.values[:-2]) / (data.y_coords[2:] - data.y_coords[:-2])
-            data.x_coords = data.x_coords[1:-1]
-            data.y_coords = data.y_coords[1:-1]
+            self.z = (self.z[2:] - self.z[:-2]) / (self.y[2:] - self.y[:-2])
+            self.x = self.x[1:-1]
+            self.y = self.y[1:-1]

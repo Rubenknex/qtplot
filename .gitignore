@@ -6,3 +6,4 @@ test_data/
 Thumbs.db
 *.png
 *.operations
+*.config
