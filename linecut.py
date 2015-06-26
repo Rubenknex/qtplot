@@ -142,6 +142,10 @@ class Linecut(QtGui.QDialog):
         self.xlabel, self.ylabel = xlabel, ylabel
         self.x, self.y = x, y
 
+        self.ax.set_title(title)
+        self.ax.set_xlabel(xlabel)
+        self.ax.set_ylabel(ylabel)
+
         # Remove all the existing lines and only plot one if we uncheck the incremental box
         # Else, add a new line to the collection
         if self.cb_incremental.checkState() == QtCore.Qt.Unchecked:
@@ -168,10 +172,6 @@ class Linecut(QtGui.QDialog):
 
             self.linetraces.append(line)
             self.ax.add_line(line)
-
-        self.ax.set_title(title)
-        self.ax.set_xlabel(xlabel)
-        self.ax.set_ylabel(ylabel)
 
         if self.cb_reset_cmap.checkState() == QtCore.Qt.Checked:
             x, y = np.ma.masked_invalid(x), np.ma.masked_invalid(y)

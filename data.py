@@ -10,7 +10,7 @@ class DatFile:
         self.filename = filename
 
         self.columns = []
-        self.sizes = []
+        self.sizes = {}
 
         with open(filename, 'r') as f:
             for line in f:
@@ -21,8 +21,9 @@ class DatFile:
                     self.columns.append(name)
                 elif line.startswith('#\tsize'):
                     size = int(line.split(': ', 1)[1])
-                    self.sizes.append(size)
+                    self.sizes[self.columns[-1]] = size
 
+                # When a line starts with a number we have reached the actual data
                 if len(line) > 0 and line[0].isdigit():
                     break
 
@@ -36,17 +37,43 @@ class DatFile:
 
         return None
 
-    def get_data(self, x, y, z, x_order, y_order):
+    def get_data(self, x, y, z, x_order, y_order, varying_x=False, varying_y=False):
         """Pivot the column based data into matrices."""
-        # If an order column is filled with zeros, generate a series of 0...N for every block of data
+        # For non-varying ranges we create a series from 0 to N
         def generate_series(column):
             return pd.Series(range(len(column.values)), column.index)
 
+        # For varying ranges we create a series from Nmin to Nmax
+        def create_func(minimum):
+            def func(column):
+                diff =  np.average(np.diff(column.values))
+                min_idx = np.floor((np.nanmin(column.values) - minimum) / diff)
+                max_idx = np.floor((np.nanmax(column.values) - minimum) / diff)
+                
+                return pd.Series(np.arange(min_idx, max_idx + 1), column.index)
+
+            return func
+
+        minx, miny = np.nanmin(self.df[x].values), np.nanmin(self.df[y].values)
+        varying_x, varying_y = False, False
+
+        # If all the values are zero, create a series 0..N for every block
         if (self.df[x_order] == 0).all():
-            self.df[x_order] = self.df.groupby(y_order)[x_order].apply(generate_series)
+            self.df['new_x_order'] = self.df.groupby(y_order)[x].apply(generate_series)
+            x_order = 'new_x_order'
+        # If there are more unique values than block size, the ranges are varying
+        elif len(np.unique(self.df[x_order].values)) > self.sizes[x_order]:
+            self.df['new_x_order'] = self.df.groupby(y_order)[x].apply(create_func(minx))
+            varying_x = True
+            x_order = 'new_x_order'
 
         if (self.df[y_order] == 0).all():
-            self.df[y_order] = self.df.groupby(x_order)[y_order].apply(generate_series)
+            self.df['new_y_order'] = self.df.groupby(x_order)[y].apply(generate_series)
+            y_order = 'new_y_order'
+        elif len(np.unique(self.df[y_order].values)) > self.sizes[y_order]:
+            self.df['new_y_order'] = self.df.groupby(x_order)[y].apply(create_func(miny))
+            varying_y = True
+            y_order = 'new_y_order'
 
         rows, row_ind = np.unique(self.df[y_order].values, return_inverse=True)
         cols, col_ind = np.unique(self.df[x_order].values, return_inverse=True)
@@ -55,7 +82,7 @@ class DatFile:
         pivot = np.zeros((len(rows), len(cols), 3)) * np.nan
         pivot[row_ind, col_ind] = self.df[[x, y, z]].values
 
-        return Data2D(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2], (x==x_order,y==y_order))
+        return Data2D(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2], (x==x_order,y==y_order), (varying_x,varying_y))
 
 
 def create_kernel(x_dev, y_dev, cutoff, distr):
@@ -89,11 +116,23 @@ class Data2D:
     Class which represents 2d data as two matrices with x and y coordinates 
     and one with values.
     """
-    def __init__(self, x, y, z, equidistant=(False, False)):
+    def __init__(self, x, y, z, equidistant=(False, False), varying=(False, False)):
         self.x, self.y, self.z = x, y, z
 
         self.equidistant = equidistant
+        self.varying = varying
         self.tri = None
+
+        if self.varying[0] == True or self.varying[1] == True:
+            minx, maxx = np.nanmin(x), np.nanmax(x)
+            diffx = np.nanmean(np.diff(x, axis=1))
+            xrow = minx + np.arange(x.shape[1]) * diffx
+            self.x = np.tile(xrow, (x.shape[0], 1))
+
+            miny, maxy = np.nanmin(y), np.nanmax(y)
+            diffy = np.nanmean(np.diff(y, axis=0))
+            yrow = miny + np.arange(y.shape[0]) * diffy
+            self.y = np.tile(yrow[:,np.newaxis], (1, y.shape[1]))
 
     def set_data(self, x, y, z):
         self.x, self.y, self.z = x, y, z
@@ -172,7 +211,11 @@ class Data2D:
         -   Pad the coordinates with a column/row on each side
         -   Add the difference between all the coords divided by 2 to the coords, this generates midpoints
         -   Add a row/column at the end to satisfy the 1 larger requirements of pcolor
+
+        TODO: Find a way to show all datapoints even if surrounding ones are NaN
+        Data right of first NaN is not good
         """
+
         # If we are dealing with data that is 2-dimensional
         # -2 rows: both coords need non-nan values
         if xc.shape[1] > 1:
@@ -224,11 +267,13 @@ class Data2D:
 
         Can be plotted using matplotlib's pcolor/pcolormesh(*data.get_pcolor())
         """
-        xc, yc, z = self.get_sorted_by_coordinates()
+        #xc, yc, z = self.get_sorted_by_coordinates()
 
-        x, y = self.get_quadrilaterals(xc, yc)
+        #x, y = self.get_quadrilaterals(xc, yc)
+        x, y = self.get_quadrilaterals(self.x, self.y)
 
-        return np.ma.masked_invalid(x), np.ma.masked_invalid(y), np.ma.masked_invalid(z)
+
+        return np.ma.masked_invalid(x), np.ma.masked_invalid(y), np.ma.masked_invalid(self.z)
 
     def get_column_at(self, x):
         x_index = np.where(self.x[0,:]==self.get_closest_x(x))[0][0]
@@ -266,7 +311,7 @@ class Data2D:
         return x_flip, y_flip
 
     def copy(self):
-        return Data2D(np.copy(self.x), np.copy(self.y), np.copy(self.z), self.equidistant)
+        return Data2D(np.copy(self.x), np.copy(self.y), np.copy(self.z), self.equidistant, self.varying)
 
     def abs(self):
         """Take the absolute value of every datapoint."""

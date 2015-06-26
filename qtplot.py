@@ -267,7 +267,9 @@ class Window(QtGui.QMainWindow):
             names = ['X', 'X Order', 'Y', 'Y Order', 'Data']
             default_indices = [0, 0, 1, 1, 3]
 
-            if os.path.isfile('qtplot.config'):
+            path = os.path.dirname(os.path.realpath(__file__))
+
+            if os.path.isfile(os.path.join(path, 'qtplot.config')):
                 config = ConfigParser.RawConfigParser()
                 path = os.path.dirname(os.path.realpath(__file__))
                 config.read(os.path.join(path, 'qtplot.config'))
@@ -331,7 +333,11 @@ class Window(QtGui.QMainWindow):
 
             return
 
-        self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
+        try:
+            self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
+        except Exception:
+            print 'ERROR: Could not pivot the data into a matrix with these columns'
+            return
 
         self.data = self.operations.apply_operations(self.data)
 
@@ -390,7 +396,6 @@ class Window(QtGui.QMainWindow):
     def on_min_changed(self, value):
         if self.data != None:
             min, max = np.nanmin(self.data.z), np.nanmax(self.data.z)
-            print min, max
 
             newmin = min + ((max - min) / 100.0) * value
             self.le_min.setText('%.2e' % newmin)
@@ -483,7 +488,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         main = Window(linecut, operations, filename=sys.argv[1])
     else:
-        main = Window(linecut, operations, filename='K:\\ns\\qt\\qt-shared\\Ruben\\deconvolution\\Dev4_30.dat')
+        main = Window(linecut, operations)
 
     linecut.main = main
     operations.main = main

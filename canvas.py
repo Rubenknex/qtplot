@@ -109,7 +109,6 @@ class Canvas(scene.SceneCanvas):
         self.colormap = Colormap(path)
 
         self.program_cm = gloo.Program(cm_vert, cm_frag)
-        #self.
         
         self.line_type = None
         self.line_coord = 0
@@ -149,8 +148,8 @@ class Canvas(scene.SceneCanvas):
         self.update()
 
     def generate_vertices(self, data):
-        x, y, z = data.get_sorted_by_coordinates()
-        xq, yq = data.get_quadrilaterals(x, y)
+        #x, y, z = data.get_sorted_by_coordinates()
+        xq, yq = data.get_quadrilaterals(data.x, data.y)
 
         # Top left
         x1 = xq[0:-1, 0:-1].ravel()
@@ -180,7 +179,7 @@ class Canvas(scene.SceneCanvas):
                                                       ('a_value', np.float32, 1)])
         vertex_data['a_position'] = vertices
         # Repeat the values six times for every two datapoint triangles
-        vertex_data['a_value'] = np.repeat(z.ravel(), 6, axis=0)
+        vertex_data['a_value'] = np.repeat(data.z.ravel(), 6, axis=0)
 
         return vertex_data
 
@@ -218,7 +217,7 @@ class Canvas(scene.SceneCanvas):
                     self.line_positions = [(self.line_coord, self.ymin), (self.line_coord, self.ymax)]
                     
                     x, y, index = self.data.get_column_at(x)
-                    self.parent.linecut.plot_linetrace(x, y, self.line_type, self.line_coord, self.parent.name, x_name, data_name)
+                    self.parent.linecut.plot_linetrace(x, y, self.line_type, self.line_coord, self.parent.name, y_name, data_name)
                     self.has_redrawn = False
             else:
                     if self.line_type == 'horizontal':
