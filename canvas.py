@@ -122,7 +122,12 @@ class Canvas(scene.SceneCanvas):
     def set_data(self, data):
         self.data = data
 
-        self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax = data.get_limits()
+        vertices = self.generate_vertices(data)
+
+        self.xmin, self.xmax = np.nanmin(vertices['a_position'][:,0]), np.nanmax(vertices['a_position'][:,0])
+        self.ymin, self.ymax = np.nanmin(vertices['a_position'][:,1]), np.nanmax(vertices['a_position'][:,1])
+
+        #self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax = data.get_limits()
 
         self.cm_dx = (self.xmax-self.xmin)*0.1
 
@@ -140,7 +145,6 @@ class Canvas(scene.SceneCanvas):
         self.program_line['u_projection'] = self.projection
 
         t0 = time.clock()
-        vertices = self.generate_vertices(data)
         #print 'generate_vertices: ', time.clock()-t0
         self.vbo = gloo.VertexBuffer(vertices)
         self.program.bind(self.vbo)

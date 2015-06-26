@@ -211,9 +211,6 @@ class Data2D:
         -   Pad the coordinates with a column/row on each side
         -   Add the difference between all the coords divided by 2 to the coords, this generates midpoints
         -   Add a row/column at the end to satisfy the 1 larger requirements of pcolor
-
-        TODO: Find a way to show all datapoints even if surrounding ones are NaN
-        Data right of first NaN is not good
         """
 
         # If we are dealing with data that is 2-dimensional

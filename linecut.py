@@ -136,7 +136,7 @@ class Linecut(QtGui.QDialog):
     
     def plot_linetrace(self, x, y, type, position, title, xlabel, ylabel):
         # Don't draw lines consisting of one point
-        if len(x) <= 1 or len(y) <= 1:
+        if np.count_nonzero(~np.isnan(y)) < 2:
             return
 
         self.xlabel, self.ylabel = xlabel, ylabel
