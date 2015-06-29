@@ -70,18 +70,24 @@ class Linecut(QtGui.QDialog):
         QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_figure)
         grid.addWidget(self.b_copy, 1, 4)
 
+        self.cb_include_z = QtGui.QCheckBox('Include Z')
+        self.cb_include_z.setCheckState(QtCore.Qt.Checked)
+        grid.addWidget(self.cb_include_z, 1, 5)
+
+        grid.addWidget(QtGui.QLabel('Linecuts'), 2, 1)
+
         self.cb_incremental = QtGui.QCheckBox('Incremental')
         self.cb_incremental.setCheckState(QtCore.Qt.Unchecked)
-        grid.addWidget(self.cb_incremental, 2, 1)
+        grid.addWidget(self.cb_incremental, 2, 2)
 
-        grid.addWidget(QtGui.QLabel('Offset:'), 2, 2)
+        grid.addWidget(QtGui.QLabel('Offset:'), 2, 3)
 
         self.le_offset = QtGui.QLineEdit('0', self)
-        grid.addWidget(self.le_offset, 2, 3)
+        grid.addWidget(self.le_offset, 2, 4)
 
         self.b_clear_lines = QtGui.QPushButton('Clear', self)
         self.b_clear_lines.clicked.connect(self.on_clear_lines)
-        grid.addWidget(self.b_clear_lines, 2, 4)
+        grid.addWidget(self.b_clear_lines, 2, 5)
 
         grid.addWidget(QtGui.QLabel('Points'), 3, 1)
         self.cb_point = QtGui.QComboBox(self)
@@ -184,15 +190,19 @@ class Linecut(QtGui.QDialog):
 
         self.fig.canvas.draw()
 
-    def plot_linetrace(self, x, y, type, position, title, xlabel, ylabel):
+    def plot_linetrace(self, x, y, z, type, position, title, xlabel, ylabel, otherlabel):
         # Don't draw lines consisting of one point
         if np.count_nonzero(~np.isnan(y)) < 2:
             return
 
-        self.xlabel, self.ylabel = xlabel, ylabel
-        self.x, self.y = x, y
+        self.xlabel, self.ylabel, self.otherlabel = xlabel, ylabel, otherlabel
+        self.title = title
+        self.x, self.y, self.z = x, y, z
 
+        if self.cb_include_z.checkState() == QtCore.Qt.Checked:
+            title += ("\n" + otherlabel + "=" + eng_format(z, 1))
         self.ax.set_title(title)
+
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
 

@@ -111,7 +111,7 @@ class Canvas(scene.SceneCanvas):
         self.program_cm = gloo.Program(cm_vert, cm_frag)
         
         self.line_type = None
-        self.line_coord = 0
+        self.line_coord = None
         self.line_positions = [(0, 0), (0, 0)]
 
         self.program_line = gloo.Program(basic_vert, basic_frag)
@@ -213,7 +213,8 @@ class Canvas(scene.SceneCanvas):
                     self.line_positions = [(self.xmin, self.line_coord), (self.xmax, self.line_coord)]
 
                     x, y, index = self.data.get_row_at(y)
-                    self.parent.linecut.plot_linetrace(x, y, self.line_type, self.line_coord, self.parent.name, x_name, data_name)
+                    z = np.nanmean(self.data.y[index,:])
+                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type, self.line_coord, self.parent.name, x_name, data_name, y_name)
                     self.has_redrawn = False
                 elif event.button == 3:
                     self.line_type = 'vertical'
@@ -221,18 +222,22 @@ class Canvas(scene.SceneCanvas):
                     self.line_positions = [(self.line_coord, self.ymin), (self.line_coord, self.ymax)]
                     
                     x, y, index = self.data.get_column_at(x)
-                    self.parent.linecut.plot_linetrace(x, y, self.line_type, self.line_coord, self.parent.name, y_name, data_name)
+                    z = np.nanmean(self.data.x[:,index])
+                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type, self.line_coord, self.parent.name, y_name, data_name, x_name)
                     self.has_redrawn = False
-            else:
-                    if self.line_type == 'horizontal':
-                        self.line_positions = [(self.xmin, self.line_coord), (self.xmax, self.line_coord)]
-                        x, y, index = self.data.get_row_at(self.line_coord)
-                    else:
-                        self.line_positions = [(self.line_coord, self.ymin), (self.line_coord, self.ymax)]
-                        x, y, index = self.data.get_column_at(self.line_coord)
-                    
-                    self.parent.linecut.plot_linetrace(x, y, self.line_type, self.line_coord, self.parent.name, x_name, data_name)
-                    self.has_redrawn = False
+            elif self.line_coord != None:
+                if self.line_type == 'horizontal':
+                    self.line_positions = [(self.xmin, self.line_coord), (self.xmax, self.line_coord)]
+                    x, y, index = self.data.get_row_at(self.line_coord)
+                    z = np.nanmean(self.data.y[:,index])
+                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type, self.line_coord, self.parent.name, x_name, data_name, y_name)
+                else:
+                    self.line_positions = [(self.line_coord, self.ymin), (self.line_coord, self.ymax)]
+                    x, y, index = self.data.get_column_at(self.line_coord)
+                    z = np.nanmean(self.data.x[index,:])
+                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type, self.line_coord, self.parent.name, y_name, data_name, x_name)
+                
+                self.has_redrawn = False
 
             self.program_line['a_position'] = self.line_positions
 
