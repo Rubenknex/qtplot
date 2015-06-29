@@ -10,7 +10,7 @@ from matplotlib.ticker import ScalarFormatter
 
 from PyQt4 import QtGui, QtCore
 
-from util import FixedOrderFormatter
+from util import FixedOrderFormatter, eng_format
 
 class Linetrace(plt.Line2D):
     """
@@ -35,6 +35,8 @@ class Linecut(QtGui.QDialog):
         self.fig, self.ax = plt.subplots()
         self.x, self.y = None, None
         self.linetraces = []
+        self.points = []
+        self.markers = []
         self.colors = cycle('bgrcmykw')
 
         self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
@@ -46,6 +48,7 @@ class Linecut(QtGui.QDialog):
         self.setWindowTitle("Linecut")
 
         self.canvas = FigureCanvasQTAgg(self.fig)
+        self.canvas.mpl_connect('button_press_event', self.on_click)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
         grid = QtGui.QGridLayout()
@@ -76,9 +79,22 @@ class Linecut(QtGui.QDialog):
         self.le_offset = QtGui.QLineEdit('0', self)
         grid.addWidget(self.le_offset, 2, 3)
 
-        self.b_clear = QtGui.QPushButton('Clear', self)
-        self.b_clear.clicked.connect(self.on_clear)
-        grid.addWidget(self.b_clear, 2, 4)
+        self.b_clear_lines = QtGui.QPushButton('Clear', self)
+        self.b_clear_lines.clicked.connect(self.on_clear_lines)
+        grid.addWidget(self.b_clear_lines, 2, 4)
+
+        grid.addWidget(QtGui.QLabel('Points'), 3, 1)
+        self.cb_point = QtGui.QComboBox(self)
+        self.cb_point.addItems(['X,Y', 'X', 'Y'])
+        grid.addWidget(self.cb_point, 3, 2)
+
+        grid.addWidget(QtGui.QLabel('Significance'))
+        self.sb_significance = QtGui.QSpinBox(self)
+        grid.addWidget(self.sb_significance, 3, 4)
+
+        self.b_clear_points = QtGui.QPushButton('Clear', self)
+        self.b_clear_points.clicked.connect(self.on_clear_points)
+        grid.addWidget(self.b_clear_points, 3, 5)
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
@@ -99,6 +115,27 @@ class Linecut(QtGui.QDialog):
 
             self.ax.axis([minx - xdiff, maxx + xdiff, miny - ydiff, maxy + ydiff])
             self.canvas.draw()
+
+    def on_click(self, event):
+        if event.inaxes and event.button == 2:
+            significance = self.sb_significance.value()
+            point_type = str(self.cb_point.currentText())
+            print point_type
+            if point_type == 'X':
+                coords = eng_format(event.xdata, significance)
+            elif point_type == 'Y':
+                coords = eng_format(event.ydata, significance)
+            elif point_type == 'X,Y':
+                coords = '%s, %s' % (eng_format(event.xdata, significance), eng_format(event.ydata, significance))
+            else:
+                coords = ''
+
+            marker = self.ax.plot(event.xdata, event.ydata, '+', c='k')[0]
+            self.markers.append(marker)
+            text = self.ax.annotate(coords, xy=(event.xdata, event.ydata), xycoords='data', xytext=(3, 3), textcoords='offset points')
+            self.points.append(text)
+
+            self.fig.canvas.draw()
 
     def on_clipboard(self):
         if self.x == None or self.y == None:
@@ -126,7 +163,7 @@ class Linecut(QtGui.QDialog):
         img = QtGui.QImage(path)
         QtGui.QApplication.clipboard().setImage(img)
 
-    def on_clear(self):
+    def on_clear_lines(self):
         for line in self.linetraces:
             line.remove()
 
@@ -134,6 +171,19 @@ class Linecut(QtGui.QDialog):
 
         self.fig.canvas.draw()
     
+    def on_clear_points(self):
+        for point in self.points:
+            point.remove()
+
+        self.points = []
+
+        for marker in self.markers:
+            marker.remove()
+
+        self.markers = []
+
+        self.fig.canvas.draw()
+
     def plot_linetrace(self, x, y, type, position, title, xlabel, ylabel):
         # Don't draw lines consisting of one point
         if np.count_nonzero(~np.isnan(y)) < 2:
@@ -161,7 +211,7 @@ class Linecut(QtGui.QDialog):
             self.total_offset = 0
         else:
             if len(self.ax.lines) > 0:
-                if self.ax.lines[-1].position == position:
+                if self.linetraces[-1].position == position:
                     return
 
             index = len(self.linetraces) - 1
