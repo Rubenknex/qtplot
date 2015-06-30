@@ -54,7 +54,7 @@ class Operation(QtGui.QWidget):
 
             height += 1
 
-        if name == 'sub linecut':
+        if name == 'sub linecut' or name == 'sub linecut avg':
             b_current = QtGui.QPushButton('Current linecut')
             b_current.clicked.connect(self.on_current_linecut)
             layout.addWidget(b_current, height, 2)
@@ -139,6 +139,7 @@ class Operations(QtGui.QDialog):
             'scale axes':   [Data2D.scale_axes,   [('x_scale', 1.0), ('y_scale', 1.0)]],
             'scale data':   [Data2D.scale_data,   [('factor', 1.0)]],
             'sub linecut':  [Data2D.sub_linecut,  [('type', ['horizontal', 'vertical']), ('position', float('nan'))]],
+            'sub linecut avg': [Data2D.sub_linecut_avg, [('type', ['horizontal', 'vertical']), ('position', float('nan')), ('size', 3)]],
             'sub plane':    [Data2D.sub_plane,    [('x_slope', 0.0), ('y_slope', 0.0)]],
             'xderiv':       [Data2D.xderiv,       [('method', ['midpoint', '2nd order central diff'])]],
             'yderiv':       [Data2D.yderiv,       [('method', ['midpoint', '2nd order central diff'])]],
@@ -336,7 +337,7 @@ class Operations(QtGui.QDialog):
                     min, max = np.nanmin(copy.z), np.nanmax(copy.z)
                     operation.set_parameter('min', min)
                     operation.set_parameter('max', max)
-            elif operation.name == 'sub linecut':
+            elif operation.name == 'sub linecut' or operation.name == 'sub linecut avg':
                 if self.main.canvas.line_coord != None and self.main.canvas.line_type != None:
                     if math.isnan(operation.get_parameter('position')):
                         operation.set_parameter('type', self.main.canvas.line_type)

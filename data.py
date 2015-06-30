@@ -269,7 +269,6 @@ class Data2D:
         #x, y = self.get_quadrilaterals(xc, yc)
         x, y = self.get_quadrilaterals(self.x, self.y)
 
-
         return np.ma.masked_invalid(x), np.ma.masked_invalid(y), np.ma.masked_invalid(self.z)
 
     def get_column_at(self, x):
@@ -506,10 +505,30 @@ class Data2D:
         """Subtract a horizontal/vertical linecut from every row/column."""
         if type == 'horizontal':
             x, y, index = self.get_row_at(position)
+            y = np.tile(self.z[index,:], (self.z.shape[0],1))
+        elif type == 'vertical':
+            x, y, index = self.get_column_at(position)
+            y = np.tile(self.z[:,index][:,np.newaxis], (1, self.z.shape[1]))
+
+        self.z -= y
+
+    def sub_linecut_avg(self, type, position, size):
+        """Subtract a horizontal/vertical averaged linecut from every row/column."""
+        if size % 2 == 0:
+            start, end = -size/2, size/2-1
+        else:
+            start, end = -(size-1)/2, (size-1)/2
+
+        indices = np.arange(start, end + 1)
+
+        if type == 'horizontal':
+            x, y, index = self.get_row_at(position)
+            y = np.mean(self.z[index+indices,:], axis=0)
             y = np.tile(y, (self.z.shape[0],1))
         elif type == 'vertical':
             x, y, index = self.get_column_at(position)
-            y = y[:,np.newaxis]
+            y = np.mean(self.z[:,index+indices][:,np.newaxis], axis=1)
+            y = np.tile(y, (1, self.z.shape[1]))
 
         self.z -= y
 
