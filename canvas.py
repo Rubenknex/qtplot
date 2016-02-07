@@ -105,7 +105,7 @@ class Canvas(scene.SceneCanvas):
         self.program = gloo.Program(vert, frag)
 
         path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(path, 'new_colormaps/transform/Seismic.npy')
+        path = os.path.join(path, 'colormaps/transform/Seismic.npy')
         self.colormap = Colormap(path)
 
         self.program_cm = gloo.Program(cm_vert, cm_frag)
