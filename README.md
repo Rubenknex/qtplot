@@ -9,7 +9,11 @@ The dependencies are:
 - vispy
 - pyopengl
 
-It is recommended to install a scientific Python distribution such as Anaconda (https://store.continuum.io/cshop/anaconda/) or Canopy (https://store.enthought.com/downloads) because most scientific libraries as NumPy and SciPy depend on compiled libraries. The only additional packages needed this way are vispy and pyopengl which can be installed with the cmd command `pip install vispy pyopengl`.
+It is recommended to install a scientific Python distribution such as Anaconda (https://store.continuum.io/cshop/anaconda/) or Canopy (https://store.enthought.com/downloads) because most scientific libraries as NumPy and SciPy depend on compiled libraries. 
+
+Install the packages that are not included by default:
+
+`pip install vispy pyopengl` or `conda install vispy pyopengl`
 
 Download this repository as a `.zip` and extract it or clone the repository to an easy to find location. 
 
