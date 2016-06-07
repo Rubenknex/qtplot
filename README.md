@@ -1,7 +1,7 @@
 ## Installing
 
 The dependencies are:
-- Python 2.7
+- Python 2.7 or Python 3 up to 3.4 (vispy doesn't work on 3.5 yet)
 - NumPy
 - SciPy
 - matplotlib

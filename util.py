@@ -31,8 +31,6 @@ class FixedOrderFormatter(ScalarFormatter):
         self.division = division
 
     def __call__(self, x, pos=None):
-        #print self.axis.get_view_interval()
-
         if x == 0:
             return '0'
 
