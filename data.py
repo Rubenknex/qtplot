@@ -1,8 +1,7 @@
 import numpy as np
 import pandas as pd
-from scipy import ndimage
+from scipy import ndimage, interpolate
 from scipy.spatial import qhull
-from scipy.interpolate import griddata
 
 class DatFile:
     """Class which contains the column based DataFrame of the data."""
@@ -428,8 +427,10 @@ class Data2D:
 
         rows = self.z.shape[0]
         values = np.zeros((rows, points))
+
         for i in range(rows):
-            values[i] = np.interp(x, self.x[i], self.z[i], left=np.nan, right=np.nan)
+            f = interpolate.interp1d(self.x[i], self.z[i], bounds_error=False, fill_value=np.nan)
+            values[i] = f(x)
 
         y_avg = np.average(self.y, axis=1)[np.newaxis].T
 
@@ -443,8 +444,10 @@ class Data2D:
 
         cols = self.z.shape[1]
         values = np.zeros((points, cols))
+
         for i in range(cols):
-            values[:,i] = np.interp(y.ravel(), self.y[:,i].ravel(), self.z[:,i].ravel(), left=np.nan, right=np.nan)
+            f = interpolate.interp1d(self.y[:,i].ravel(), self.z[:,i].ravel(), bounds_error=False, fill_value=np.nan)
+            values[i] = f(x)
 
         x_avg = np.average(self.x, axis=0)
 
