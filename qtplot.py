@@ -271,24 +271,51 @@ class Window(QtGui.QMainWindow):
             names = ['X', 'X Order', 'Y', 'Y Order', 'Data']
             default_indices = [0, 0, 1, 1, 3]
 
-            path = os.path.dirname(os.path.realpath(__file__))
+            result = self.read_from_ini('Settings', names)
 
-            if os.path.isfile(os.path.join(path, 'qtplot.config')):
-                config = ConfigParser.RawConfigParser()
-                path = os.path.dirname(os.path.realpath(__file__))
-                config.read(os.path.join(path, 'qtplot.config'))
+            if result is not None:
+                # Check if the names in the ini file are present in the loaded data
+                # otherwise, use the default index
+                for i, cb in enumerate(combo_boxes):
+                    index = cb.findText(result[i])
 
-                if config.has_section('Settings'):
-                    indices = [cb.findText(config.get('Settings', names[i])) for i,cb in enumerate(combo_boxes)]
-
-                    for i, index in enumerate(indices):
-                        if index != -1:
-                            combo_boxes[i].setCurrentIndex(index)
-                        else:
-                            combo_boxes[i].setCurrentIndex(default_indices[i])
+                    if index == -1:
+                        cb.setCurrentIndex(default_indices[i])
+                    else:
+                        cb.setCurrentIndex(index)
             else:
-                for i, index in enumerate(default_indices):
-                    combo_boxes[i].setCurrentIndex(index)
+                for i, cb in enumerate(combo_boxes):
+                    cb.setCurrentIndex(default_indices[i])
+
+    def write_to_ini(self, section, keys_values):
+        path = os.path.dirname(os.path.realpath(__file__))
+        filepath = os.path.join(path, 'qtplot.ini')
+
+        config = configparser.ConfigParser()
+
+        if os.path.isfile(filepath):
+            config.read(filepath)
+
+        for key, value in keys_values.items():
+            config.set(section, key, value)
+
+        with open(filepath, 'w') as config_file:
+            config.write(config_file)
+
+    def read_from_ini(self, section, keys):
+        path = os.path.dirname(os.path.realpath(__file__))
+        filepath = os.path.join(path, 'qtplot.ini')
+
+        config = configparser.ConfigParser()
+
+        if os.path.isfile(filepath):
+            config.read(filepath)
+
+            values = [config.get(section, key) for key in keys]
+
+            return values
+        else:
+            return None
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -477,18 +504,19 @@ class Window(QtGui.QMainWindow):
         self.settings.close()
 
         if self.cb_save_default.checkState() == QtCore.Qt.Checked:
-            config = ConfigParser.RawConfigParser()
-            config.add_section('Settings')
             x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
-            config.set('Settings', 'X', x_name)
-            config.set('Settings', 'X Order', order_x)
-            config.set('Settings', 'Y', y_name)
-            config.set('Settings', 'Y Order', order_y)
-            config.set('Settings', 'Data', data_name)
 
-            path = os.path.dirname(os.path.realpath(__file__))
-            with open(os.path.join(path, 'qtplot.config'), 'wb') as config_file:
-                config.write(config_file)
+            axes = {
+                'X':        x_name,
+                'X order':  order_x,
+                'Y':        y_name,
+                'Y Order':  order_y,
+                'Data':     data_name,
+            }
+
+            self.write_to_ini('Settings', axes)
+
+ 
 
 if __name__ == '__main__':
     mpl.rcParams['mathtext.fontset'] = 'custom'
