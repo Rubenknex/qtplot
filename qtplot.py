@@ -224,6 +224,8 @@ class Window(QtGui.QMainWindow):
         self.resize(600, 700)
         self.move(100, 100)
 
+        self.setAcceptDrops(True)
+
     def update_ui(self, reset=True):
         self.setWindowTitle(self.name)
 
@@ -287,6 +289,18 @@ class Window(QtGui.QMainWindow):
             else:
                 for i, index in enumerate(default_indices):
                     combo_boxes[i].setCurrentIndex(index)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            url = event.mimeData().urls()[0].toString()
+
+            if url.endswith('.dat'):
+                event.accept()
+
+    def dropEvent(self, event):
+        filepath = event.mimeData().urls()[0].toLocalFile()
+
+        self.load_file(filepath)
 
     def on_load_dat(self, event):
         filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
