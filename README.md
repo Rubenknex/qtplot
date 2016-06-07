@@ -13,17 +13,21 @@ It is recommended to install a scientific Python distribution such as Anaconda (
 
 Install the packages that are not included by default:
 
-`pip install vispy pyopengl` or `conda install vispy pyopengl`
+`pip install vispy pyopengl` or (Anaconda) `conda install vispy pyopengl`
 
-Download this repository as a `.zip` and extract it or clone the repository to an easy to find location. 
+Download this repository as a `.zip` and extract it, or clone the repository to an easy to find location. 
 
 ## Usage
 The python executable must be in the PATH environment variable.
 
-qtplot can be run from the commandline with `qtplot.py <filename>`, however it is more useful to associate `.dat` files with qtplot by selecting `qtplot.bat` in the "Open with:" menu of a `.dat` file.
+qtplot can be run from the commandline with `qtplot.py <filename>` or on Windows using the `qtplot.bat` file.
+
+It is however more useful to associate `.dat` files with qtplot by selecting `qtplot.bat` in the "Open with:" menu of a `.dat` file.
+
+`.dat` files can also be opened by dragging and dropping them on the main qtplot window.
 
 ### Main window
-In the main window, the `View` tab contains a fast renderer that uses OpenGL plots the data for real-time viewing and processing. The columns that are used for plotting can be chosen with the names set in your measurement script. By clicking with the left or right mousebutton, a linecut is made and shown in the linecut window.
+In the main window, the `View` tab contains a fast renderer that uses OpenGL plots the data for real-time viewing and processing. The columns that are used for plotting can be chosen with the names set in your measurement script. By clicking in the plot with the left or right mousebutton, a linecut is made and shown in the linecut window.
 
 The `Export` tab is used to export colorplots and set the various properties that are needed. The plot can be exported in various file formats as well as to the clipboard for ease of usage.
 
@@ -49,7 +53,10 @@ import matplotlib.pyplot as plt
 from data import DatFile
 
 df = DatFile('some_qtlab_data.dat')
+# In case of a four-point measurement:
 data = df.get_data('X measure', 'Y measure', 'Z measure', 'X bias', 'Y bias')
+# Or a two-point measurement:
+data = df.get_data('X bias', 'Y bias', 'Z measure', 'X bias', 'Y bias')
 
 data.crop(right=-10)
 data.lowpass(x_width=3, y_height=0, method='gaussian')
