@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import json
 import math
+import six
 
 from PyQt4 import QtGui, QtCore
 from scipy import ndimage
@@ -226,7 +227,12 @@ class Operations(QtGui.QDialog):
             item = QtGui.QListWidgetItem(name)
             item.setCheckState(QtCore.Qt.Checked)
             operation = Operation(name, self.main, *self.items[name])
-            item.setData(QtCore.Qt.UserRole, QtCore.QVariant(operation))
+
+            if six.PY2:
+                item.setData(QtCore.Qt.UserRole, QtCore.QVariant(operation))
+            elif six.PY3:
+                item.setData(QtCore.Qt.UserRole, operation)
+
             self.stack.addWidget(operation)
 
             self.queue.addItem(item)
@@ -276,7 +282,12 @@ class Operations(QtGui.QDialog):
             item.setCheckState(QtCore.Qt.Checked)
             op = Operation(name, self.main, *self.items[name])
             op.set_parameters(operation)
-            item.setData(QtCore.Qt.UserRole, QtCore.QVariant(op))
+
+            if six.PY2:
+                item.setData(QtCore.Qt.UserRole, QtCore.QVariant(op))
+            elif six.PY3:
+                item.setData(QtCore.Qt.UserRole, op)
+
             self.stack.addWidget(op)
 
             self.queue.addItem(item)
@@ -290,8 +301,11 @@ class Operations(QtGui.QDialog):
             return
 
         operations = OrderedDict()
-        for i in xrange(self.queue.count()):
-                operation = self.queue.item(i).data(QtCore.Qt.UserRole).toPyObject()
+        for i in range(self.queue.count()):
+                if six.PY2:
+                    operation = self.queue.item(i).data(QtCore.Qt.UserRole).toPyObject()
+                elif six.PY3:
+                    operation = self.queue.item(i).data(QtCore.Qt.UserRole)
                 
                 name, params = operation.get_parameters()
                 operations[name] = params
@@ -310,7 +324,11 @@ class Operations(QtGui.QDialog):
 
     def on_selected_changed(self, current, previous):
         if current:
-            widget = current.data(QtCore.Qt.UserRole).toPyObject()
+            if six.PY2:
+                widget = current.data(QtCore.Qt.UserRole).toPyObject()
+            elif six.PY3:
+                widget = current.data(QtCore.Qt.UserRole)
+
             self.stack.addWidget(widget)
             self.stack.setCurrentWidget(widget)
 
@@ -320,13 +338,16 @@ class Operations(QtGui.QDialog):
     def apply_operations(self, data):
         copy = data.copy()
 
-        for i in xrange(self.queue.count()):
+        for i in range(self.queue.count()):
             item = self.queue.item(i)
 
             if item.checkState() == QtCore.Qt.Unchecked:
                 continue
 
-            operation = item.data(QtCore.Qt.UserRole).toPyObject()
+            if six.PY2:
+                operation = item.data(QtCore.Qt.UserRole).toPyObject()
+            elif six.PY3:
+                operation = item.data(QtCore.Qt.UserRole)
 
             if operation.name == 'hist2d':
                 if operation.get_parameter('bins') == 0:

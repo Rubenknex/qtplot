@@ -1,4 +1,6 @@
-import ConfigParser
+from __future__ import print_function
+
+from six.moves import configparser
 import math
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -302,7 +304,7 @@ class Window(QtGui.QMainWindow):
 
             self.update_ui()
 
-        self.on_data_change()  
+        self.on_data_change()
 
     def on_refresh(self, event):
         if self.filename:
@@ -336,7 +338,7 @@ class Window(QtGui.QMainWindow):
         try:
             self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
         except Exception:
-            print 'ERROR: Could not pivot the data into a matrix with these columns'
+            print('ERROR: Could not pivot the data into a matrix with these columns')
             return
 
         self.data = self.operations.apply_operations(self.data)
