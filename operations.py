@@ -1,4 +1,3 @@
-from collections import OrderedDict
 import numpy as np
 import os
 import pandas as pd
@@ -275,13 +274,23 @@ class Operations(QtGui.QDialog):
         self.queue.clear()
 
         with open(filename) as f:
-            operations = json.load(f, object_pairs_hook=OrderedDict)
+            #operations = json.load(f, object_pairs_hook=OrderedDict)
+            operations = json.load(f)
 
-        for name, operation in operations.iteritems():
+        for i in sorted(operations):
+            operation = operations[i]
+
+            enabled = operation['enabled']
+
+            # The key that doesn't have the value 'enabled' is the name
+            for key in operation:
+                if key != 'enabled':
+                    name = key
+
             item = QtGui.QListWidgetItem(name)
-            item.setCheckState(QtCore.Qt.Checked)
+            item.setCheckState(QtCore.Qt.Checked if enabled else QtCore.Qt.Unchecked)
             op = Operation(name, self.main, *self.items[name])
-            op.set_parameters(operation)
+            op.set_parameters(operation[name])
 
             if six.PY2:
                 item.setData(QtCore.Qt.UserRole, QtCore.QVariant(op))
@@ -300,7 +309,7 @@ class Operations(QtGui.QDialog):
         if filename == '':
             return
 
-        operations = OrderedDict()
+        operations = {}
         for i in range(self.queue.count()):
                 if six.PY2:
                     operation = self.queue.item(i).data(QtCore.Qt.UserRole).toPyObject()
@@ -308,7 +317,10 @@ class Operations(QtGui.QDialog):
                     operation = self.queue.item(i).data(QtCore.Qt.UserRole)
                 
                 name, params = operation.get_parameters()
-                operations[name] = params
+                enabled = self.queue.item(i).checkState() == QtCore.Qt.Checked
+
+                operations[i] = {'enabled': enabled}
+                operations[i][name] = params
 
         with open(filename, 'w') as f:
             f.write(json.dumps(operations, indent=4))
