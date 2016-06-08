@@ -29,14 +29,14 @@ class Window(QtGui.QMainWindow):
     def __init__(self, lc_window, op_window, filename=None):
         QtGui.QMainWindow.__init__(self)
 
+        self.first_data_file = True
         self.filename = None
-        
+        self.dat_file = None
+        self.data = None
+
         self.linecut = lc_window
         self.operations = op_window
         self.settings = Settings()
-
-        self.dat_file = None
-        self.data = None
 
         self.init_ui()
 
@@ -154,8 +154,12 @@ class Window(QtGui.QMainWindow):
         self.cb_z.activated.connect(self.on_data_change)
         grid.addWidget(self.cb_z, 3, 2)
 
-        self.cb_save_default = QtGui.QCheckBox('Remember columns')
-        grid.addWidget(self.cb_save_default, 3, 3)
+        #self.cb_save_default = QtGui.QCheckBox('Remember columns')
+        #grid.addWidget(self.cb_save_default, 3, 3)
+
+        self.b_save_default = QtGui.QPushButton('Set as defaults')
+        self.b_save_default.clicked.connect(self.on_save_default)
+        grid.addWidget(self.b_save_default)
 
         # Colormap
         hbox_gamma = QtGui.QHBoxLayout()
@@ -266,7 +270,9 @@ class Window(QtGui.QMainWindow):
         self.cb_z.addItems(columns)
         self.cb_z.setCurrentIndex(i)
 
-        if reset:
+        if reset and self.first_data_file:
+            self.first_data_file = False
+
             combo_boxes = [self.cb_x, self.cb_order_x, self.cb_y, self.cb_order_y, self.cb_z]
             names = ['X', 'X Order', 'Y', 'Y Order', 'Data']
             default_indices = [0, 0, 1, 1, 3]
@@ -319,13 +325,13 @@ class Window(QtGui.QMainWindow):
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
-            url = event.mimeData().urls()[0].toString()
+            url = str(event.mimeData().urls()[0].toString())
 
             if url.endswith('.dat'):
                 event.accept()
 
     def dropEvent(self, event):
-        filepath = event.mimeData().urls()[0].toLocalFile()
+        filepath = str(event.mimeData().urls()[0].toLocalFile())
 
         self.load_file(filepath)
 
@@ -380,6 +386,7 @@ class Window(QtGui.QMainWindow):
             self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
         except Exception:
             print('ERROR: Could not pivot the data into a matrix with these columns')
+
             return
 
         self.data = self.operations.apply_operations(self.data)
@@ -390,7 +397,7 @@ class Window(QtGui.QMainWindow):
             self.on_max_changed(100)
 
         self.canvas.set_data(self.data)
-        self.canvas.draw_linecut(None, old_position=True)
+        #self.canvas.draw_linecut(None, old_position=True)
         self.canvas.update()
 
         """
@@ -399,6 +406,19 @@ class Window(QtGui.QMainWindow):
         else:
             self.status_bar.showMessage("")
         """
+
+    def on_save_default(self, event):
+        x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
+
+        axes = {
+            'X':        x_name,
+            'X order':  order_x,
+            'Y':        y_name,
+            'Y Order':  order_y,
+            'Data':     data_name,
+        }
+
+        self.write_to_ini('Settings', axes)
 
     def on_sub_series_r(self, event=None):
         if self.dat_file == None:
@@ -502,19 +522,6 @@ class Window(QtGui.QMainWindow):
         self.linecut.close()
         self.operations.close()
         self.settings.close()
-
-        if self.cb_save_default.checkState() == QtCore.Qt.Checked:
-            x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
-
-            axes = {
-                'X':        x_name,
-                'X order':  order_x,
-                'Y':        y_name,
-                'Y Order':  order_y,
-                'Data':     data_name,
-            }
-
-            self.write_to_ini('Settings', axes)
 
  
 
