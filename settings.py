@@ -5,15 +5,45 @@ import os
 import pandas as pd
 
 class Settings(QtGui.QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, main, parent=None):
         super(Settings, self).__init__(parent)
+
+        self.main = main
 
         self.init_ui()
 
     def init_ui(self):
         self.setWindowTitle("Settings")
 
-        hbox = QtGui.QVBoxLayout()
+        vbox = QtGui.QVBoxLayout()
+
+
+        hbox = QtGui.QHBoxLayout()
+        hbox.addWidget(QtGui.QLabel('Open directory:'))
+
+        self.le_open_directory = QtGui.QLineEdit(self)
+        self.le_open_directory.setEnabled(False)
+        self.le_open_directory.setText(self.main.open_directory)
+        hbox.addWidget(self.le_open_directory)
+
+        self.b_browse = QtGui.QPushButton('Browse...')
+        self.b_browse.clicked.connect(self.on_open_browse)
+        hbox.addWidget(self.b_browse)
+        vbox.addLayout(hbox)
+
+        hbox = QtGui.QHBoxLayout()
+        hbox.addWidget(QtGui.QLabel('Save directory:'))
+
+        self.le_save_directory = QtGui.QLineEdit(self)
+        self.le_save_directory.setEnabled(False)
+        self.le_save_directory.setText(self.main.save_directory)
+        hbox.addWidget(self.le_save_directory)
+
+        self.b_browse = QtGui.QPushButton('Browse...')
+        self.b_browse.clicked.connect(self.on_save_browse)
+        hbox.addWidget(self.b_browse)
+        vbox.addLayout(hbox)
+
 
         self.tree = QtGui.QTreeWidget(self)
         self.tree.setHeaderLabels(['Name', 'Value'])
@@ -23,11 +53,11 @@ class Settings(QtGui.QDialog):
         self.b_copy = QtGui.QPushButton('Copy')
         self.b_copy.clicked.connect(self.on_copy)
 
-        hbox.addWidget(self.tree)
-        hbox.addWidget(self.b_copy)
+        vbox.addWidget(self.tree)
+        vbox.addWidget(self.b_copy)
 
         layout = QtGui.QVBoxLayout()
-        layout.addLayout(hbox)
+        layout.addLayout(vbox)
         self.setLayout(layout)
 
         self.setGeometry(900, 300, 400, 500)
@@ -71,6 +101,24 @@ class Settings(QtGui.QDialog):
                 child.setCheckState(0, QtCore.Qt.Unchecked)
 
         self.tree.insertTopLevelItems(0, widgets)
+
+    def on_open_browse(self, event):
+        directory = str(QtGui.QFileDialog.getExistingDirectory(self, "Select Directory"))
+        
+        if directory != '':
+            self.le_open_directory.setText(directory)
+
+            self.main.default_open_directory = directory
+            self.main.write_to_ini('Settings', {'OpenDirectory': directory})
+
+    def on_save_browse(self, event):
+        directory = str(QtGui.QFileDialog.getExistingDirectory(self, "Select Directory"))
+        
+        if directory != '':
+            self.le_save_directory.setText(directory)
+
+            self.main.default_save_directory = directory
+            self.main.write_to_ini('Settings', {'SaveDirectory': directory})
 
     def on_item_changed(self, widget):
         state = widget.checkState(0)

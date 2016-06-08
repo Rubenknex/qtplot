@@ -29,6 +29,16 @@ class Window(QtGui.QMainWindow):
     def __init__(self, lc_window, op_window, filename=None):
         QtGui.QMainWindow.__init__(self)
 
+        self.open_directory = self.read_from_ini('Settings', 'OpenDirectory')
+        if self.open_directory == None:
+            path = os.path.dirname(os.path.realpath(__file__))
+            self.open_directory = path
+
+        self.save_directory = self.read_from_ini('Settings', 'SaveDirectory')
+        if self.save_directory == None:
+            path = os.path.dirname(os.path.realpath(__file__))
+            self.save_directory = path
+
         self.first_data_file = True
         self.filename = None
         self.dat_file = None
@@ -36,7 +46,7 @@ class Window(QtGui.QMainWindow):
 
         self.linecut = lc_window
         self.operations = op_window
-        self.settings = Settings()
+        self.settings = Settings(self)
 
         self.init_ui()
 
@@ -308,7 +318,7 @@ class Window(QtGui.QMainWindow):
         with open(filepath, 'w') as config_file:
             config.write(config_file)
 
-    def read_from_ini(self, section, keys):
+    def read_from_ini(self, section, options):
         path = os.path.dirname(os.path.realpath(__file__))
         filepath = os.path.join(path, 'qtplot.ini')
 
@@ -317,11 +327,20 @@ class Window(QtGui.QMainWindow):
         if os.path.isfile(filepath):
             config.read(filepath)
 
-            values = [config.get(section, key) for key in keys]
+            if type(options) == str:
+                options = [options]
 
-            return values
-        else:
-            return None
+            has_options = [config.has_option(section, option) for option in options]
+
+            if not False in has_options:
+                values = [config.get(section, option) for option in options]
+
+                if len(values) == 1:
+                    return values[0]
+                else:
+                    return values
+
+        return None
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -336,7 +355,7 @@ class Window(QtGui.QMainWindow):
         self.load_file(filepath)
 
     def on_load_dat(self, event):
-        filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
+        filename = str(QtGui.QFileDialog.getOpenFileName(directory=self.open_directory, filter='*.dat'))
 
         if filename != "":
             self.load_file(filename)
@@ -494,8 +513,7 @@ class Window(QtGui.QMainWindow):
             self.on_max_changed(100)
 
     def on_save_matrix(self):
-        path = os.path.dirname(os.path.realpath(__file__))
-        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save file', path, 'NumPy matrix format (*.npy);;MATLAB matrix format (*.mat)')
+        filename = QtGui.QFileDialog.getSaveFileName(self, caption='Save file', directory=self.save_directory, filter='NumPy matrix format (*.npy);;MATLAB matrix format (*.mat)')
         filename = str(filename)
 
         if filename != '' and self.dat_file != None:
