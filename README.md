@@ -1,3 +1,5 @@
+![alt tag](screenshot.png)
+
 ## Installing
 
 The dependencies are:
