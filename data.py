@@ -36,18 +36,25 @@ class DatFile:
 
         return None
 
-    def get_data(self, x, y, z, x_order, y_order, varying_x=False, varying_y=False):
-        """Pivot the column based data into matrices."""
-        # For non-varying ranges we create a series from 0 to N
+    def get_data(self, x, y, z, x_order, y_order):
+        """ 
+        Pivot the column based data into matrices according to the dependent
+        variables x_order and y_order.
+        """
+
         def generate_series(column):
+            # Return an integer series from 0 to the column length.
             return pd.Series(range(len(column.values)), column.index)
 
-        # For varying ranges we create a series from Nmin to Nmax
         def create_func(minimum):
             def func(column):
-                diff =  np.average(np.diff(column.values))
-                min_idx = np.floor((np.nanmin(column.values) - minimum) / diff)
-                max_idx = np.floor((np.nanmax(column.values) - minimum) / diff)
+                # Return an integer series from min_idx to max_idx, according
+                # to the minimum and maximum values, and step size.
+                step_size =  np.average(np.diff(column.values))
+                min_idx = np.floor((np.nanmin(column.values) - minimum) / step_size)
+                max_idx = np.floor((np.nanmax(column.values) - minimum) / step_size)
+
+                print min_idx, max_idx, (max_idx - min_idx)
                 
                 return pd.Series(np.arange(min_idx, max_idx + 1), column.index)
 
@@ -56,24 +63,44 @@ class DatFile:
         minx, miny = np.nanmin(self.df[x].values), np.nanmin(self.df[y].values)
         varying_x, varying_y = False, False
 
-        # If all the values are zero, create a series 0..N for every block
+        # If all the values of one of the dependent variables are zero, 
+        # it is either a single sweep or repeated sweeps where this dependent
+        # variable is either not adjusted or non-existent.
         if (self.df[x_order] == 0).all():
-            self.df['new_x_order'] = self.df.groupby(y_order)[x].apply(generate_series)
+            # In this case, replace the blocks of the dependent variable that
+            # is zero with a series of increasing integers. This is so the data
+            # can be plotted underneath each other or side-by-side in the
+            # proper order for visualization.
             x_order = 'new_x_order'
-        # If there are more unique values than block size, the ranges are varying
+            self.df[x_order] = self.df.groupby(y_order)[x].apply(generate_series)
+        # If there are more unique dependent parameter values in the full
+        # data than the length of a single sweep, then the ranges must be
+        # varying between the sweeps.
         elif len(np.unique(self.df[x_order].values)) > self.sizes[x_order]:
-            self.df['new_x_order'] = self.df.groupby(y_order)[x].apply(create_func(minx))
-            varying_x = True
+            # In order to pivot the data correctly,
+            # a new dependent variable column is created which contains integer
+            # ranges corresponding to the actual swept range.
+            # Example:
+            #
+            # 123
+            #  2345
+            #    45678
+            #
             x_order = 'new_x_order'
+            self.df[x_order] = self.df.groupby(y_order)[x].apply(create_func(minx))
+            varying_x = True
 
+        # Do the same as above but for the other independent variable.
         if (self.df[y_order] == 0).all():
-            self.df['new_y_order'] = self.df.groupby(x_order)[y].apply(generate_series)
             y_order = 'new_y_order'
+            self.df[y_order] = self.df.groupby(x_order)[y].apply(generate_series)
         elif len(np.unique(self.df[y_order].values)) > self.sizes[y_order]:
-            self.df['new_y_order'] = self.df.groupby(x_order)[y].apply(create_func(miny))
-            varying_y = True
             y_order = 'new_y_order'
+            self.df[y_order] = self.df.groupby(x_order)[y].apply(create_func(miny))
+            varying_y = True
 
+        # Find the indices of the unique values in the dependent variables.
+        # With this we can index and pivot the data.
         rows, row_ind = np.unique(self.df[y_order].values, return_inverse=True)
         cols, col_ind = np.unique(self.df[x_order].values, return_inverse=True)
 
@@ -82,7 +109,6 @@ class DatFile:
         pivot[row_ind, col_ind] = self.df[[x, y, z]].values
 
         return Data2D(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2], (x==x_order,y==y_order), (varying_x,varying_y))
-
 
 def create_kernel(x_dev, y_dev, cutoff, distr):
     distributions = {
