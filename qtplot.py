@@ -17,6 +17,7 @@ from scipy import interpolate, spatial, io
 from scipy.interpolate import griddata
 from scipy.spatial import qhull, delaunay_plot_2d
 
+from colormap import Colormap
 from data import DatFile, Data2D
 from export import ExportWidget
 from linecut import Linecut, FixedOrderFormatter
@@ -68,7 +69,7 @@ class Window(QtGui.QMainWindow):
         # Top row buttons
         hbox = QtGui.QHBoxLayout()
         
-        self.b_load = QtGui.QPushButton('Load DAT...')
+        self.b_load = QtGui.QPushButton('Load...')
         self.b_load.clicked.connect(self.on_load_dat)
         hbox.addWidget(self.b_load)
 
@@ -80,7 +81,7 @@ class Window(QtGui.QMainWindow):
         self.b_swap_axes.clicked.connect(self.on_swap_axes)
         hbox.addWidget(self.b_swap_axes)
 
-        self.b_swap = QtGui.QPushButton('Swap order', self)
+        self.b_swap = QtGui.QPushButton('Swap dep. var.', self)
         self.b_swap.clicked.connect(self.on_swap_order)
         hbox.addWidget(self.b_swap)
 
@@ -127,7 +128,9 @@ class Window(QtGui.QMainWindow):
         r_hbox.addWidget(self.b_ok)
 
         # Selecting columns and orders
+        #groupbox = QtGui.QGroupBox('Data')
         grid = QtGui.QGridLayout()
+        #groupbox.setLayout(grid)
 
         lbl_x = QtGui.QLabel("X:", self)
         grid.addWidget(lbl_x, 1, 1)
@@ -136,7 +139,7 @@ class Window(QtGui.QMainWindow):
         self.cb_x.activated.connect(self.on_data_change)
         grid.addWidget(self.cb_x, 1, 2)
 
-        lbl_order_x = QtGui.QLabel('X Order: ', self)
+        lbl_order_x = QtGui.QLabel('Dependent variable X: ', self)
         grid.addWidget(lbl_order_x, 1, 3)
 
         self.cb_order_x = QtGui.QComboBox(self)
@@ -150,7 +153,7 @@ class Window(QtGui.QMainWindow):
         self.cb_y.activated.connect(self.on_data_change)
         grid.addWidget(self.cb_y, 2, 2)
 
-        lbl_order_y = QtGui.QLabel('Y Order: ', self)
+        lbl_order_y = QtGui.QLabel('Dependent variable Y:', self)
         grid.addWidget(lbl_order_y, 2, 3)
 
         self.cb_order_y = QtGui.QComboBox(self)
@@ -171,42 +174,78 @@ class Window(QtGui.QMainWindow):
         self.b_save_default.clicked.connect(self.on_save_default)
         grid.addWidget(self.b_save_default)
 
+        groupbox = QtGui.QGroupBox('Data selection')
+        groupbox.setLayout(grid)
+
         # Colormap
-        hbox_gamma = QtGui.QHBoxLayout()
+        vbox_gamma = QtGui.QVBoxLayout()
+        hbox_gamma1 = QtGui.QHBoxLayout()
+        hbox_gamma2 = QtGui.QHBoxLayout()
+        vbox_gamma.addLayout(hbox_gamma1)
+        vbox_gamma.addLayout(hbox_gamma2)
         
+        # Reset colormap button
         self.cb_reset_cmap = QtGui.QCheckBox('Reset on plot')
         self.cb_reset_cmap.setCheckState(QtCore.Qt.Checked)
-        hbox_gamma.addWidget(self.cb_reset_cmap)
+        hbox_gamma1.addWidget(self.cb_reset_cmap)
 
+        # Colormap combobox
+        self.cb_cmaps = QtGui.QComboBox(self)
+        self.cb_cmaps.activated.connect(self.on_cmap_change)
+
+        path = os.path.dirname(os.path.realpath(__file__))
+        path = os.path.join(path, 'colormaps')
+
+        cmap_files = []
+        for dir, _, files in os.walk(path):
+            for filename in files:
+                reldir = os.path.relpath(dir, path)
+                relfile = os.path.join(reldir, filename)
+                cmap_files.append(relfile)
+
+        self.cb_cmaps.addItems(cmap_files)
+
+        hbox_gamma1.addWidget(self.cb_cmaps)
+
+        # Colormap minimum text box
         self.le_min = QtGui.QLineEdit(self)
         self.le_min.setMaximumWidth(100)
         self.le_min.returnPressed.connect(self.on_min_max_entered)
-        hbox_gamma.addWidget(self.le_min)
+        hbox_gamma2.addWidget(self.le_min)
 
+        # Colormap minimum slider
         self.s_min = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.s_min.setMaximum(100)
         self.s_min.sliderMoved.connect(self.on_min_changed)
-        hbox_gamma.addWidget(self.s_min)
+        hbox_gamma2.addWidget(self.s_min)
 
+        # Colormap gamma slider
         self.s_gamma = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.s_gamma.setMinimum(-100)
         self.s_gamma.setMaximum(100)
         self.s_gamma.setValue(0)
         self.s_gamma.valueChanged.connect(self.on_gamma_changed)
-        hbox_gamma.addWidget(self.s_gamma)
+        hbox_gamma2.addWidget(self.s_gamma)
 
+        # Colormap maximum slider
         self.s_max = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.s_max.setMaximum(100)
         self.s_max.setValue(self.s_max.maximum())
         self.s_max.sliderMoved.connect(self.on_max_changed)
-        hbox_gamma.addWidget(self.s_max)
+        hbox_gamma2.addWidget(self.s_max)
 
+        # Colormap maximum text box
         self.le_max = QtGui.QLineEdit(self)
         self.le_max.setMaximumWidth(100)
         self.le_max.returnPressed.connect(self.on_min_max_entered)
-        hbox_gamma.addWidget(self.le_max)
+        hbox_gamma2.addWidget(self.le_max)
 
         self.b_reset = QtGui.QPushButton('Reset')
         self.b_reset.clicked.connect(self.on_cm_reset)
-        hbox_gamma.addWidget(self.b_reset)
+        hbox_gamma1.addWidget(self.b_reset)
+
+        groupbox_gamma = QtGui.QGroupBox('Colormap')
+        groupbox_gamma.setLayout(vbox_gamma)
 
         # Bottom row buttons
         hbox4 = QtGui.QHBoxLayout()
@@ -225,8 +264,10 @@ class Window(QtGui.QMainWindow):
         vbox.addWidget(self.canvas.native)
         vbox.addLayout(hbox)
         vbox.addLayout(r_hbox)
-        vbox.addLayout(grid)
-        vbox.addLayout(hbox_gamma)
+        #vbox.addLayout(grid)
+        vbox.addWidget(groupbox)
+        #vbox.addLayout(hbox_gamma)
+        vbox.addWidget(groupbox_gamma)
         vbox.addLayout(hbox4)
 
         self.status_bar = QtGui.QStatusBar()
@@ -459,6 +500,20 @@ class Window(QtGui.QMainWindow):
             self.cb_y.setCurrentIndex(self.cb_y.count() - 1)
 
         self.on_data_change()
+
+    def on_cmap_change(self, event):
+        selected_cmap = str(self.cb_cmaps.currentText())
+
+        path = os.path.dirname(os.path.realpath(__file__))
+        path = os.path.join(path, 'colormaps', selected_cmap)
+        
+        new_colormap = Colormap(path)
+        
+        new_colormap.min = self.canvas.colormap.min
+        new_colormap.max = self.canvas.colormap.max
+        
+        self.canvas.colormap = new_colormap
+        self.canvas.update()
 
     def on_min_max_entered(self):
         if self.data != None:

@@ -84,8 +84,14 @@ varying float v_value;
 
 void main()
 {
-    float normalized = clamp((v_value-z_min)/(z_max-z_min), 0.0, 1.0);
-    gl_FragColor = texture1D(u_colormap, normalized);
+    float normalized = (v_value-z_min)/(z_max-z_min);
+
+    // Either use the colormap or black
+    if (normalized < 0.0 || normalized > 1.0) {
+        gl_FragColor = vec4(0, 0, 0, 1);
+    } else {
+        gl_FragColor = texture1D(u_colormap, normalized);
+    }
 }
 """
 
@@ -260,7 +266,7 @@ class Canvas(scene.SceneCanvas):
             self.data_program['z_max'] = self.colormap.max
             self.data_program.draw('triangles')
 
-            self.colormap_program['u_colormap'] = gloo.Texture1D(self.colormap.get_colors())
+            self.colormap_program['u_colormap'] = gloo.Texture1D(self.colormap.get_colors(), interpolation='linear')
             self.colormap_program['a_position'] = [(self.xmax + self.cm_dx*.2, self.ymax), 
                                              (self.xmax + self.cm_dx*.2, self.ymin), 
                                              (self.xmax + self.cm_dx, self.ymax), 
