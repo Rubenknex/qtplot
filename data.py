@@ -12,21 +12,39 @@ class DatFile:
         self.sizes = {}
 
         with open(filename, 'r') as f:
-            for line in f:
-                line = line.rstrip('\n\t\r')
+            first_line = f.readline()
 
-                if line.startswith('#\tname'):
-                    name = line.split(': ', 1)[1]
-                    self.columns.append(name)
-                elif line.startswith('#\tsize'):
-                    size = int(line.split(': ', 1)[1])
-                    self.sizes[self.columns[-1]] = size
+            # Check whether the .dat file is produced by qtlab or by qcodes.
+            if first_line.startswith('# Filename: '):
+                for line in f:
+                    line = line.rstrip('\n\t\r')
 
-                # When a line starts with a number we have reached the actual data
-                if len(line) > 0 and line[0].isdigit():
-                    break
+                    if line.startswith('#\tname'):
+                        name = line.split(': ', 1)[1]
+                        self.columns.append(name)
+                    elif line.startswith('#\tsize'):
+                        size = int(line.split(': ', 1)[1])
+                        self.sizes[self.columns[-1]] = size
+
+                    # When a line starts with a number we have reached the actual data
+                    if len(line) > 0 and line[0].isdigit():
+                        break
+            else:
+                column_names = f.readline().strip()[2:]
+                self.columns = [s[1:-1] for s in column_names.split('\t')]
+
+                column_sizes = f.readline().strip()[2:]
+                parsed_sizes = [int(s) for s in column_sizes.split('\t')]
+
+                self.sizes = dict(zip(self.columns, parsed_sizes))
 
         self.df = pd.read_table(filename, engine='c', sep='\t', comment='#', names=self.columns)
+
+    def read_gnuplot_dat(self):
+        pass
+
+    def read_qtlab_dat(self):
+        pass
 
     def has_columns(self, columns):
         existance = [col in self.df.columns for col in columns]
@@ -53,8 +71,6 @@ class DatFile:
                 step_size =  np.average(np.diff(column.values))
                 min_idx = np.floor((np.nanmin(column.values) - minimum) / step_size)
                 max_idx = np.floor((np.nanmax(column.values) - minimum) / step_size)
-
-                print min_idx, max_idx, (max_idx - min_idx)
                 
                 return pd.Series(np.arange(min_idx, max_idx + 1), column.index)
 
