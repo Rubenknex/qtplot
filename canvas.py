@@ -219,6 +219,8 @@ class Canvas(scene.SceneCanvas):
 
                     x, y, index = self.data.get_row_at(y)
                     z = np.nanmean(self.data.y[index,:])
+
+                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type, self.line_coord, self.parent.name, x_name, data_name, y_name)
                 elif event.button == 3:
                     self.line_type = 'vertical'
                     self.line_coord = self.data.get_closest_x(x)
@@ -227,8 +229,8 @@ class Canvas(scene.SceneCanvas):
                     x, y, index = self.data.get_column_at(x)
                     z = np.nanmean(self.data.x[:,index])
 
-                # Draw the linecut
-                self.parent.linecut.plot_linetrace(x, y, z, self.line_type, self.line_coord, self.parent.name, y_name, data_name, x_name)
+                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type, self.line_coord, self.parent.name, y_name, data_name, x_name)
+
                 self.has_redrawn = False
 
             self.linecut_program['a_position'] = self.line_positions
