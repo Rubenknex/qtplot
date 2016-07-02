@@ -353,6 +353,9 @@ class Window(QtGui.QMainWindow):
         if os.path.isfile(filepath):
             config.read(filepath)
 
+        if not config.has_section(section):
+            config.add_section(section)
+
         for key, value in keys_values.items():
             config.set(section, key, value)
 
