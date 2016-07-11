@@ -489,7 +489,8 @@ class Data2D:
 
         for i in range(cols):
             f = interpolate.interp1d(self.y[:,i].ravel(), self.z[:,i].ravel(), bounds_error=False, fill_value=np.nan)
-            values[i] = f(x)
+            print(f(y).T[0].shape)
+            values[:,i] = f(y).ravel()
 
         x_avg = np.average(self.x, axis=0)
 
