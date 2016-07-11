@@ -68,7 +68,7 @@ class Window(QtGui.QMainWindow):
 
         # Top row buttons
         hbox = QtGui.QHBoxLayout()
-        
+
         self.b_load = QtGui.QPushButton('Load...')
         self.b_load.clicked.connect(self.on_load_dat)
         hbox.addWidget(self.b_load)
@@ -183,7 +183,7 @@ class Window(QtGui.QMainWindow):
         hbox_gamma2 = QtGui.QHBoxLayout()
         vbox_gamma.addLayout(hbox_gamma1)
         vbox_gamma.addLayout(hbox_gamma2)
-        
+
         # Reset colormap button
         self.cb_reset_cmap = QtGui.QCheckBox('Reset on plot')
         self.cb_reset_cmap.setCheckState(QtCore.Qt.Checked)
@@ -433,7 +433,7 @@ class Window(QtGui.QMainWindow):
         self.cb_order_y.setCurrentIndex(x)
 
         self.on_data_change()
-    
+
     def on_data_change(self):
         x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
 
@@ -509,12 +509,12 @@ class Window(QtGui.QMainWindow):
 
         path = os.path.dirname(os.path.realpath(__file__))
         path = os.path.join(path, 'colormaps', selected_cmap)
-        
+
         new_colormap = Colormap(path)
-        
+
         new_colormap.min = self.canvas.colormap.min
         new_colormap.max = self.canvas.colormap.max
-        
+
         self.canvas.colormap = new_colormap
         self.canvas.update()
 
@@ -578,7 +578,7 @@ class Window(QtGui.QMainWindow):
             base = os.path.basename(filename)
             name, ext = os.path.splitext(base)
 
-            mat = np.dstack((self.data.x, self.data.y, self.data.z))
+            mat = np.dstack((self.data.x.data, self.data.y.data, self.data.z.data))
 
             if ext == '.npy':
                 np.save(filename, mat)
@@ -599,7 +599,7 @@ class Window(QtGui.QMainWindow):
         self.operations.close()
         self.settings.close()
 
- 
+
 
 if __name__ == '__main__':
     mpl.rcParams['mathtext.fontset'] = 'custom'
@@ -623,5 +623,5 @@ if __name__ == '__main__':
     linecut.show()
     operations.show()
     main.show()
-    
+
     sys.exit(app.exec_())
