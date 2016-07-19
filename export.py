@@ -43,6 +43,10 @@ class ExportWidget(QtGui.QWidget):
         self.cb_linecut = QtGui.QCheckBox('')
         grid.addWidget(self.cb_linecut, 1, 4)
 
+        grid.addWidget(QtGui.QLabel('Tripcolor'), 1, 5)
+        self.cb_tripcolor = QtGui.QCheckBox('')
+        grid.addWidget(self.cb_tripcolor, 1, 6)
+
 
         grid.addWidget(QtGui.QLabel('X Label'), 2, 1)
         self.le_x_label = QtGui.QLineEdit('test')
@@ -141,8 +145,17 @@ class ExportWidget(QtGui.QWidget):
             x, y, z = self.main.data.get_pcolor()
 
             cmap = self.main.canvas.colormap.get_mpl_colormap()
-            quadmesh = self.ax.pcolormesh(x, y, z, cmap=cmap, rasterized=True)
-            quadmesh.set_clim(self.main.canvas.colormap.get_limits())
+
+            if self.cb_tripcolor.checkState() != QtCore.Qt.Checked:
+                quadmesh = self.ax.pcolormesh(x, y, z, cmap=cmap, rasterized=True)
+                quadmesh.set_clim(self.main.canvas.colormap.get_limits())
+            else:
+                quadmesh = self.ax.tripcolor(self.main.data.x.ravel(),
+                                             self.main.data.y.ravel(),
+                                             self.main.data.z.ravel(),
+                                             cmap=cmap, rasterized=True)
+
+                quadmesh.set_clim(self.main.canvas.colormap.get_limits())
 
             self.ax.axis('tight')
 
