@@ -27,7 +27,7 @@ class DatFile:
                         size = int(line.split(': ', 1)[1])
                         self.sizes[self.columns[-1]] = size
 
-                    # When a line starts with a number we have reached the actual data
+                    # When a line starts with a number we reached the data
                     if len(line) > 0 and line[0].isdigit():
                         break
             else:
@@ -39,7 +39,8 @@ class DatFile:
 
                 self.sizes = dict(zip(self.columns, parsed_sizes))
 
-        self.df = pd.read_table(filename, engine='c', sep='\t', comment='#', names=self.columns)
+        self.df = pd.read_table(filename, engine='c', sep='\t',
+                                comment='#', names=self.columns)
 
     def read_gnuplot_dat(self):
         pass
@@ -125,7 +126,10 @@ class DatFile:
         pivot = np.zeros((len(rows), len(cols), 3)) * np.nan
         pivot[row_ind, col_ind] = self.df[[x, y, z]].values
 
-        return Data2D(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2], (x==x_order,y==y_order), (varying_x,varying_y))
+        return Data2D(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2],
+                      (x==x_order, y==y_order),
+                      (varying_x, varying_y))
+
 
 def create_kernel(x_dev, y_dev, cutoff, distr):
     distributions = {
@@ -158,20 +162,21 @@ class Data2D:
     Class which represents 2d data as two matrices with x and y coordinates
     and one with values.
     """
-    def __init__(self, x, y, z, equidistant=(False, False), varying=(False, False)):
+    def __init__(self, x, y, z,
+                 equidistant=(False, False), varying=(False, False)):
         self.x, self.y, self.z = x, y, z
 
         self.equidistant = equidistant
         self.varying = varying
         self.tri = None
 
-        if self.varying[0] == True or self.varying[1] == True:
-            minx, maxx = np.nanmin(x), np.nanmax(x)
+        if self.varying[0] is True or self.varying[1] is True:
+            minx = np.nanmin(x)
             diffx = np.nanmean(np.diff(x, axis=1))
             xrow = minx + np.arange(x.shape[1]) * diffx
             self.x = np.tile(xrow, (x.shape[0], 1))
 
-            miny, maxy = np.nanmin(y), np.nanmax(y)
+            miny = np.nanmin(y)
             diffy = np.nanmean(np.diff(y, axis=0))
             yrow = miny + np.arange(y.shape[0]) * diffy
             self.y = np.tile(yrow[:,np.newaxis], (1, y.shape[1]))
@@ -184,7 +189,8 @@ class Data2D:
         ymin, ymax = np.nanmin(self.y), np.nanmax(self.y)
         zmin, zmax = np.nanmin(self.z), np.nanmax(self.z)
 
-        # Thickness for 1d scans, should we do this here or in the drawing code?
+        # Thickness for 1d scans, should we do this here or
+        # in the drawing code?
         if xmin == xmax:
             xmin, xmax = -1, 1
 
@@ -218,7 +224,8 @@ class Data2D:
                 self.no_nan_values = self.no_nan_values[~np.isnan(self.no_nan_values)]
 
             # Default: Qbb Qc Qz
-            self.tri = qhull.Delaunay(np.column_stack((xc, yc)), qhull_options='QbB')
+            self.tri = qhull.Delaunay(np.column_stack((xc, yc)),
+                                      qhull_options='QbB')
 
         simplices = self.tri.find_simplex(points)
 
@@ -245,14 +252,21 @@ class Data2D:
         x_indices = np.argsort(self.x[0,:])
         y_indices = np.argsort(self.y[:,0])
 
-        return self.x[:,x_indices], self.y[y_indices,:], self.z[:,x_indices][y_indices,:]
+        x = self.x[:,x_indices]
+        y = self.y[y_indices,:]
+        z = self.z[:,x_indices][y_indices,:]
+
+        return x, y, z
 
     def get_quadrilaterals(self, xc, yc):
         """
-        In order to generate quads for every datapoint we do the following for the x and y coordinates:
+        In order to generate quads for every datapoint we do the following
+        for the x and y coordinates:
         -   Pad the coordinates with a column/row on each side
-        -   Add the difference between all the coords divided by 2 to the coords, this generates midpoints
-        -   Add a row/column at the end to satisfy the 1 larger requirements of pcolor
+        -   Add the difference between all the coords divided by 2 to
+            the coords, this generates midpoints
+        -   Add a row/column at the end to satisfy the 1 larger
+            requirements of pcolor
         """
 
         # If we are dealing with data that is 2-dimensional
@@ -306,12 +320,9 @@ class Data2D:
 
         Can be plotted using matplotlib's pcolor/pcolormesh(*data.get_pcolor())
         """
-        #xc, yc, z = self.get_sorted_by_coordinates()
-
-        #x, y = self.get_quadrilaterals(xc, yc)
         x, y = self.get_quadrilaterals(self.x, self.y)
 
-        return np.ma.masked_invalid(x), np.ma.masked_invalid(y), np.ma.masked_invalid(self.z)
+        return tuple(map(np.ma.masked_invalid, [x, y, self.z]))
 
     def get_column_at(self, x):
         x_index = np.where(self.x[0,:]==self.get_closest_x(x))[0][0]
@@ -349,7 +360,8 @@ class Data2D:
         return x_flip, y_flip
 
     def copy(self):
-        return Data2D(np.copy(self.x), np.copy(self.y), np.copy(self.z), self.equidistant, self.varying)
+        return Data2D(np.copy(self.x), np.copy(self.y), np.copy(self.z),
+                      self.equidistant, self.varying)
 
     def abs(self):
         """Take the absolute value of every datapoint."""
@@ -367,7 +379,9 @@ class Data2D:
         if top < 0:
             top = self.z.shape[0] + top + 1
 
-        self.set_data(self.x[bottom:top,left:right], self.y[bottom:top,left:right], self.z[bottom:top,left:right])
+        self.set_data(self.x[bottom:top,left:right],
+                      self.y[bottom:top,left:right],
+                      self.z[bottom:top,left:right])
 
     def dderiv(self, theta=0.0, method='midpoint'):
         """Calculate the component of the gradient in a specific direction."""
@@ -472,7 +486,8 @@ class Data2D:
         values = np.zeros((rows, points))
 
         for i in range(rows):
-            f = interpolate.interp1d(self.x[i], self.z[i], bounds_error=False, fill_value=np.nan)
+            f = interpolate.interp1d(self.x[i], self.z[i],
+                                     bounds_error=False, fill_value=np.nan)
             values[i] = f(x)
 
         y_avg = np.average(self.y, axis=1)[np.newaxis].T
@@ -489,7 +504,8 @@ class Data2D:
         values = np.zeros((points, cols))
 
         for i in range(cols):
-            f = interpolate.interp1d(self.y[:,i].ravel(), self.z[:,i].ravel(), bounds_error=False, fill_value=np.nan)
+            f = interpolate.interp1d(self.y[:,i].ravel(), self.z[:,i].ravel(),
+                                     bounds_error=False, fill_value=np.nan)
             print(f(y).T[0].shape)
             values[:,i] = f(y).ravel()
 
@@ -520,11 +536,17 @@ class Data2D:
 
     def norm_columns(self):
         """Transform the values of every column so that they use the full colormap."""
-        self.z = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 0, self.z)
+        def func(x):
+            return (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x))
+
+        self.z = np.apply_along_axis(func, 0, self.z)
 
     def norm_rows(self):
         """Transform the values of every row so that they use the full colormap."""
-        self.z = np.apply_along_axis(lambda x: (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)), 1, self.z)
+        def func(x):
+            return (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x))
+
+        self.z = np.apply_along_axis(func, 1, self.z)
 
     def offset(self, offset=0):
         """Add a value to every datapoint."""

@@ -81,14 +81,8 @@ varying float v_value;
 
 void main()
 {
-    float normalized = (v_value-z_min)/(z_max-z_min);
-
-    // Either use the colormap or black
-    if (normalized < 0.0 || normalized > 1.0) {
-        gl_FragColor = vec4(0, 0, 0, 1);
-    } else {
-        gl_FragColor = texture1D(u_colormap, normalized);
-    }
+    float normalized = clamp((v_value-z_min)/(z_max-z_min), 0.0, 1.0);
+    gl_FragColor = texture1D(u_colormap, normalized);
 }
 """
 

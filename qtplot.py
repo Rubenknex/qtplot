@@ -458,12 +458,10 @@ class Window(QtGui.QMainWindow):
         #self.canvas.draw_linecut(None, old_position=True)
         self.canvas.update()
 
-        """
-        if self.data.values.mask.any():
+        if np.isnan(self.data.z).any():
             self.status_bar.showMessage("Warning: Data contains NaN values")
         else:
             self.status_bar.showMessage("")
-        """
 
     def on_save_default(self, event):
         x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
