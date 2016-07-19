@@ -3,6 +3,7 @@ import pandas as pd
 from scipy import ndimage, interpolate
 from scipy.spatial import qhull
 
+
 class DatFile:
     """Class which contains the column based DataFrame of the data."""
     def __init__(self, filename):
@@ -55,7 +56,7 @@ class DatFile:
         return None
 
     def get_data(self, x, y, z, x_order, y_order):
-        """ 
+        """
         Pivot the column based data into matrices according to the dependent
         variables x_order and y_order.
         """
@@ -71,7 +72,7 @@ class DatFile:
                 step_size =  np.average(np.diff(column.values))
                 min_idx = np.floor((np.nanmin(column.values) - minimum) / step_size)
                 max_idx = np.floor((np.nanmax(column.values) - minimum) / step_size)
-                
+
                 return pd.Series(np.arange(min_idx, max_idx + 1), column.index)
 
             return func
@@ -79,7 +80,7 @@ class DatFile:
         minx, miny = np.nanmin(self.df[x].values), np.nanmin(self.df[y].values)
         varying_x, varying_y = False, False
 
-        # If all the values of one of the dependent variables are zero, 
+        # If all the values of one of the dependent variables are zero,
         # it is either a single sweep or repeated sweeps where this dependent
         # variable is either not adjusted or non-existent.
         if (self.df[x_order] == 0).all():
@@ -143,7 +144,7 @@ def create_kernel(x_dev, y_dev, cutoff, distr):
 
     if x.size == 1: x = np.zeros(1)
     if y.size == 1: y = np.zeros(1)
-    
+
     xv, yv = np.meshgrid(x, y)
 
     kernel = func(np.sqrt(xv**2+yv**2))
@@ -154,7 +155,7 @@ def create_kernel(x_dev, y_dev, cutoff, distr):
 
 class Data2D:
     """
-    Class which represents 2d data as two matrices with x and y coordinates 
+    Class which represents 2d data as two matrices with x and y coordinates
     and one with values.
     """
     def __init__(self, x, y, z, equidistant=(False, False), varying=(False, False)):
@@ -202,7 +203,7 @@ class Data2D:
             yc = yc[~np.isnan(yc)]
             self.no_nan_values = self.no_nan_values[~np.isnan(self.no_nan_values)]
 
-        # Default: Qbb Qc Qz 
+        # Default: Qbb Qc Qz
         self.tri = qhull.Delaunay(np.column_stack((xc, yc)), qhull_options='')
 
     def interpolate(self, points):
@@ -216,7 +217,7 @@ class Data2D:
                 yc = yc[~np.isnan(yc)]
                 self.no_nan_values = self.no_nan_values[~np.isnan(self.no_nan_values)]
 
-            # Default: Qbb Qc Qz 
+            # Default: Qbb Qc Qz
             self.tri = qhull.Delaunay(np.column_stack((xc, yc)), qhull_options='QbB')
 
         simplices = self.tri.find_simplex(points)
@@ -277,7 +278,7 @@ class Data2D:
             x = np.hstack((xc - 1, xc[:,[0]] + 1))
             # Duplicate the only row/column so that pcolor has something to actually plot
             x = np.vstack((x, x[0]))
-        
+
         if yc.shape[0] > 1:
             t0, t1, t2 = yc[0], yc[1], yc[2]
             nans = np.isnan(t0)
@@ -360,10 +361,10 @@ class Data2D:
 
     def crop(self, left=0, right=-1, bottom=0, top=-1):
         """Crop a region of the data by the columns and rows."""
-        if right < 0: 
+        if right < 0:
             right = self.z.shape[1] + right + 1
 
-        if top < 0: 
+        if top < 0:
             top = self.z.shape[0] + top + 1
 
         self.set_data(self.x[bottom:top,left:right], self.y[bottom:top,left:right], self.z[bottom:top,left:right])
@@ -406,7 +407,7 @@ class Data2D:
         """Extract even or odd rows, optionally flipping odd rows."""
         indices = np.arange(0, self.z.shape[0], 2)
 
-        if not even: 
+        if not even:
             indices = np.arange(1, self.z.shape[0], 2)
 
         self.set_data(self.x[indices], self.y[indices], self.z[indices])

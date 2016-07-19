@@ -1,29 +1,22 @@
 from __future__ import print_function
 
 from six.moves import configparser
-import math
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 import os
-import pandas as pd
 import sys
-import time
 
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
-from matplotlib.ticker import ScalarFormatter
 from PyQt4 import QtGui, QtCore
-from scipy import interpolate, spatial, io
-from scipy.interpolate import griddata
-from scipy.spatial import qhull, delaunay_plot_2d
+from scipy import io
 
 from colormap import Colormap
-from data import DatFile, Data2D
+from data import DatFile
 from export import ExportWidget
-from linecut import Linecut, FixedOrderFormatter
+from linecut import Linecut
 from operations import Operations
 from settings import Settings
 from canvas import Canvas
+
 
 class Window(QtGui.QMainWindow):
     """The main window of the qtplot application."""
@@ -31,12 +24,12 @@ class Window(QtGui.QMainWindow):
         QtGui.QMainWindow.__init__(self)
 
         self.open_directory = self.read_from_ini('Settings', 'OpenDirectory')
-        if self.open_directory == None:
+        if self.open_directory is None:
             path = os.path.dirname(os.path.realpath(__file__))
             self.open_directory = path
 
         self.save_directory = self.read_from_ini('Settings', 'SaveDirectory')
-        if self.save_directory == None:
+        if self.save_directory is None:
             path = os.path.dirname(os.path.realpath(__file__))
             self.save_directory = path
 
@@ -331,8 +324,8 @@ class Window(QtGui.QMainWindow):
             result = self.read_from_ini('Settings', names)
 
             if result is not None:
-                # Check if the names in the ini file are present in the loaded data
-                # otherwise, use the default index
+                # Check if the names in the ini file are present in
+                # the loaded data otherwise, use the default index
                 for i, cb in enumerate(combo_boxes):
                     index = cb.findText(result[i])
 
@@ -376,7 +369,7 @@ class Window(QtGui.QMainWindow):
 
             has_options = [config.has_option(section, option) for option in options]
 
-            if not False in has_options:
+            if False not in has_options:
                 values = [config.get(section, option) for option in options]
 
                 if len(values) == 1:
@@ -399,7 +392,8 @@ class Window(QtGui.QMainWindow):
         self.load_file(filepath)
 
     def on_load_dat(self, event):
-        filename = str(QtGui.QFileDialog.getOpenFileName(directory=self.open_directory, filter='*.dat'))
+        filename = str(QtGui.QFileDialog.getOpenFileName(directory=self.open_directory,
+                                                         filter='*.dat'))
 
         if filename != "":
             self.load_file(filename)
@@ -440,15 +434,16 @@ class Window(QtGui.QMainWindow):
         self.export_widget.set_info(self.name, x_name, y_name, data_name)
 
         not_found = self.dat_file.has_columns([x_name, y_name, data_name, order_x, order_y])
-        if not_found != None:
-            self.status_bar.showMessage('ERROR: Could not find column \'' + not_found + '\', try saving the correct one using \'Remember columns\'')
+        if not_found is not None:
+            self.status_bar.showMessage('ERROR: Could not find column \'' +
+                not_found + '\', try saving the correct one using \'Remember columns\'')
 
             return
 
         try:
             self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
         except Exception:
-            print('ERROR: Could not pivot the data into a matrix with these columns')
+            print('ERROR: Cannot pivot data into a matrix with these columns')
 
             return
 
@@ -484,7 +479,7 @@ class Window(QtGui.QMainWindow):
         self.write_to_ini('Settings', axes)
 
     def on_sub_series_r(self, event=None):
-        if self.dat_file == None:
+        if self.dat_file is None:
             return
 
         V, I = str(self.cb_v.currentText()), str(self.cb_i.currentText())
@@ -519,7 +514,7 @@ class Window(QtGui.QMainWindow):
         self.canvas.update()
 
     def on_min_max_entered(self):
-        if self.data != None:
+        if self.data is not None:
             zmin, zmax = np.nanmin(self.data.z), np.nanmax(self.data.z)
 
             newmin, newmax = float(self.le_min.text()), float(self.le_max.text())
@@ -534,7 +529,7 @@ class Window(QtGui.QMainWindow):
             self.canvas.update()
 
     def on_min_changed(self, value):
-        if self.data != None:
+        if self.data is not None:
             min, max = np.nanmin(self.data.z), np.nanmax(self.data.z)
 
             newmin = min + ((max - min) / 100.0) * value
@@ -544,14 +539,14 @@ class Window(QtGui.QMainWindow):
             self.canvas.update()
 
     def on_gamma_changed(self, value):
-        if self.data != None:
+        if self.data is not None:
             gamma = 10.0**(value / 100.0)
 
             self.canvas.colormap.gamma = gamma
             self.canvas.update()
 
     def on_max_changed(self, value):
-        if self.data != None:
+        if self.data is not None:
             min, max = np.nanmin(self.data.z), np.nanmax(self.data.z)
 
             newmax = min + ((max - min) / 100.0) * value
@@ -561,9 +556,7 @@ class Window(QtGui.QMainWindow):
             self.canvas.update()
 
     def on_cm_reset(self):
-        if self.data != None:
-            zmin, zmax = np.nanmin(self.data.z), np.nanmax(self.data.z)
-
+        if self.data is not None:
             self.s_min.setValue(0)
             self.on_min_changed(0)
             self.s_gamma.setValue(0)
@@ -571,10 +564,13 @@ class Window(QtGui.QMainWindow):
             self.on_max_changed(100)
 
     def on_save_matrix(self):
-        filename = QtGui.QFileDialog.getSaveFileName(self, caption='Save file', directory=self.save_directory, filter='NumPy matrix format (*.npy);;MATLAB matrix format (*.mat)')
+        filename = QtGui.QFileDialog.getSaveFileName(self,
+                                                     caption='Save file',
+                                                     directory=self.save_directory,
+                                                     filter='NumPy matrix format (*.npy);;MATLAB matrix format (*.mat)')
         filename = str(filename)
 
-        if filename != '' and self.dat_file != None:
+        if filename != '' and self.dat_file is not None:
             base = os.path.basename(filename)
             name, ext = os.path.splitext(base)
 
@@ -583,7 +579,7 @@ class Window(QtGui.QMainWindow):
             if ext == '.npy':
                 np.save(filename, mat)
             elif ext == '.mat':
-                io.savemat(filename, {'data':mat})
+                io.savemat(filename, {'data': mat})
 
     def get_axis_names(self):
         x_name = str(self.cb_x.currentText())
@@ -598,7 +594,6 @@ class Window(QtGui.QMainWindow):
         self.linecut.close()
         self.operations.close()
         self.settings.close()
-
 
 
 if __name__ == '__main__':

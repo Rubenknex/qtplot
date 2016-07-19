@@ -1,15 +1,11 @@
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-import numpy as np
-
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
-from matplotlib.ticker import ScalarFormatter
-from scipy.spatial import qhull, delaunay_plot_2d
 from PyQt4 import QtGui, QtCore
 
 from util import FixedOrderFormatter
 import os
+
 
 class ExportWidget(QtGui.QWidget):
     def __init__(self, main):
@@ -47,7 +43,7 @@ class ExportWidget(QtGui.QWidget):
         self.cb_linecut = QtGui.QCheckBox('')
         grid.addWidget(self.cb_linecut, 1, 4)
 
-        
+
         grid.addWidget(QtGui.QLabel('X Label'), 2, 1)
         self.le_x_label = QtGui.QLineEdit('test')
         grid.addWidget(self.le_x_label, 2, 2)
@@ -139,7 +135,7 @@ class ExportWidget(QtGui.QWidget):
             self.on_update()
 
     def on_update(self):
-        if self.main.data != None:
+        if self.main.data is not None:
             self.ax.clear()
 
             x, y, z = self.main.data.get_pcolor()
@@ -149,20 +145,25 @@ class ExportWidget(QtGui.QWidget):
             quadmesh.set_clim(self.main.canvas.colormap.get_limits())
 
             self.ax.axis('tight')
-            
+
             self.ax.set_title(self.le_title.text())
             self.ax.set_xlabel(self.le_x_label.text())
             self.ax.set_ylabel(self.le_y_label.text())
-            
-            self.ax.xaxis.set_major_formatter(FixedOrderFormatter(str(self.le_x_format.text()), float(self.le_x_div.text())))
-            self.ax.yaxis.set_major_formatter(FixedOrderFormatter(str(self.le_y_format.text()), float(self.le_y_div.text())))
 
-            if self.cb != None:
+            self.ax.xaxis.set_major_formatter(FixedOrderFormatter(
+                str(self.le_x_format.text()), float(self.le_x_div.text())))
+            self.ax.yaxis.set_major_formatter(FixedOrderFormatter(
+                str(self.le_y_format.text()), float(self.le_y_div.text())))
+
+            if self.cb is not None:
                 self.cb.remove()
 
-            self.cb = self.fig.colorbar(quadmesh, orientation=str(self.cb_cb_orient.currentText()))
+            self.cb = self.fig.colorbar(quadmesh,
+                                        orientation=str(self.cb_cb_orient.currentText()))
 
-            self.cb.formatter  = FixedOrderFormatter(str(self.le_z_format.text()), float(self.le_z_div.text()))
+            self.cb.formatter = FixedOrderFormatter(
+                str(self.le_z_format.text()), float(self.le_z_div.text()))
+
             self.cb.update_ticks()
 
             self.cb.set_label(self.le_z_label.text())
@@ -189,12 +190,17 @@ class ExportWidget(QtGui.QWidget):
 
     def on_export(self):
         path = os.path.dirname(os.path.realpath(__file__))
-        filename = QtGui.QFileDialog.getSaveFileName(self, 'Export figure', path, 'Portable Network Graphics (*.png);;Portable Document Format (*.pdf);;Postscript (*.ps);;Encapsulated Postscript (*.eps);;Scalable Vector Graphics (*.svg)')
+        filename = QtGui.QFileDialog.getSaveFileName(self,
+                                                     'Export figure',
+                                                     path,
+                                                     'Portable Network Graphics (*.png);;Portable Document Format (*.pdf);;Postscript (*.ps);;Encapsulated Postscript (*.eps);;Scalable Vector Graphics (*.svg)')
         filename = str(filename)
 
         if filename != '':
             previous_size = self.fig.get_size_inches()
-            self.fig.set_size_inches(float(self.le_width.text()), float(self.le_height.text()))
+            self.fig.set_size_inches(float(self.le_width.text()),
+                                     float(self.le_height.text()))
+
             dpi = int(self.le_dpi.text())
 
             self.fig.savefig(filename, dpi=dpi, bbox_inches='tight')

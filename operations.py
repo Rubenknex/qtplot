@@ -1,14 +1,13 @@
 import numpy as np
 import os
-import pandas as pd
 import json
 import math
 import six
 
 from PyQt4 import QtGui, QtCore
-from scipy import ndimage
 
 from data import Data2D
+
 
 class Operation(QtGui.QWidget):
     """Contains the name and GUI widgets for the parameters of an operation."""
@@ -91,7 +90,10 @@ class Operation(QtGui.QWidget):
                 widget.setCurrentIndex(index)
 
     def get_parameters(self):
-        """Return a tuple of the name of the operation and a dict of the parameters."""
+        """
+        Return a tuple of the name of the operation
+        and a dict of the parameters.
+        """
         params = {name: self.get_parameter(name) for name in self.items}
 
         return self.name, params
@@ -100,7 +102,6 @@ class Operation(QtGui.QWidget):
         """Set all the parameters with a dict containing them."""
         for name, value in params.iteritems():
             self.set_parameter(name, value)
-
 
 
 class Operations(QtGui.QDialog):
@@ -205,7 +206,7 @@ class Operations(QtGui.QDialog):
 
         main_vbox.addLayout(hbox)
         main_vbox.addWidget(self.le_help)
-        
+
         self.setLayout(main_vbox)
 
         self.resize(400, 200)
@@ -217,7 +218,7 @@ class Operations(QtGui.QDialog):
             self.main.on_data_change()
 
         return wrapper
-    
+
     @update_plot
     def on_add(self):
         if self.options.currentItem():
@@ -266,7 +267,10 @@ class Operations(QtGui.QDialog):
     @update_plot
     def on_load(self):
         path = os.path.dirname(os.path.realpath(__file__))
-        filename = str(QtGui.QFileDialog.getOpenFileName(self, 'Open file', path, '*.operations'))
+        filename = str(QtGui.QFileDialog.getOpenFileName(self,
+                                                         'Open file',
+                                                         path,
+                                                         '*.operations'))
 
         if filename == '':
             return
@@ -274,7 +278,6 @@ class Operations(QtGui.QDialog):
         self.queue.clear()
 
         with open(filename) as f:
-            #operations = json.load(f, object_pairs_hook=OrderedDict)
             operations = json.load(f)
 
         for i in sorted(operations):
@@ -301,10 +304,13 @@ class Operations(QtGui.QDialog):
 
             self.queue.addItem(item)
             self.queue.setCurrentItem(item)
-    
+
     def on_save(self):
         path = os.path.dirname(os.path.realpath(__file__))
-        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save file', path, '.operations')
+        filename = QtGui.QFileDialog.getSaveFileName(self,
+                                                     'Save file',
+                                                     path,
+                                                     '.operations')
 
         if filename == '':
             return
@@ -312,11 +318,11 @@ class Operations(QtGui.QDialog):
         operations = {}
         for i in range(self.queue.count()):
                 if six.PY2:
-                    operation = self.queue.item(i).data(QtCore.Qt.UserRole).toPyObject()
+                    op = self.queue.item(i).data(QtCore.Qt.UserRole).toPyObject()
                 elif six.PY3:
-                    operation = self.queue.item(i).data(QtCore.Qt.UserRole)
-                
-                name, params = operation.get_parameters()
+                    op = self.queue.item(i).data(QtCore.Qt.UserRole)
+
+                name, params = op.get_parameters()
                 enabled = self.queue.item(i).checkState() == QtCore.Qt.Checked
 
                 operations[i] = {'enabled': enabled}
@@ -357,29 +363,29 @@ class Operations(QtGui.QDialog):
                 continue
 
             if six.PY2:
-                operation = item.data(QtCore.Qt.UserRole).toPyObject()
+                op = item.data(QtCore.Qt.UserRole).toPyObject()
             elif six.PY3:
-                operation = item.data(QtCore.Qt.UserRole)
+                op = item.data(QtCore.Qt.UserRole)
 
-            if operation.name == 'hist2d':
-                if operation.get_parameter('bins') == 0:
+            if op.name == 'hist2d':
+                if op.get_parameter('bins') == 0:
                     bins = np.round(np.sqrt(copy.z.shape[0]))
-                    operation.set_parameter('bins', int(bins))
+                    op.set_parameter('bins', int(bins))
 
-                if operation.get_parameter('min') == 0:
+                if op.get_parameter('min') == 0:
                     min, max = np.nanmin(copy.z), np.nanmax(copy.z)
-                    operation.set_parameter('min', min)
-                    operation.set_parameter('max', max)
-            elif operation.name == 'sub linecut' or operation.name == 'sub linecut avg':
-                if self.main.canvas.line_coord != None and self.main.canvas.line_type != None:
-                    if math.isnan(operation.get_parameter('position')):
-                        operation.set_parameter('type', self.main.canvas.line_type)
-                        operation.set_parameter('position', self.main.canvas.line_coord)
+                    op.set_parameter('min', min)
+                    op.set_parameter('max', max)
+            elif op.name == 'sub linecut' or op.name == 'sub linecut avg':
+                if (self.main.canvas.line_coord is not None and
+                   self.main.canvas.line_type is not None):
+                    if math.isnan(op.get_parameter('position')):
+                        op.set_parameter('type', self.main.canvas.line_type)
+                        op.set_parameter('position', self.main.canvas.line_coord)
 
-            kwargs = operation.get_parameters()[1]
-            #copy = operation.func(copy, **kwargs)
+            kwargs = op.get_parameters()[1]
 
-            operation.func(copy, **kwargs)
+            op.func(copy, **kwargs)
 
         return copy
 

@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib.ticker import ScalarFormatter
 
+
 def eng_format(number, significance):
     if number == 0:
         return '0'
@@ -13,7 +14,7 @@ def eng_format(number, significance):
     exp3 = exp - (exp % 3)
 
     x3 = abs(number) / (10**exp3)
-    
+
     if exp3 == 0:
         exp3_text = ''
     else:
@@ -22,6 +23,7 @@ def eng_format(number, significance):
     format = '%.' + str(significance) + 'f'
 
     return ('%s' + format + '%s') % (sign, x3, exp3_text)
+
 
 class FixedOrderFormatter(ScalarFormatter):
     """Format numbers using engineering notation."""
@@ -42,5 +44,5 @@ class FixedOrderFormatter(ScalarFormatter):
         pass
 
     def _set_orderOfMagnitude(self, range):
-        exp = np.floor(np.log10(range / 4 /self.division))
+        exp = np.floor(np.log10(range / 4 / self.division))
         self.orderOfMagnitude = exp - (exp % 3)

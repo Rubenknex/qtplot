@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib as mpl
 
+
 class Colormap:
     def __init__(self, filename):
         self.colors = np.loadtxt(filename)
@@ -13,11 +14,11 @@ class Colormap:
         return self.min, self.max
 
     def get_colors(self):
-        """ 
+        """
         After gamma-correcting the colormap curve, return an
         interpolated version of the colormap as 2D integer array.
 
-        This array can be uploaded to the GPU in vispy/opengl as a 
+        This array can be uploaded to the GPU in vispy/opengl as a
         1D texture to be used as a lookup table for coloring the data.
         """
         x = np.linspace(0, 1, self.length)
@@ -27,7 +28,7 @@ class Colormap:
         r = np.interp(y, value, self.colors[:,0])
         g = np.interp(y, value, self.colors[:,1])
         b = np.interp(y, value, self.colors[:,2])
-        
+
         return np.dstack((r, g, b)).reshape(len(r), 3).astype(np.uint8)
 
     def get_mpl_colormap(self):

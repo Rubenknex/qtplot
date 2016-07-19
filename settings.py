@@ -1,8 +1,6 @@
-import math
-import numpy as np
 from PyQt4 import QtGui, QtCore
 import os
-import pandas as pd
+
 
 class Settings(QtGui.QDialog):
     def __init__(self, main, parent=None):
@@ -16,7 +14,6 @@ class Settings(QtGui.QDialog):
         self.setWindowTitle("Settings")
 
         vbox = QtGui.QVBoxLayout()
-
 
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(QtGui.QLabel('Open directory:'))
@@ -70,7 +67,7 @@ class Settings(QtGui.QDialog):
         if os.path.exists(settings_file):
             with open(settings_file) as f:
                 self.lines = f.readlines()
-            
+
             self.fill_tree(self.lines)
 
             self.setWindowTitle(settings_file_name)
@@ -90,7 +87,7 @@ class Settings(QtGui.QDialog):
 
             if not line.startswith('\t'):
                 name, value = line.split(': ', 1)
-                
+
                 parent = QtGui.QTreeWidgetItem(None, [name, value])
                 parent.setCheckState(0, QtCore.Qt.Unchecked)
                 widgets.append(parent)
@@ -104,7 +101,7 @@ class Settings(QtGui.QDialog):
 
     def on_open_browse(self, event):
         directory = str(QtGui.QFileDialog.getExistingDirectory(self, "Select Directory"))
-        
+
         if directory != '':
             self.le_open_directory.setText(directory)
 
@@ -113,7 +110,7 @@ class Settings(QtGui.QDialog):
 
     def on_save_browse(self, event):
         directory = str(QtGui.QFileDialog.getExistingDirectory(self, "Select Directory"))
-        
+
         if directory != '':
             self.le_save_directory.setText(directory)
 

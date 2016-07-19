@@ -1,4 +1,3 @@
-import math
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -6,11 +5,11 @@ import pandas as pd
 from itertools import cycle
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
-from matplotlib.ticker import ScalarFormatter
 
 from PyQt4 import QtGui, QtCore
 
 from util import FixedOrderFormatter, eng_format
+
 
 class Linetrace(plt.Line2D):
     """
@@ -18,14 +17,14 @@ class Linetrace(plt.Line2D):
 
     x/y: Arrays containing x and y data
     type: Type of linetrace, 'horizontal' or 'vertical'
-    position: The position of the linetrace in x or y direction depending on the type
+    position: The position of the linetrace in x or y direction
+    depending on the type
     """
     def __init__(self, x, y, type, position):
         plt.Line2D.__init__(self, x, y, color='red', linewidth=0.5)
 
         self.type = type
         self.position = position
-
 
 
 class Linecut(QtGui.QDialog):
@@ -112,53 +111,68 @@ class Linecut(QtGui.QDialog):
         self.move(720, 100)
 
     def on_reset(self):
-        if self.x != None and self.y != None:
+        if self.x is not None and self.y is not None:
             minx, maxx = np.min(self.x), np.max(self.x)
             miny, maxy = np.min(self.y), np.max(self.y)
 
             xdiff = (maxx - minx) * .1
             ydiff = (maxy - miny) * .1
 
-            self.ax.axis([minx - xdiff, maxx + xdiff, miny - ydiff, maxy + ydiff])
+            self.ax.axis([minx - xdiff, maxx + xdiff,
+                         miny - ydiff, maxy + ydiff])
+
             self.canvas.draw()
 
     def on_click(self, event):
         if event.inaxes and event.button == 2:
             significance = self.sb_significance.value()
             point_type = str(self.cb_point.currentText())
-            
+
             if point_type == 'X':
                 coords = eng_format(event.xdata, significance)
             elif point_type == 'Y':
                 coords = eng_format(event.ydata, significance)
             elif point_type == 'X,Y':
-                coords = '%s, %s' % (eng_format(event.xdata, significance), eng_format(event.ydata, significance))
+                coords = '%s, %s' % (eng_format(event.xdata, significance),
+                                     eng_format(event.ydata, significance))
             else:
                 coords = ''
 
             marker = self.ax.plot(event.xdata, event.ydata, '+', c='k')[0]
             self.markers.append(marker)
-            text = self.ax.annotate(coords, xy=(event.xdata, event.ydata), xycoords='data', xytext=(3, 3), textcoords='offset points')
+            text = self.ax.annotate(coords,
+                                    xy=(event.xdata, event.ydata),
+                                    xycoords='data',
+                                    xytext=(3, 3),
+                                    textcoords='offset points')
+
             self.points.append(text)
 
             self.fig.canvas.draw()
 
     def on_clipboard(self):
-        if self.x == None or self.y == None:
+        if self.x is None or self.y is None:
             return
 
-        data = pd.DataFrame(np.column_stack((self.x, self.y)), columns=[self.xlabel, self.ylabel])
+        data = pd.DataFrame(np.column_stack((self.x, self.y)),
+                            columns=[self.xlabel, self.ylabel])
+
         data.to_clipboard(index=False)
 
     def on_save(self):
-        if self.x == None or self.y == None:
+        if self.x is None or self.y is None:
             return
 
         path = os.path.dirname(os.path.realpath(__file__))
-        filename = QtGui.QFileDialog.getSaveFileName(self, 'Save file', path, '.dat')
+        filename = QtGui.QFileDialog.getSaveFileName(self,
+                                                     'Save file',
+                                                     path,
+                                                     '.dat')
 
         if filename != '':
-            data = pd.DataFrame(np.column_stack((self.x, self.y)), columns=[self.xlabel, self.ylabel])
+            data = pd.DataFrame(np.column_stack((self.x, self.y)),
+                                columns=[self.xlabel, self.ylabel])
+
             data.to_csv(filename, sep='\t', index=False)
 
     def on_copy_figure(self):
@@ -176,7 +190,7 @@ class Linecut(QtGui.QDialog):
         self.linetraces = []
 
         self.fig.canvas.draw()
-    
+
     def on_clear_points(self):
         for point in self.points:
             point.remove()
@@ -190,7 +204,8 @@ class Linecut(QtGui.QDialog):
 
         self.fig.canvas.draw()
 
-    def plot_linetrace(self, x, y, z, type, position, title, xlabel, ylabel, otherlabel):
+    def plot_linetrace(self, x, y, z, type, position, title,
+                       xlabel, ylabel, otherlabel):
         # Don't draw lines consisting of one point
         if np.count_nonzero(~np.isnan(y)) < 2:
             return
@@ -201,17 +216,18 @@ class Linecut(QtGui.QDialog):
 
         if self.cb_include_z.checkState() == QtCore.Qt.Checked:
             title += ("\n" + otherlabel + "=" + eng_format(z, 1))
+
         self.ax.set_title(title)
 
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
 
-        # Remove all the existing lines and only plot one if we uncheck the incremental box
-        # Else, add a new line to the collection
+        # Remove all the existing lines and only plot one if we uncheck
+        # the incremental box. Else, add a new line to the collection
         if self.cb_incremental.checkState() == QtCore.Qt.Unchecked:
             for line in self.linetraces:
                 line.remove()
-                
+
             self.linetraces = []
 
             line = Linetrace(x, y, type, position)
@@ -241,7 +257,8 @@ class Linecut(QtGui.QDialog):
             xdiff = (maxx - minx) * .05
             ydiff = (maxy - miny) * .05
 
-            self.ax.axis([minx - xdiff, maxx + xdiff, miny - ydiff, maxy + ydiff])
+            self.ax.axis([minx - xdiff, maxx + xdiff,
+                          miny - ydiff, maxy + ydiff])
 
         self.ax.set_aspect('auto')
         self.fig.tight_layout()
@@ -253,6 +270,7 @@ class Linecut(QtGui.QDialog):
         self.canvas.draw()
 
     def show_window(self):
+        print('showing')
         self.show()
         self.raise_()
 

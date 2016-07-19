@@ -1,14 +1,11 @@
 import numpy as np
 import os
-import sys
 
-from PyQt4 import QtGui, QtCore
-
-from vispy import app, gloo, scene, visuals
+from vispy import gloo, scene
 from vispy.util.transforms import ortho, translate
 
 from colormap import Colormap
-from util import FixedOrderFormatter, eng_format
+from util import eng_format
 
 # Vertex and fragment shader used to draw the linecut line
 # The red color is hardcoded in the fragment shader
@@ -95,12 +92,14 @@ void main()
 }
 """
 
+
 class Canvas(scene.SceneCanvas):
     """
     Handles the fast drawing of data using OpenGL for real-time editing.
 
-    A data point is drawn using two triangles to form a quad, it is colored
-    by using the normalized data value and a colormap texture in the fragment shader.
+    A data point is drawn using two triangles to form a quad,
+    it is colored by using the normalized data value and a
+    colormap texture in the fragment shader.
     """
     def __init__(self, parent=None):
         scene.SceneCanvas.__init__(self, parent=parent)
@@ -116,7 +115,7 @@ class Canvas(scene.SceneCanvas):
         self.colormap = Colormap(path)
 
         self.colormap_program = gloo.Program(colormap_vert, colormap_frag)
-        
+
         self.line_type = None
         self.line_coord = None
         self.line_positions = [(0, 0), (0, 0)]
@@ -131,18 +130,22 @@ class Canvas(scene.SceneCanvas):
 
         vertices = self.generate_vertices(data)
 
-        self.xmin, self.xmax = np.nanmin(vertices['a_position'][:,0]), np.nanmax(vertices['a_position'][:,0])
-        self.ymin, self.ymax = np.nanmin(vertices['a_position'][:,1]), np.nanmax(vertices['a_position'][:,1])
+        self.xmin = np.nanmin(vertices['a_position'][:,0])
+        self.xmax = np.nanmax(vertices['a_position'][:,0])
+        self.ymin = np.nanmin(vertices['a_position'][:,1])
+        self.ymax = np.nanmax(vertices['a_position'][:,1])
 
         self.cm_dx = (self.xmax-self.xmin)*0.1
 
         self.view = translate((0, 0, 0))
-        self.projection = ortho(self.xmin, self.xmax + self.cm_dx, self.ymin, self.ymax, -1, 1)
+        self.projection = ortho(self.xmin, self.xmax + self.cm_dx,
+                                self.ymin, self.ymax, -1, 1)
 
         self.data_program['u_view'] = self.view
         self.data_program['u_projection'] = self.projection
-        self.data_program['u_colormap'] = gloo.Texture1D(self.colormap.get_colors(), interpolation='linear')
-        
+        self.data_program['u_colormap'] = gloo.Texture1D(self.colormap.get_colors(),
+                                                         interpolation='linear')
+
         self.colormap_program['u_view'] = self.view
         self.colormap_program['u_projection'] = self.projection
 
@@ -202,34 +205,42 @@ class Canvas(scene.SceneCanvas):
         return dx, dy
 
     def draw_linecut(self, event, old_position=False):
-        # We need to check wether the canvas has had time to redraw itself 
+        # We need to check wether the canvas has had time to redraw itself
         # because continuous mouse movement events surpress the redrawing.
-        if self.data != None and self.has_redrawn:
+        if self.data is not None and self.has_redrawn:
             x_name, y_name, data_name, order_x, order_y = self.parent.get_axis_names()
 
             # If we need to draw the linecut at a new position
-            if not old_position and (event.button == 1 or event.button == 3):
+            if not old_position and event.button in [1, 3]:
                 x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
 
                 # Set up the parameters and data for either a horizontal or vertical linecut
                 if event.button == 1:
                     self.line_type = 'horizontal'
                     self.line_coord = self.data.get_closest_y(y)
-                    self.line_positions = [(self.xmin, self.line_coord), (self.xmax, self.line_coord)]
+                    self.line_positions = [(self.xmin, self.line_coord),
+                                           (self.xmax, self.line_coord)]
 
                     x, y, index = self.data.get_row_at(y)
                     z = np.nanmean(self.data.y[index,:])
 
-                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type, self.line_coord, self.parent.name, x_name, data_name, y_name)
+                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
+                                                       self.line_coord,
+                                                       self.parent.name,
+                                                       x_name, data_name, y_name)
                 elif event.button == 3:
                     self.line_type = 'vertical'
                     self.line_coord = self.data.get_closest_x(x)
-                    self.line_positions = [(self.line_coord, self.ymin), (self.line_coord, self.ymax)]
+                    self.line_positions = [(self.line_coord, self.ymin),
+                                           (self.line_coord, self.ymax)]
 
                     x, y, index = self.data.get_column_at(x)
                     z = np.nanmean(self.data.x[:,index])
 
-                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type, self.line_coord, self.parent.name, y_name, data_name, x_name)
+                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
+                                                       self.line_coord,
+                                                       self.parent.name,
+                                                       y_name, data_name, x_name)
 
                 self.has_redrawn = False
 
@@ -243,7 +254,7 @@ class Canvas(scene.SceneCanvas):
         self.draw_linecut(event)
 
     def on_mouse_move(self, event):
-        if self.data != None:
+        if self.data is not None:
             sw, sh = self.size
             sx, sy = event.pos
 
@@ -261,17 +272,19 @@ class Canvas(scene.SceneCanvas):
     def on_draw(self, event):
         gloo.clear()
 
-        if self.data != None:
+        if self.data is not None:
             # Draw first the data, then colormap, and then linecut
             self.data_program['u_colormap'] = gloo.Texture1D(self.colormap.get_colors())
             self.data_program['z_min'] = self.colormap.min
             self.data_program['z_max'] = self.colormap.max
             self.data_program.draw('triangles')
 
-            self.colormap_program['u_colormap'] = gloo.Texture1D(self.colormap.get_colors(), interpolation='linear')
-            self.colormap_program['a_position'] = [(self.xmax + self.cm_dx*.2, self.ymax), 
-                                             (self.xmax + self.cm_dx*.2, self.ymin), 
-                                             (self.xmax + self.cm_dx, self.ymax), 
+            self.colormap_program['u_colormap'] = gloo.Texture1D(
+                self.colormap.get_colors(), interpolation='linear')
+
+            self.colormap_program['a_position'] = [(self.xmax + self.cm_dx*.2, self.ymax),
+                                             (self.xmax + self.cm_dx*.2, self.ymin),
+                                             (self.xmax + self.cm_dx, self.ymax),
                                              (self.xmax + self.cm_dx, self.ymin)]
             self.colormap_program['a_texcoord'] = [[1], [0], [1], [0]]
             self.colormap_program.draw('triangle_strip')
