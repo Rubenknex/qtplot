@@ -204,19 +204,6 @@ class Canvas(scene.SceneCanvas):
         return dx, dy
 
     def draw_linecut(self, event, old_position=False, initial_press=False):
-        """
-        Diagonal linecuts:
-
-        left button pressed:
-            set pressed state
-            record start point
-
-        if mouse moved and left button:
-            update end points and redraw trace
-
-        if mouse released and left button:
-            nothing?
-        """
         # We need to check wether the canvas has had time to redraw itself
         # because continuous mouse movement events surpress the redrawing.
         if self.data is not None and self.has_redrawn:
