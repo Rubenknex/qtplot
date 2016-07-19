@@ -70,7 +70,7 @@ class DatFile:
             def func(column):
                 # Return an integer series from min_idx to max_idx, according
                 # to the minimum and maximum values, and step size.
-                step_size =  np.average(np.diff(column.values))
+                step_size = np.average(np.diff(column.values))
                 min_idx = np.floor((np.nanmin(column.values) - minimum) / step_size)
                 max_idx = np.floor((np.nanmax(column.values) - minimum) / step_size)
 
@@ -209,29 +209,23 @@ class Data2D:
             yc = yc[~np.isnan(yc)]
             self.no_nan_values = self.no_nan_values[~np.isnan(self.no_nan_values)]
 
-        # Default: Qbb Qc Qz
-        self.tri = qhull.Delaunay(np.column_stack((xc, yc)), qhull_options='')
+        # Default: Qbb Qc Qz, QbB?
+        self.tri = qhull.Delaunay(np.column_stack((xc, yc)), qhull_options='Qt')
 
     def interpolate(self, points):
-        if self.tri == None:
-            xc = self.x.flatten()
-            yc = self.y.flatten()
-            self.no_nan_values = self.z.flatten()
+        if self.tri is None:
+            self.gen_delaunay()
 
-            if np.isnan(xc).any() and np.isnan(yc).any():
-                xc = xc[~np.isnan(xc)]
-                yc = yc[~np.isnan(yc)]
-                self.no_nan_values = self.no_nan_values[~np.isnan(self.no_nan_values)]
-
-            # Default: Qbb Qc Qz
-            self.tri = qhull.Delaunay(np.column_stack((xc, yc)),
-                                      qhull_options='QbB')
-
+        # Find the indices of the simplices (triangle in this case)
+        # to which the points belong to
         simplices = self.tri.find_simplex(points)
 
+        # Find the indices of the datapoints belonging to the simplices
         indices = np.take(self.tri.simplices, simplices, axis=0)
+        # Also find the transforms
         transforms = np.take(self.tri.transform, simplices, axis=0)
 
+        # Transform from point coords to barycentric coords
         delta = points - transforms[:,2]
         bary = np.einsum('njk,nk->nj', transforms[:,:2,:], delta)
 

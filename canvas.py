@@ -102,6 +102,7 @@ class Canvas(scene.SceneCanvas):
         self.has_redrawn = True
 
         self.data = None
+        self.data_changed = False
         self.data_program = gloo.Program(data_vert, data_frag)
 
         path = os.path.dirname(os.path.realpath(__file__))
@@ -110,8 +111,11 @@ class Canvas(scene.SceneCanvas):
 
         self.colormap_program = gloo.Program(colormap_vert, colormap_frag)
 
+        #  horizontal / vertical / diagonal
         self.line_type = None
+        # x for a vertical line, y for a horizontal line
         self.line_coord = None
+        # start and end points
         self.line_positions = [(0, 0), (0, 0)]
 
         self.linecut_program = gloo.Program(linecut_vert, linecut_frag)
@@ -121,6 +125,7 @@ class Canvas(scene.SceneCanvas):
 
     def set_data(self, data):
         self.data = data
+        self.data_changed = True
 
         vertices = self.generate_vertices(data)
 
@@ -129,7 +134,7 @@ class Canvas(scene.SceneCanvas):
         self.ymin = np.nanmin(vertices['a_position'][:,1])
         self.ymax = np.nanmax(vertices['a_position'][:,1])
 
-        self.cm_dx = (self.xmax-self.xmin)*0.1
+        self.cm_dx = (self.xmax - self.xmin) * 0.1
 
         self.view = translate((0, 0, 0))
         self.projection = ortho(self.xmin, self.xmax + self.cm_dx,
@@ -198,14 +203,27 @@ class Canvas(scene.SceneCanvas):
 
         return dx, dy
 
-    def draw_linecut(self, event, old_position=False):
+    def draw_linecut(self, event, old_position=False, initial_press=False):
+        """
+        Diagonal linecuts:
+
+        left button pressed:
+            set pressed state
+            record start point
+
+        if mouse moved and left button:
+            update end points and redraw trace
+
+        if mouse released and left button:
+            nothing?
+        """
         # We need to check wether the canvas has had time to redraw itself
         # because continuous mouse movement events surpress the redrawing.
         if self.data is not None and self.has_redrawn:
             x_name, y_name, data_name, order_x, order_y = self.parent.get_axis_names()
 
             # If we need to draw the linecut at a new position
-            if not old_position and event.button in [1, 3]:
+            if not old_position and event.button in [1, 2, 3]:
                 x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
 
                 # Set up the parameters and data for either a horizontal or vertical linecut
@@ -222,6 +240,31 @@ class Canvas(scene.SceneCanvas):
                                                        self.line_coord,
                                                        self.parent.name,
                                                        x_name, data_name, y_name)
+                elif event.button == 2:
+                    self.line_type = 'diagonal'
+
+                    if initial_press:
+                        x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
+                        self.line_positions = [(x, y), (x, y)]
+                    else:
+                        x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
+                        self.line_positions[1] = (x, y)
+
+                        x_points = np.linspace(self.line_positions[0][0], self.line_positions[1][0], 500)
+                        y_points = np.linspace(self.line_positions[0][1], self.line_positions[1][1], 500)
+
+                        if self.data_changed:
+                            self.data.gen_delaunay()
+                            self.data_changed = False
+
+                        vals = self.data.interpolate(np.column_stack((x_points, y_points)))
+
+                        dist = np.hypot(x_points - x_points[0], y_points - y_points[0])
+
+                        self.parent.linecut.plot_linetrace(dist, vals, 0, self.line_type,
+                                                       self.line_coord,
+                                                       self.parent.name,
+                                                       'Distance (-)', data_name, x_name)
                 elif event.button == 3:
                     self.line_type = 'vertical'
                     self.line_coord = self.data.get_closest_x(x)
@@ -245,7 +288,7 @@ class Canvas(scene.SceneCanvas):
             self.update()
 
     def on_mouse_press(self, event):
-        self.draw_linecut(event)
+        self.draw_linecut(event, initial_press=True)
 
     def on_mouse_move(self, event):
         if self.data is not None:
