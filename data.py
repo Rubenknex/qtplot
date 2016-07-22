@@ -199,22 +199,51 @@ class Data2D:
 
         return xmin, xmax, ymin, ymax, zmin, zmax
 
-    def gen_delaunay(self):
-        xc = self.x.flatten()
-        yc = self.y.flatten()
-        self.no_nan_values = self.z.flatten()
+    def get_triangulation_coordinates(self):
+        if self.tri is None:
+            raise Exception('No triangulation has been generated yet')
 
-        if np.isnan(xc).any() and np.isnan(yc).any():
-            xc = xc[~np.isnan(xc)]
-            yc = yc[~np.isnan(yc)]
-            self.no_nan_values = self.no_nan_values[~np.isnan(self.no_nan_values)]
+        x = self.tri.points[:,0]
+        y = self.tri.points[:,1]
 
-        # Default: Qbb Qc Qz, QbB?
-        self.tri = qhull.Delaunay(np.column_stack((xc, yc)), qhull_options='Qt')
+        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
+        x = x * (xmax - xmin) + xmin
+        y = y * (ymax - ymin) + ymin
+
+        return x, y
+
+    def generate_triangulation(self):
+        xc = self.x.ravel()
+        yc = self.y.ravel()
+        zc = self.z.ravel()
+
+        # Remove any NaN values as the triangulation can't handle this
+        nans = np.isnan(zc)
+        xc = xc[~nans]
+        yc = yc[~nans]
+        self.no_nan_values = zc[~nans]
+
+        # Normalize the coordinates. This improves the triangulation results
+        # in cases where the data ranges on both axes are very different
+        # in magnitude
+        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
+        xc = (xc - xmin) / (xmax - xmin)
+        yc = (yc - ymin) / (ymax - ymin)
+
+        self.tri = qhull.Delaunay(np.column_stack((xc, yc)))
 
     def interpolate(self, points):
+        """
+        Interpolate points on the 2d data.
+
+        points: N x 2 numpy array with (x, y) as rows
+        """
         if self.tri is None:
-            self.gen_delaunay()
+            self.generate_triangulation()
+
+        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
+        points[:,0] = (points[:,0] - xmin) / (xmax - xmin)
+        points[:,1] = (points[:,1] - ymin) / (ymax - ymin)
 
         # Find the indices of the simplices (triangle in this case)
         # to which the points belong to

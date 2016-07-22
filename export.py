@@ -1,7 +1,9 @@
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from PyQt4 import QtGui, QtCore
+from scipy import spatial
 
 from util import FixedOrderFormatter
 import os
@@ -39,13 +41,13 @@ class ExportWidget(QtGui.QWidget):
         self.le_title = QtGui.QLineEdit('test')
         grid.addWidget(self.le_title, 1, 2)
 
-        grid.addWidget(QtGui.QLabel('Linecut'), 1, 3)
-        self.cb_linecut = QtGui.QCheckBox('')
-        grid.addWidget(self.cb_linecut, 1, 4)
+        grid.addWidget(QtGui.QLabel('DPI'), 1, 3)
+        self.le_dpi = QtGui.QLineEdit('80')
+        grid.addWidget(self.le_dpi, 1, 4)
 
-        grid.addWidget(QtGui.QLabel('Tripcolor'), 1, 5)
-        self.cb_tripcolor = QtGui.QCheckBox('')
-        grid.addWidget(self.cb_tripcolor, 1, 6)
+        grid.addWidget(QtGui.QLabel('Rasterize'), 1, 5)
+        self.cb_rasterize = QtGui.QCheckBox('')
+        grid.addWidget(self.cb_rasterize, 1, 6)
 
 
         grid.addWidget(QtGui.QLabel('X Label'), 2, 1)
@@ -114,13 +116,17 @@ class ExportWidget(QtGui.QWidget):
         self.le_cb_pos = QtGui.QLineEdit('0 0 1 1')
         grid.addWidget(self.le_cb_pos, 6, 6)
 
-        grid.addWidget(QtGui.QLabel('Rasterize'), 7, 1)
-        self.cb_rasterize = QtGui.QCheckBox('')
-        grid.addWidget(self.cb_rasterize, 7, 2)
+        grid.addWidget(QtGui.QLabel('Triangulation'), 7, 1)
+        self.cb_triangulation = QtGui.QCheckBox('')
+        grid.addWidget(self.cb_triangulation, 7, 2)
 
-        grid.addWidget(QtGui.QLabel('DPI'), 7, 3)
-        self.le_dpi = QtGui.QLineEdit('80')
-        grid.addWidget(self.le_dpi, 7, 4)
+        grid.addWidget(QtGui.QLabel('Tripcolor'), 7, 3)
+        self.cb_tripcolor = QtGui.QCheckBox('')
+        grid.addWidget(self.cb_tripcolor, 7, 4)
+
+        grid.addWidget(QtGui.QLabel('Linecut'), 7, 5)
+        self.cb_linecut = QtGui.QCheckBox('')
+        grid.addWidget(self.cb_linecut, 7, 6)
 
         vbox = QtGui.QVBoxLayout(self)
         vbox.addWidget(self.toolbar)
@@ -146,16 +152,29 @@ class ExportWidget(QtGui.QWidget):
 
             cmap = self.main.canvas.colormap.get_mpl_colormap()
 
+            need_tri = QtCore.Qt.Checked in [self.cb_tripcolor.checkState(),
+                                             self.cb_triangulation.checkState()]
+
+            if need_tri:
+                if self.main.data.tri is None:
+
+
             if self.cb_tripcolor.checkState() != QtCore.Qt.Checked:
-                quadmesh = self.ax.pcolormesh(x, y, z, cmap=cmap, rasterized=True)
+                quadmesh = self.ax.pcolormesh(x, y, z,
+                                              cmap=cmap,
+                                              rasterized=True)
+
                 quadmesh.set_clim(self.main.canvas.colormap.get_limits())
             else:
-                quadmesh = self.ax.tripcolor(self.main.data.x.ravel(),
-                                             self.main.data.y.ravel(),
+                quadmesh = self.ax.tripcolor(tri,
                                              self.main.data.z.ravel(),
                                              cmap=cmap, rasterized=True)
 
                 quadmesh.set_clim(self.main.canvas.colormap.get_limits())
+
+            if self.cb_triangulation.checkState() == QtCore.Qt.Checked:
+                self.ax.triplot(tri, 'o-', color='black',
+                                linewidth=0.5, markersize=3)
 
             self.ax.axis('tight')
 
