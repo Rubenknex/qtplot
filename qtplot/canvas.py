@@ -4,8 +4,8 @@ import os
 from vispy import gloo, scene
 from vispy.util.transforms import ortho, translate
 
-from colormap import Colormap
-from util import eng_format
+from .colormap import Colormap
+from .util import eng_format
 
 # Vertex and fragment shader used to draw the linecut line
 # The red color is hardcoded in the fragment shader
@@ -106,7 +106,7 @@ class Canvas(scene.SceneCanvas):
         self.data_program = gloo.Program(data_vert, data_frag)
 
         path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(path, '../colormaps/transform/Seismic.npy')
+        path = os.path.join(path, 'colormaps/transform/Seismic.npy')
         self.colormap = Colormap(path)
 
         self.colormap_program = gloo.Program(colormap_vert, colormap_frag)

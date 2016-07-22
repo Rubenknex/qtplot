@@ -6,7 +6,7 @@ import six
 
 from PyQt4 import QtGui, QtCore
 
-from data import Data2D
+from .data import Data2D
 
 
 class Operation(QtGui.QWidget):

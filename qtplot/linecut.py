@@ -8,7 +8,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationTool
 
 from PyQt4 import QtGui, QtCore
 
-from util import FixedOrderFormatter, eng_format
+from .util import FixedOrderFormatter, eng_format
 
 
 class Linetrace(plt.Line2D):

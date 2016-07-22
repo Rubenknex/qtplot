@@ -5,7 +5,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationTool
 from PyQt4 import QtGui, QtCore
 from scipy import spatial
 
-from util import FixedOrderFormatter
+from .util import FixedOrderFormatter
 import os
 
 

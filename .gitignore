@@ -8,3 +8,7 @@ test.png
 *.operations
 *.config
 *.ini
+
+# Distribution / packaging
+dist
+*.egg-info
