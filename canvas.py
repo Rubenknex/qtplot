@@ -241,6 +241,7 @@ class Canvas(scene.SceneCanvas):
                         y_points = np.linspace(self.line_positions[0][1], self.line_positions[1][1], 500)
 
                         if self.data_changed:
+                            self.data.generate_triangulation()
                             self.data_changed = False
 
                         vals = self.data.interpolate(np.column_stack((x_points, y_points)))

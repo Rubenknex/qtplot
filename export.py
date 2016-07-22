@@ -157,7 +157,11 @@ class ExportWidget(QtGui.QWidget):
 
             if need_tri:
                 if self.main.data.tri is None:
+                    self.main.data.generate_triangulation()
 
+                xc, yc = self.main.data.get_triangulation_coordinates()
+
+                tri = mpl.tri.Triangulation(xc, yc, self.main.data.tri.simplices)
 
             if self.cb_tripcolor.checkState() != QtCore.Qt.Checked:
                 quadmesh = self.ax.pcolormesh(x, y, z,
