@@ -1,1 +1,1 @@
-python "%~dp0qtplot.py" %1
+python "%~dp0qtplot/qtplot.py" %1

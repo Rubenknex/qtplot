@@ -187,13 +187,18 @@ class Window(QtGui.QMainWindow):
         self.cb_cmaps.activated.connect(self.on_cmap_change)
 
         path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(path, 'colormaps')
+        path = os.path.join(path, '../colormaps')
 
         cmap_files = []
         for dir, _, files in os.walk(path):
             for filename in files:
                 reldir = os.path.relpath(dir, path)
                 relfile = os.path.join(reldir, filename)
+
+                # Remove .\ for files in the root of the directory
+                if relfile[:2] == '.\\':
+                    relfile = relfile[2:]
+
                 cmap_files.append(relfile)
 
         self.cb_cmaps.addItems(cmap_files)
@@ -501,7 +506,7 @@ class Window(QtGui.QMainWindow):
         selected_cmap = str(self.cb_cmaps.currentText())
 
         path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(path, 'colormaps', selected_cmap)
+        path = os.path.join(path, '../colormaps', selected_cmap)
 
         new_colormap = Colormap(path)
 
