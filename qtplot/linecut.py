@@ -270,7 +270,6 @@ class Linecut(QtGui.QDialog):
         self.canvas.draw()
 
     def show_window(self):
-        print('showing')
         self.show()
         self.raise_()
 

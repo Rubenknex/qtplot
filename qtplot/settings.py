@@ -3,10 +3,10 @@ import os
 
 
 class Settings(QtGui.QDialog):
-    def __init__(self, main, parent=None):
+    def __init__(self, parent=None):
         super(Settings, self).__init__(parent)
 
-        self.main = main
+        self.main = parent
 
         self.init_ui()
 
@@ -105,7 +105,7 @@ class Settings(QtGui.QDialog):
         if directory != '':
             self.le_open_directory.setText(directory)
 
-            self.main.default_open_directory = directory
+            self.main.open_directory = directory
             self.main.write_to_ini('Settings', {'OpenDirectory': directory})
 
     def on_save_browse(self, event):
@@ -114,7 +114,7 @@ class Settings(QtGui.QDialog):
         if directory != '':
             self.le_save_directory.setText(directory)
 
-            self.main.default_save_directory = directory
+            self.main.save_directory = directory
             self.main.write_to_ini('Settings', {'SaveDirectory': directory})
 
     def on_item_changed(self, widget):

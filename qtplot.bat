@@ -1,2 +1,1 @@
-python -m "%~dp0qtplot\qtplot.py" %1
-pause
+python "%~dp0qtplot.py" %1

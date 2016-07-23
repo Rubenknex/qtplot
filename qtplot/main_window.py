@@ -9,18 +9,18 @@ import sys
 from PyQt4 import QtGui, QtCore
 from scipy import io
 
-from colormap import Colormap
-from data import DatFile
-from export import ExportWidget
-from linecut import Linecut
-from operations import Operations
-from settings import Settings
-from canvas import Canvas
+from .colormap import Colormap
+from .data import DatFile
+from .export import ExportWidget
+from .linecut import Linecut
+from .operations import Operations
+from .settings import Settings
+from .canvas import Canvas
 
 
-class Window(QtGui.QMainWindow):
+class MainWindow(QtGui.QMainWindow):
     """The main window of the qtplot application."""
-    def __init__(self, lc_window, op_window, filename=None):
+    def __init__(self, filename=None):
         QtGui.QMainWindow.__init__(self)
 
         self.open_directory = self.read_from_ini('Settings', 'OpenDirectory')
@@ -38,8 +38,8 @@ class Window(QtGui.QMainWindow):
         self.dat_file = None
         self.data = None
 
-        self.linecut = lc_window
-        self.operations = op_window
+        self.linecut = Linecut(self)
+        self.operations = Operations(self)
         self.settings = Settings(self)
 
         self.init_ui()
@@ -279,6 +279,10 @@ class Window(QtGui.QMainWindow):
 
         self.setAcceptDrops(True)
 
+        self.linecut.show()
+        self.operations.show()
+        self.show()
+
     def update_ui(self, reset=True):
         self.setWindowTitle(self.name)
 
@@ -344,7 +348,7 @@ class Window(QtGui.QMainWindow):
 
     def write_to_ini(self, section, keys_values):
         path = os.path.dirname(os.path.realpath(__file__))
-        filepath = os.path.join(path, 'qtplot.ini')
+        filepath = os.path.join(path, '../qtplot.ini')
 
         config = configparser.ConfigParser()
 
@@ -362,7 +366,7 @@ class Window(QtGui.QMainWindow):
 
     def read_from_ini(self, section, options):
         path = os.path.dirname(os.path.realpath(__file__))
-        filepath = os.path.join(path, 'qtplot.ini')
+        filepath = os.path.join(path, '../qtplot.ini')
 
         config = configparser.ConfigParser()
 
@@ -597,29 +601,3 @@ class Window(QtGui.QMainWindow):
         self.linecut.close()
         self.operations.close()
         self.settings.close()
-
-
-if __name__ == '__main__':
-    mpl.rcParams['mathtext.fontset'] = 'custom'
-    mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
-    mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
-    mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
-
-    app = QtGui.QApplication(sys.argv)
-
-    linecut = Linecut()
-    operations = Operations()
-
-    if len(sys.argv) > 1:
-        main = Window(linecut, operations, filename=sys.argv[1])
-    else:
-        main = Window(linecut, operations)
-
-    linecut.main = main
-    operations.main = main
-
-    linecut.show()
-    operations.show()
-    main.show()
-
-    sys.exit(app.exec_())
