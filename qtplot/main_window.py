@@ -21,7 +21,14 @@ from .canvas import Canvas
 class MainWindow(QtGui.QMainWindow):
     """The main window of the qtplot application."""
     def __init__(self, filename=None):
-        QtGui.QMainWindow.__init__(self)
+        #QtGui.QMainWindow.__init__(self)
+        super(MainWindow, self).__init__(None)
+
+        # Set some matplotlib font settings
+        mpl.rcParams['mathtext.fontset'] = 'custom'
+        mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
+        mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
+        mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
 
         self.open_directory = self.read_from_ini('Settings', 'OpenDirectory')
         if self.open_directory is None:
