@@ -5,7 +5,6 @@ import matplotlib as mpl
 import numpy as np
 import os
 import sys
-import time
 
 from PyQt4 import QtGui, QtCore
 from scipy import io
