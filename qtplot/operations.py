@@ -106,7 +106,7 @@ class Operation(QtGui.QWidget):
 
 class Operations(QtGui.QDialog):
     def __init__(self, parent=None):
-        super(Operations, self).__init__(parent)
+        super(Operations, self).__init__(None)
 
         self.main = parent
         self.columns = None

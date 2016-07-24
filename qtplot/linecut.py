@@ -29,7 +29,7 @@ class Linetrace(plt.Line2D):
 
 class Linecut(QtGui.QDialog):
     def __init__(self, parent=None):
-        super(Linecut, self).__init__(parent)
+        super(Linecut, self).__init__(None)
 
         self.fig, self.ax = plt.subplots()
         self.x, self.y = None, None
@@ -215,7 +215,7 @@ class Linecut(QtGui.QDialog):
         self.x, self.y, self.z = x, y, z
 
         if self.cb_include_z.checkState() == QtCore.Qt.Checked:
-            title += ("\n" + otherlabel + "=" + eng_format(z, 1))
+            title = '{0}\n{1} = {2}'.format(title, otherlabel, eng_format(z, 1))
 
         self.ax.set_title(title)
 

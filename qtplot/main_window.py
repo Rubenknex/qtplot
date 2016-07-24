@@ -5,12 +5,13 @@ import matplotlib as mpl
 import numpy as np
 import os
 import sys
+import time
 
 from PyQt4 import QtGui, QtCore
 from scipy import io
 
 from .colormap import Colormap
-from .data import DatFile
+from .data import DatFile, Data2D
 from .export import ExportWidget
 from .linecut import Linecut
 from .operations import Operations
@@ -21,7 +22,6 @@ from .canvas import Canvas
 class MainWindow(QtGui.QMainWindow):
     """The main window of the qtplot application."""
     def __init__(self, filename=None):
-        #QtGui.QMainWindow.__init__(self)
         super(MainWindow, self).__init__(None)
 
         # Set some matplotlib font settings
@@ -30,6 +30,7 @@ class MainWindow(QtGui.QMainWindow):
         mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
         mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
 
+        # Load the open and save directories from qtplot.ini
         self.open_directory = self.read_from_ini('Settings', 'OpenDirectory')
         if self.open_directory is None:
             path = os.path.dirname(os.path.realpath(__file__))
@@ -41,10 +42,19 @@ class MainWindow(QtGui.QMainWindow):
             self.save_directory = path
 
         self.first_data_file = True
+        self.name = None
+
+        # In case of a .dat file
         self.filename = None
         self.dat_file = None
+
+        # In case of a qcodes DataSet(Lite)
+        self.data_set = None
+
+        # Data2D object derived from either DatFile or DataSet(Lite)
         self.data = None
 
+        # Create the subwindows
         self.linecut = Linecut(self)
         self.operations = Operations(self)
         self.settings = Settings(self)
@@ -52,7 +62,7 @@ class MainWindow(QtGui.QMainWindow):
         self.init_ui()
 
         if filename is not None:
-            self.load_file(filename)
+            self.load_dat_file(filename)
 
     def init_ui(self):
         self.setWindowTitle('qtplot')
@@ -172,7 +182,7 @@ class MainWindow(QtGui.QMainWindow):
 
         self.b_save_default = QtGui.QPushButton('Set as defaults')
         self.b_save_default.clicked.connect(self.on_save_default)
-        grid.addWidget(self.b_save_default)
+        grid.addWidget(self.b_save_default, 3, 4)
 
         groupbox = QtGui.QGroupBox('Data selection')
         groupbox.setLayout(grid)
@@ -194,7 +204,8 @@ class MainWindow(QtGui.QMainWindow):
         self.cb_cmaps.activated.connect(self.on_cmap_change)
 
         path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(path, '../colormaps')
+        
+        path = os.path.join(path, 'colormaps')
 
         cmap_files = []
         for dir, _, files in os.walk(path):
@@ -289,46 +300,55 @@ class MainWindow(QtGui.QMainWindow):
         self.linecut.show()
         self.operations.show()
         self.show()
-
+        
     def update_ui(self, reset=True):
+        """
+        Update the user interface, typically called on loading new data (not
+        on updating data).
+
+        The x/y/z parameter selections are populated. If this is the first data
+        that is loaded, it is checked if parameters set as default in the .ini
+        are present, which are then immediately selected.
+        """
         self.setWindowTitle(self.name)
 
-        columns = self.dat_file.df.columns.values
+        parameters = self.get_parameter_names()
 
         i = self.cb_v.currentIndex()
         self.cb_v.clear()
-        self.cb_v.addItems(columns)
+        self.cb_v.addItems(parameters)
         self.cb_v.setCurrentIndex(i)
 
         i = self.cb_i.currentIndex()
         self.cb_i.clear()
-        self.cb_i.addItems(columns)
+        self.cb_i.addItems(parameters)
         self.cb_i.setCurrentIndex(i)
 
         i = self.cb_x.currentIndex()
         self.cb_x.clear()
-        self.cb_x.addItems(columns)
+        self.cb_x.addItems(parameters)
         self.cb_x.setCurrentIndex(i)
-
-        i = self.cb_order_x.currentIndex()
-        self.cb_order_x.clear()
-        self.cb_order_x.addItems(columns)
-        self.cb_order_x.setCurrentIndex(i)
 
         i = self.cb_y.currentIndex()
         self.cb_y.clear()
-        self.cb_y.addItems(columns)
+        self.cb_y.addItems(parameters)
         self.cb_y.setCurrentIndex(i)
-
-        i = self.cb_order_y.currentIndex()
-        self.cb_order_y.clear()
-        self.cb_order_y.addItems(columns)
-        self.cb_order_y.setCurrentIndex(i)
 
         i = self.cb_z.currentIndex()
         self.cb_z.clear()
-        self.cb_z.addItems(columns)
+        self.cb_z.addItems(parameters)
         self.cb_z.setCurrentIndex(i)
+
+        if self.dat_file is not None:
+            i = self.cb_order_x.currentIndex()
+            self.cb_order_x.clear()
+            self.cb_order_x.addItems(parameters)
+            self.cb_order_x.setCurrentIndex(i)
+
+            i = self.cb_order_y.currentIndex()
+            self.cb_order_y.clear()
+            self.cb_order_y.addItems(parameters)
+            self.cb_order_y.setCurrentIndex(i)
 
         if reset and self.first_data_file:
             self.first_data_file = False
@@ -353,7 +373,22 @@ class MainWindow(QtGui.QMainWindow):
                 for i, cb in enumerate(combo_boxes):
                     cb.setCurrentIndex(default_indices[i])
 
+    def get_parameter_names(self):
+        if self.dat_file is not None:
+            return self.dat_file.df.columns.values
+        elif self.data_set is not None:
+            # Sort in some kind of order?
+            # Make property of DataSetLite?
+            # TODO: Use full names/labels
+            return list(self.data_set.arrays)
+        else:
+            return []
+
     def write_to_ini(self, section, keys_values):
+        """ 
+        Write settings to the qtplot.ini file. If the file is not present, a
+        new one will be created.
+        """
         path = os.path.dirname(os.path.realpath(__file__))
         filepath = os.path.join(path, '../qtplot.ini')
 
@@ -372,6 +407,10 @@ class MainWindow(QtGui.QMainWindow):
             config.write(config_file)
 
     def read_from_ini(self, section, options):
+        """
+        Read settings from the qtplot.ini file. If the file is not present,
+        None will be returned.
+        """
         path = os.path.dirname(os.path.realpath(__file__))
         filepath = os.path.join(path, '../qtplot.ini')
 
@@ -395,26 +434,11 @@ class MainWindow(QtGui.QMainWindow):
 
         return None
 
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            url = str(event.mimeData().urls()[0].toString())
-
-            if url.endswith('.dat'):
-                event.accept()
-
-    def dropEvent(self, event):
-        filepath = str(event.mimeData().urls()[0].toLocalFile())
-
-        self.load_file(filepath)
-
-    def on_load_dat(self, event):
-        filename = str(QtGui.QFileDialog.getOpenFileName(directory=self.open_directory,
-                                                         filter='*.dat'))
-
-        if filename != "":
-            self.load_file(filename)
-
-    def load_file(self, filename):
+    def load_dat_file(self, filename):
+        """ 
+        Load a .dat file, it's .set file if present, update the GUI elements,
+        and fire an on_data_change event to update the plots.
+        """
         self.dat_file = DatFile(filename)
         self.settings.load_file(filename)
 
@@ -426,42 +450,47 @@ class MainWindow(QtGui.QMainWindow):
 
         self.on_data_change()
 
-    def on_refresh(self, event):
-        if self.filename:
-            self.load_file(self.filename)
+    def set_data_set(self, data_set, update_ui=False):
+        self.data_set = data_set
 
-    def on_swap_axes(self, event):
-        x, y = self.cb_x.currentIndex(), self.cb_y.currentIndex()
-        self.cb_x.setCurrentIndex(y)
-        self.cb_y.setCurrentIndex(x)
-
-        self.on_swap_order(event)
-
-    def on_swap_order(self, event):
-        x, y = self.cb_order_x.currentIndex(), self.cb_order_y.currentIndex()
-        self.cb_order_x.setCurrentIndex(y)
-        self.cb_order_y.setCurrentIndex(x)
+        if update_ui:
+            self.update_ui()
 
         self.on_data_change()
 
     def on_data_change(self):
+        """
+        This is called when anything concerning the data has changed. This can
+        consist of a new data file being loaded, a change in parameter to plot,
+        or a change/addition of an Operation.
+
+        A clean version of the Data2D is retrieved from the DatFile or DataSet,
+        all the operations are applied to the data, and it is plotted.
+        """
         x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
 
         self.export_widget.set_info(self.name, x_name, y_name, data_name)
+        
+        if self.dat_file is not None:
+            not_found = self.dat_file.has_columns([x_name, y_name, data_name, order_x, order_y])
+            if not_found is not None:
+                self.status_bar.showMessage('ERROR: Could not find column \'' +
+                    not_found + '\', try saving the correct one using \'Remember columns\'')
 
-        not_found = self.dat_file.has_columns([x_name, y_name, data_name, order_x, order_y])
-        if not_found is not None:
-            self.status_bar.showMessage('ERROR: Could not find column \'' +
-                not_found + '\', try saving the correct one using \'Remember columns\'')
+                return
 
-            return
+            try:
+                self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
+            except Exception:
+                print('ERROR: Cannot pivot data into a matrix with these columns')
 
-        try:
-            self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
-        except Exception:
-            print('ERROR: Cannot pivot data into a matrix with these columns')
+                return
+        elif self.data_set is not None:
+            x = self.data_set.arrays[x_name].array
+            y = self.data_set.arrays[y_name].array
+            z = self.data_set.arrays[data_name].array
 
-            return
+            self.data = Data2D(x, y, z)
 
         self.data = self.operations.apply_operations(self.data)
 
@@ -478,6 +507,41 @@ class MainWindow(QtGui.QMainWindow):
             self.status_bar.showMessage("Warning: Data contains NaN values")
         else:
             self.status_bar.showMessage("")
+
+    def get_axis_names(self):
+        """ Get the parameters that are currently selected to be plotted """
+        x_name = str(self.cb_x.currentText())
+        y_name = str(self.cb_y.currentText())
+        data_name = str(self.cb_z.currentText())
+        order_x = str(self.cb_order_x.currentText())
+        order_y = str(self.cb_order_y.currentText())
+
+        return x_name, y_name, data_name, order_x, order_y
+
+    def on_load_dat(self, event):
+        filename = str(QtGui.QFileDialog.getOpenFileName(directory=self.open_directory,
+                                                         filter='*.dat'))
+
+        if filename != "":
+            self.load_dat_file(filename)
+
+    def on_refresh(self, event):
+        if self.filename:
+            self.load_dat_file(self.filename)
+
+    def on_swap_axes(self, event):
+        x, y = self.cb_x.currentIndex(), self.cb_y.currentIndex()
+        self.cb_x.setCurrentIndex(y)
+        self.cb_y.setCurrentIndex(x)
+
+        self.on_swap_order(event)
+
+    def on_swap_order(self, event):
+        x, y = self.cb_order_x.currentIndex(), self.cb_order_y.currentIndex()
+        self.cb_order_x.setCurrentIndex(y)
+        self.cb_order_y.setCurrentIndex(x)
+
+        self.on_data_change()
 
     def on_save_default(self, event):
         x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
@@ -517,7 +581,7 @@ class MainWindow(QtGui.QMainWindow):
         selected_cmap = str(self.cb_cmaps.currentText())
 
         path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(path, '../colormaps', selected_cmap)
+        path = os.path.join(path, 'colormaps', selected_cmap)
 
         new_colormap = Colormap(path)
 
@@ -546,7 +610,7 @@ class MainWindow(QtGui.QMainWindow):
         if self.data is not None:
             min, max = np.nanmin(self.data.z), np.nanmax(self.data.z)
 
-            newmin = min + ((max - min) / 100.0) * value
+            newmin = min + (max - min) * (value / 99.0)
             self.le_min.setText('%.2e' % newmin)
 
             self.canvas.colormap.min = newmin
@@ -563,7 +627,10 @@ class MainWindow(QtGui.QMainWindow):
         if self.data is not None:
             min, max = np.nanmin(self.data.z), np.nanmax(self.data.z)
 
-            newmax = min + ((max - min) / 100.0) * value
+            # This stuff with the 99 is hacky, something is going on which
+            # causes the highest values not to be rendered using the colormap.
+            # The 99 makes the cm max a bit higher than the actual maximum
+            newmax = min + (max - min) * (value / 99.0)
             self.le_max.setText('%.2e' % newmax)
 
             self.canvas.colormap.max = newmax
@@ -595,14 +662,17 @@ class MainWindow(QtGui.QMainWindow):
             elif ext == '.mat':
                 io.savemat(filename, {'data': mat})
 
-    def get_axis_names(self):
-        x_name = str(self.cb_x.currentText())
-        y_name = str(self.cb_y.currentText())
-        data_name = str(self.cb_z.currentText())
-        order_x = str(self.cb_order_x.currentText())
-        order_y = str(self.cb_order_y.currentText())
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            url = str(event.mimeData().urls()[0].toString())
 
-        return x_name, y_name, data_name, order_x, order_y
+            if url.endswith('.dat'):
+                event.accept()
+
+    def dropEvent(self, event):
+        filepath = str(event.mimeData().urls()[0].toLocalFile())
+
+        self.load_dat_file(filepath)
 
     def closeEvent(self, event):
         self.linecut.close()

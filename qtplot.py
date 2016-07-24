@@ -12,6 +12,4 @@ if __name__ == '__main__':
     else:
         main = MainWindow()
 
-    print(main)
-
     sys.exit(app.exec_())
