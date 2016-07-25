@@ -5,6 +5,7 @@ import matplotlib as mpl
 import numpy as np
 import os
 import sys
+import time
 
 from PyQt4 import QtGui, QtCore
 from scipy import io
@@ -18,10 +19,10 @@ from .settings import Settings
 from .canvas import Canvas
 
 
-class MainWindow(QtGui.QMainWindow):
+class QTPlot(QtGui.QMainWindow):
     """The main window of the qtplot application."""
     def __init__(self, filename=None):
-        super(MainWindow, self).__init__(None)
+        super(QTPlot, self).__init__(None)
 
         # Set some matplotlib font settings
         mpl.rcParams['mathtext.fontset'] = 'custom'
@@ -42,6 +43,7 @@ class MainWindow(QtGui.QMainWindow):
 
         self.first_data_file = True
         self.name = None
+        self.closed = False
 
         # In case of a .dat file
         self.filename = None
@@ -203,7 +205,7 @@ class MainWindow(QtGui.QMainWindow):
         self.cb_cmaps.activated.connect(self.on_cmap_change)
 
         path = os.path.dirname(os.path.realpath(__file__))
-        
+
         path = os.path.join(path, 'colormaps')
 
         cmap_files = []
@@ -299,7 +301,7 @@ class MainWindow(QtGui.QMainWindow):
         self.linecut.show()
         self.operations.show()
         self.show()
-        
+
     def update_ui(self, reset=True):
         """
         Update the user interface, typically called on loading new data (not
@@ -384,7 +386,7 @@ class MainWindow(QtGui.QMainWindow):
             return []
 
     def write_to_ini(self, section, keys_values):
-        """ 
+        """
         Write settings to the qtplot.ini file. If the file is not present, a
         new one will be created.
         """
@@ -434,7 +436,7 @@ class MainWindow(QtGui.QMainWindow):
         return None
 
     def load_dat_file(self, filename):
-        """ 
+        """
         Load a .dat file, it's .set file if present, update the GUI elements,
         and fire an on_data_change event to update the plots.
         """
@@ -469,7 +471,7 @@ class MainWindow(QtGui.QMainWindow):
         x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
 
         self.export_widget.set_info(self.name, x_name, y_name, data_name)
-        
+
         if self.dat_file is not None:
             not_found = self.dat_file.has_columns([x_name, y_name, data_name, order_x, order_y])
             if not_found is not None:
@@ -677,3 +679,15 @@ class MainWindow(QtGui.QMainWindow):
         self.linecut.close()
         self.operations.close()
         self.settings.close()
+        self.closed = True
+
+
+def main():
+    app = QtGui.QApplication(sys.argv)
+
+    if len(sys.argv) > 1:
+        main = QTPlot(filename=sys.argv[1])
+    else:
+        main = QTPlot()
+
+    sys.exit(app.exec_())

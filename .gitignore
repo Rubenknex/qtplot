@@ -11,4 +11,5 @@ test.png
 
 # Distribution / packaging
 dist
+packaging.bat
 *.egg-info
