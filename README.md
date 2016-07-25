@@ -2,30 +2,15 @@
 
 ## Installing
 
-The dependencies are:
-- Python 2.7 or Python 3 up to 3.4 (vispy doesn't work on 3.5 yet)
-- NumPy
-- SciPy
-- matplotlib
-- pandas
-- vispy
-- pyopengl
+Qtplot is compatible with both Python 2 and 3. The recommended way of installation is to use the Anaconda Python distribution (https://store.continuum.io/cshop/anaconda/) as the installation of libraries like `numpy`, `scipy`, and `matplotlib` can otherwise be a hassle.
 
-It is recommended to install a scientific Python distribution such as Anaconda (https://store.continuum.io/cshop/anaconda/) or Canopy (https://store.enthought.com/downloads) because most scientific libraries as NumPy and SciPy depend on compiled libraries. 
+To install qtplot enter the following command:
 
-Install the packages that are not included by default:
+`pip install qtplot`
 
-`pip install vispy pyopengl` or (Anaconda) `conda install vispy pyopengl`
-
-Download this repository as a `.zip` and extract it, or clone the repository to an easy to find location. 
+Cross-platform executables will be generated in the `/Scripts` folder of your Python environment with the names `qtplot.<exe>` and `qtplot-console.<exe>` depending on whether you like to see potential error output in the console. One of these files can be associated with the `*.dat` data files to be automatically opened in qtplot.
 
 ## Usage
-The python executable must be in the PATH environment variable.
-
-qtplot can be run from the commandline with `qtplot.py <filename>` or on Windows using the `qtplot.bat` file.
-
-It is however more useful to associate `.dat` files with qtplot by selecting `qtplot.bat` in the "Open with:" menu of a `.dat` file.
-
 `.dat` files can also be opened by dragging and dropping them on the main qtplot window.
 
 ### Main window
@@ -34,9 +19,9 @@ In the main window, the `View` tab contains a fast renderer that uses OpenGL plo
 The `Export` tab is used to export colorplots and set the various properties that are needed. The plot can be exported in various file formats as well as to the clipboard for ease of usage.
 
 ### Linecut window
-Linecuts made in the main window are plotted here. There are several controls available to make analysis easier. The updating of the ranges of the axes can be toggled with `Reset on plot`. Data can be saved to a file or the clipboard with `Data to clipboard` and `Save data...`. The figure can be copied to the clipboard with `Figure to clipboard`. The coordinate of the linecut can be included in the title of the graph with `Include Z`. 
+Linecuts made in the main window are plotted here. There are several controls available to make analysis easier. The updating of the ranges of the axes can be toggled with `Reset on plot`. Data can be saved to a file or the clipboard with `Data to clipboard` and `Save data...`. The figure can be copied to the clipboard with `Figure to clipboard`. The coordinate of the linecut can be included in the title of the graph with `Include Z`.
 
-Multiple linecuts can be added by toggling `Incremental` and setting their vertical offset. 
+Multiple linecuts can be added by toggling `Incremental` and setting their vertical offset.
 
 Markers that show the coordinates at a certain point can be set using the middle mouse button. Which coordinates to include and their significance can be set.
 
