@@ -2,7 +2,7 @@
 
 ## Installing
 
-Qtplot is compatible with both Python 2 and 3. The recommended way of installation is to use the Anaconda Python distribution (https://store.continuum.io/cshop/anaconda/) as the installation of libraries like `numpy`, `scipy`, and `matplotlib` can otherwise be a hassle.
+Qtplot is compatible with both Python 2 and 3. The recommended way of installation is to use the Anaconda Python distribution (https://www.continuum.io/downloads) as the installation of libraries like `numpy`, `scipy`, and `matplotlib` can otherwise be a hassle.
 
 To install qtplot enter the following command:
 
