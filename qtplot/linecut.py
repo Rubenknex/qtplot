@@ -108,7 +108,7 @@ class Linecut(QtGui.QDialog):
         self.setLayout(layout)
 
         self.resize(500, 500)
-        self.move(720, 100)
+        self.move(630, 100)
 
     def on_reset(self):
         if self.x is not None and self.y is not None:

@@ -211,7 +211,7 @@ class Operations(QtGui.QDialog):
         self.setLayout(main_vbox)
 
         self.resize(400, 200)
-        self.move(720, 640)
+        self.move(630, 640)
 
     def update_plot(func):
         def wrapper(self):
@@ -271,7 +271,7 @@ class Operations(QtGui.QDialog):
         filename = str(QtGui.QFileDialog.getOpenFileName(self,
                                                          'Open file',
                                                          path,
-                                                         '*.operations'))
+                                                         '*.json'))
 
         if filename == '':
             return
@@ -311,7 +311,7 @@ class Operations(QtGui.QDialog):
         filename = QtGui.QFileDialog.getSaveFileName(self,
                                                      'Save file',
                                                      path,
-                                                     '.operations')
+                                                     '.json')
 
         if filename == '':
             return

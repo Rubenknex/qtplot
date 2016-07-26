@@ -13,11 +13,21 @@ class ExportWidget(QtGui.QWidget):
     def __init__(self, main):
         QtGui.QWidget.__init__(self)
 
+        # Set some matplotlib font settings
+        mpl.rcParams['mathtext.fontset'] = 'custom'
+        mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
+        mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
+        mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
+
         self.main = main
 
         self.fig, self.ax = plt.subplots()
         self.cb = None
 
+        self.init_ui()
+        self.populate_ui()
+
+    def init_ui(self):
         self.canvas = FigureCanvasQTAgg(self.fig)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
@@ -35,20 +45,22 @@ class ExportWidget(QtGui.QWidget):
         self.b_export.clicked.connect(self.on_export)
         hbox.addWidget(self.b_export)
 
-        grid = QtGui.QGridLayout()
+        grid_general = QtGui.QGridLayout()
 
-        grid.addWidget(QtGui.QLabel('Title'), 1, 1)
+        grid_general.addWidget(QtGui.QLabel('Title'), 1, 1)
         self.le_title = QtGui.QLineEdit('test')
-        grid.addWidget(self.le_title, 1, 2)
+        grid_general.addWidget(self.le_title, 1, 2)
 
-        grid.addWidget(QtGui.QLabel('DPI'), 1, 3)
+        grid_general.addWidget(QtGui.QLabel('DPI'), 1, 3)
         self.le_dpi = QtGui.QLineEdit('80')
-        grid.addWidget(self.le_dpi, 1, 4)
+        self.le_dpi.setMaximumWidth(50)
+        grid_general.addWidget(self.le_dpi, 1, 4)
 
-        grid.addWidget(QtGui.QLabel('Rasterize'), 1, 5)
+        grid_general.addWidget(QtGui.QLabel('Rasterize'), 1, 5)
         self.cb_rasterize = QtGui.QCheckBox('')
-        grid.addWidget(self.cb_rasterize, 1, 6)
+        grid_general.addWidget(self.cb_rasterize, 1, 6)
 
+        grid = QtGui.QGridLayout()
 
         grid.addWidget(QtGui.QLabel('X Label'), 2, 1)
         self.le_x_label = QtGui.QLineEdit('test')
@@ -56,10 +68,12 @@ class ExportWidget(QtGui.QWidget):
 
         grid.addWidget(QtGui.QLabel('X Format'), 2, 3)
         self.le_x_format = QtGui.QLineEdit('%.0f')
+        self.le_x_format.setMaximumWidth(50)
         grid.addWidget(self.le_x_format, 2, 4)
 
         grid.addWidget(QtGui.QLabel('X Div'), 2, 5)
         self.le_x_div = QtGui.QLineEdit('1e0')
+        self.le_x_div.setMaximumWidth(50)
         grid.addWidget(self.le_x_div, 2, 6)
 
 
@@ -69,10 +83,12 @@ class ExportWidget(QtGui.QWidget):
 
         grid.addWidget(QtGui.QLabel('Y Format'), 3, 3)
         self.le_y_format = QtGui.QLineEdit('%.0f')
+        self.le_y_format.setMaximumWidth(50)
         grid.addWidget(self.le_y_format, 3, 4)
 
         grid.addWidget(QtGui.QLabel('Y Div'), 3, 5)
         self.le_y_div = QtGui.QLineEdit('1e0')
+        self.le_y_div.setMaximumWidth(50)
         grid.addWidget(self.le_y_div, 3, 6)
 
 
@@ -82,12 +98,18 @@ class ExportWidget(QtGui.QWidget):
 
         grid.addWidget(QtGui.QLabel('Z Format'), 4, 3)
         self.le_z_format = QtGui.QLineEdit('%.0f')
+        self.le_z_format.setMaximumWidth(50)
         grid.addWidget(self.le_z_format, 4, 4)
 
         grid.addWidget(QtGui.QLabel('Z Div'), 4, 5)
         self.le_z_div = QtGui.QLineEdit('1e0')
+        self.le_z_div.setMaximumWidth(50)
         grid.addWidget(self.le_z_div, 4, 6)
 
+        groupbox_labels = QtGui.QGroupBox('Labels')
+        groupbox_labels.setLayout(grid)
+
+        grid = QtGui.QGridLayout()
 
         grid.addWidget(QtGui.QLabel('Font'), 5, 1)
         self.le_font = QtGui.QLineEdit('Vera Sans')
@@ -116,6 +138,9 @@ class ExportWidget(QtGui.QWidget):
         self.le_cb_pos = QtGui.QLineEdit('0 0 1 1')
         grid.addWidget(self.le_cb_pos, 6, 6)
 
+        groupbox_figure = QtGui.QGroupBox('Figure')
+        groupbox_figure.setLayout(grid)
+
         grid.addWidget(QtGui.QLabel('Triangulation'), 7, 1)
         self.cb_triangulation = QtGui.QCheckBox('')
         grid.addWidget(self.cb_triangulation, 7, 2)
@@ -132,20 +157,65 @@ class ExportWidget(QtGui.QWidget):
         vbox.addWidget(self.toolbar)
         vbox.addWidget(self.canvas)
         vbox.addLayout(hbox)
-        vbox.addLayout(grid)
+        vbox.addLayout(grid_general)
+        vbox.addWidget(groupbox_labels)
+        vbox.addWidget(groupbox_figure)
 
-    def set_info(self, title, x, y, z):
-        self.le_title.setText(title)
-        self.le_x_label.setText(x)
-        self.le_y_label.setText(y)
-        self.le_z_label.setText(z)
+    def populate_ui(self):
+        self.le_title.setText(self.main.profile_settings['title'])
+        self.le_dpi.setText(self.main.profile_settings['DPI'])
+        self.cb_rasterize.setChecked(bool(self.main.profile_settings['rasterize']))
+
+        self.le_x_label.setText(self.main.profile_settings['x_label'])
+        self.le_y_label.setText(self.main.profile_settings['y_label'])
+        self.le_z_label.setText(self.main.profile_settings['z_label'])
+
+        self.le_x_format.setText(self.main.profile_settings['x_format'])
+        self.le_y_format.setText(self.main.profile_settings['y_format'])
+        self.le_z_format.setText(self.main.profile_settings['z_format'])
+
+        self.le_x_div.setText(self.main.profile_settings['x_div'])
+        self.le_y_div.setText(self.main.profile_settings['y_div'])
+        self.le_z_div.setText(self.main.profile_settings['z_div'])
+
+        self.le_font.setText(self.main.profile_settings['font'])
+        self.le_width.setText(self.main.profile_settings['width'])
+        # cb orient
+
+        self.le_font_size.setText(self.main.profile_settings['font_size'])
+        self.le_height.setText(self.main.profile_settings['height'])
+        # cb pos
+
+        self.cb_triangulation.setChecked(bool(self.main.profile_settings['triangulation']))
+        self.cb_tripcolor.setChecked(bool(self.main.profile_settings['tripcolor']))
+        self.cb_linecut.setChecked(bool(self.main.profile_settings['linecut']))
 
     def keyPressEvent(self, e):
         if e.key() == QtCore.Qt.Key_Return:
             self.on_update()
 
+    def format_label(self, s):
+        conversions = {
+            '<filename>': self.main.name,
+            '<x>': self.main.x_name,
+            '<y>': self.main.y_name,
+            '<z>': self.main.data_name
+        }
+
+        for old, new in conversions.items():
+            s = s.replace(old, new)
+
+        return s
+
     def on_update(self):
         if self.main.data is not None:
+            font = {
+                'family': self.le_font.text(),
+                'size': int(self.le_font_size.text())
+            }
+
+            mpl.rc('font', **font)
+
             self.ax.clear()
 
             x, y, z = self.main.data.get_pcolor()
@@ -182,9 +252,9 @@ class ExportWidget(QtGui.QWidget):
 
             self.ax.axis('tight')
 
-            self.ax.set_title(self.le_title.text())
-            self.ax.set_xlabel(self.le_x_label.text())
-            self.ax.set_ylabel(self.le_y_label.text())
+            self.ax.set_title(self.format_label(self.le_title.text()))
+            self.ax.set_xlabel(self.format_label(self.le_x_label.text()))
+            self.ax.set_ylabel(self.format_label(self.le_y_label.text()))
 
             self.ax.xaxis.set_major_formatter(FixedOrderFormatter(
                 str(self.le_x_format.text()), float(self.le_x_div.text())))
@@ -202,7 +272,7 @@ class ExportWidget(QtGui.QWidget):
 
             self.cb.update_ticks()
 
-            self.cb.set_label(self.le_z_label.text())
+            self.cb.set_label(self.format_label(self.le_z_label.text()))
             self.cb.draw_all()
 
             if self.cb_linecut.checkState() == QtCore.Qt.Checked:

@@ -6,6 +6,7 @@ import numpy as np
 import os
 import sys
 import time
+from collections import OrderedDict
 
 from PyQt4 import QtGui, QtCore
 from scipy import io
@@ -20,26 +21,95 @@ from .canvas import Canvas
 
 
 class QTPlot(QtGui.QMainWindow):
-    """The main window of the qtplot application."""
+    """ The main window of the qtplot application. """
     def __init__(self, filename=None):
         super(QTPlot, self).__init__(None)
 
-        # Set some matplotlib font settings
-        mpl.rcParams['mathtext.fontset'] = 'custom'
-        mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
-        mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
-        mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
+        # Get the home directory of the computer user
+        self.home_dir = os.path.expanduser('~')
 
-        # Load the open and save directories from qtplot.ini
-        self.open_directory = self.read_from_ini('Settings', 'OpenDirectory')
-        if self.open_directory is None:
-            path = os.path.dirname(os.path.realpath(__file__))
-            self.open_directory = path
+        # Create a program directory if it doesn't exist yet
+        self.settings_dir = os.path.join(self.home_dir, '.qtplot')
+        if not os.path.exists(self.settings_dir):
+            os.makedirs(self.settings_dir)
 
-        self.save_directory = self.read_from_ini('Settings', 'SaveDirectory')
-        if self.save_directory is None:
-            path = os.path.dirname(os.path.realpath(__file__))
-            self.save_directory = path
+        # Create a profiles directory if it doesn't exist yet
+        self.profiles_dir = os.path.join(self.home_dir, '.qtplot/profiles')
+        if not os.path.exists(self.profiles_dir):
+            os.makedirs(self.profiles_dir)
+
+        # Create an operations directory if it doesn't exist yet
+        self.operations_dir = os.path.join(self.home_dir, '.qtplot/operations')
+        if not os.path.exists(self.operations_dir):
+            os.makedirs(self.operations_dir)
+
+        self.qtplot_ini_file = os.path.join(self.settings_dir, 'qtplot.ini')
+
+        defaults = {'default_profile': 'default.ini'}
+
+        # If a qtplot.ini exists: read it, else: save defaults
+        self.qtplot_ini = configparser.ConfigParser(defaults)
+        if os.path.exists(self.qtplot_ini_file):
+            self.qtplot_ini.read(self.qtplot_ini_file)
+        else:
+            with open(self.qtplot_ini_file, 'w') as config_file:
+                self.qtplot_ini.write(config_file)
+
+        self.profile_ini_file = os.path.join(self.profiles_dir,
+                                             self.qtplot_ini.get(
+                                                'DEFAULT',
+                                                'default_profile'))
+
+        defaults = OrderedDict((
+            ('open_directory', ''),
+            ('save_directory', ''),
+            ('x', ''),
+            ('y', ''),
+            ('z', ''),
+            ('dependent_x', ''),
+            ('dependent_y', ''),
+            ('colormap', 'seismic'),
+            ('title', '<filename>'),
+            ('DPI', '80'),
+            ('rasterize', False),
+            ('x_label', '<x>'),
+            ('y_label', '<y>'),
+            ('z_label', '<z>'),
+            ('x_format', '%%.0f'),
+            ('y_format', '%%.0f'),
+            ('z_format', '%%.0f'),
+            ('x_div', '1e0'),
+            ('y_div', '1e0'),
+            ('z_div', '1e0'),
+            ('font', 'Vera Sans'),
+            ('font_size', '12'),
+            ('width', '3'),
+            ('height', '3'),
+            ('cb_orient', 'vertical'),
+            ('cb_pos', '0 0 1 1'),
+            ('triangulation', False),
+            ('tripcolor', False),
+            ('linecut', False),
+        ))
+
+        self.profile_settings = defaults
+
+        # Read the profile ini if it exists, else, write defaults to file
+        self.profile_ini = configparser.SafeConfigParser(defaults)
+
+        if not os.path.isfile(self.profile_ini_file):
+            with open(self.profile_ini_file, 'w') as config_file:
+                self.profile_ini.write(config_file)
+
+        self.profile_ini.read(self.profile_ini_file)
+
+        for option in defaults.keys():
+            value = self.profile_ini.get('DEFAULT', option)
+
+            if value in ['False', 'True']:
+                value = self.profile_ini.getboolean('DEFAULT', option)
+
+            self.profile_settings[option] = value
 
         self.first_data_file = True
         self.name = None
@@ -108,28 +178,31 @@ class QTPlot(QtGui.QMainWindow):
         r_hbox = QtGui.QHBoxLayout()
 
         lbl_sub = QtGui.QLabel('Sub series R:')
+        lbl_sub.setMaximumWidth(70)
         r_hbox.addWidget(lbl_sub)
 
         lbl_v = QtGui.QLabel('V:')
-        lbl_v.setMaximumWidth(20)
+        lbl_v.setMaximumWidth(10)
         r_hbox.addWidget(lbl_v)
 
         self.cb_v = QtGui.QComboBox(self)
+        self.cb_v.setMaxVisibleItems(25)
         r_hbox.addWidget(self.cb_v)
 
         lbl_i = QtGui.QLabel('I:')
-        lbl_i.setMaximumWidth(20)
+        lbl_i.setMaximumWidth(10)
         r_hbox.addWidget(lbl_i)
 
         self.cb_i = QtGui.QComboBox(self)
+        self.cb_i.setMaxVisibleItems(25)
         r_hbox.addWidget(self.cb_i)
 
         lbl_r = QtGui.QLabel('R:')
-        lbl_r.setMaximumWidth(20)
+        lbl_r.setMaximumWidth(10)
         r_hbox.addWidget(lbl_r)
 
         self.le_r = QtGui.QLineEdit(self)
-        self.le_r.setMaximumWidth(100)
+        self.le_r.setMaximumWidth(50)
         self.le_r.returnPressed.connect(self.on_sub_series_r)
         r_hbox.addWidget(self.le_r)
 
@@ -139,22 +212,24 @@ class QTPlot(QtGui.QMainWindow):
         r_hbox.addWidget(self.b_ok)
 
         # Selecting columns and orders
-        #groupbox = QtGui.QGroupBox('Data')
         grid = QtGui.QGridLayout()
-        #groupbox.setLayout(grid)
 
         lbl_x = QtGui.QLabel("X:", self)
+        lbl_x.setMaximumWidth(10)
         grid.addWidget(lbl_x, 1, 1)
 
         self.cb_x = QtGui.QComboBox(self)
         self.cb_x.activated.connect(self.on_data_change)
+        self.cb_x.setMaxVisibleItems(25)
         grid.addWidget(self.cb_x, 1, 2)
 
         lbl_order_x = QtGui.QLabel('Dependent variable X: ', self)
+        lbl_order_x.setMaximumWidth(110)
         grid.addWidget(lbl_order_x, 1, 3)
 
         self.cb_order_x = QtGui.QComboBox(self)
         self.cb_order_x.activated.connect(self.on_data_change)
+        self.cb_order_x.setMaxVisibleItems(25)
         grid.addWidget(self.cb_order_x, 1, 4)
 
         lbl_y = QtGui.QLabel("Y:", self)
@@ -162,6 +237,7 @@ class QTPlot(QtGui.QMainWindow):
 
         self.cb_y = QtGui.QComboBox(self)
         self.cb_y.activated.connect(self.on_data_change)
+        self.cb_y.setMaxVisibleItems(25)
         grid.addWidget(self.cb_y, 2, 2)
 
         lbl_order_y = QtGui.QLabel('Dependent variable Y:', self)
@@ -169,6 +245,7 @@ class QTPlot(QtGui.QMainWindow):
 
         self.cb_order_y = QtGui.QComboBox(self)
         self.cb_order_y.activated.connect(self.on_data_change)
+        self.cb_order_y.setMaxVisibleItems(25)
         grid.addWidget(self.cb_order_y, 2, 4)
 
         lbl_d = QtGui.QLabel("Data:", self)
@@ -176,12 +253,10 @@ class QTPlot(QtGui.QMainWindow):
 
         self.cb_z = QtGui.QComboBox(self)
         self.cb_z.activated.connect(self.on_data_change)
+        self.cb_z.setMaxVisibleItems(25)
         grid.addWidget(self.cb_z, 3, 2)
 
-        #self.cb_save_default = QtGui.QCheckBox('Remember columns')
-        #grid.addWidget(self.cb_save_default, 3, 3)
-
-        self.b_save_default = QtGui.QPushButton('Set as defaults')
+        self.b_save_default = QtGui.QPushButton('Save to profile')
         self.b_save_default.clicked.connect(self.on_save_default)
         grid.addWidget(self.b_save_default, 3, 4)
 
@@ -293,7 +368,7 @@ class QTPlot(QtGui.QMainWindow):
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
 
-        self.resize(600, 700)
+        self.resize(200, 740)
         self.move(100, 100)
 
         self.setAcceptDrops(True)
@@ -354,25 +429,71 @@ class QTPlot(QtGui.QMainWindow):
         if reset and self.first_data_file:
             self.first_data_file = False
 
-            combo_boxes = [self.cb_x, self.cb_order_x, self.cb_y, self.cb_order_y, self.cb_z]
-            names = ['X', 'X Order', 'Y', 'Y Order', 'Data']
+            combo_boxes = [self.cb_x, self.cb_order_x, self.cb_y,
+                           self.cb_order_y, self.cb_z]
+            names = ['x', 'dependent_x', 'y', 'dependent_y', 'z']
             default_indices = [0, 0, 1, 1, 3]
 
-            result = self.read_from_ini('Settings', names)
+            for i, cb in enumerate(combo_boxes):
+                parameter = self.profile_settings[names[i]]
+                index = cb.findText(parameter)
 
-            if result is not None:
-                # Check if the names in the ini file are present in
-                # the loaded data otherwise, use the default index
-                for i, cb in enumerate(combo_boxes):
-                    index = cb.findText(result[i])
+                cb.setCurrentIndex(index)
 
-                    if index == -1:
-                        cb.setCurrentIndex(default_indices[i])
-                    else:
-                        cb.setCurrentIndex(index)
-            else:
-                for i, cb in enumerate(combo_boxes):
+                if index == -1:
                     cb.setCurrentIndex(default_indices[i])
+
+    def save_default_profile(self, file):
+        self.qtplot_ini.set('DEFAULT', 'default_profile', file)
+
+        with open(self.qtplot_ini_file, 'w') as config_file:
+            self.qtplot_ini.write(config_file)
+
+    def save_state(self, file):
+        state = OrderedDict((
+            ('open_directory', ''),
+            ('save_directory', ''),
+            ('x', str(self.cb_x.currentText())),
+            ('y', str(self.cb_y.currentText())),
+            ('z', str(self.cb_z.currentText())),
+            ('dependent_x', str(self.cb_order_x.currentText())),
+            ('dependent_y', str(self.cb_order_y.currentText())),
+            ('colormap', str(self.cb_cmaps.currentText())),
+            ('title', self.name),
+            ('DPI', str(self.export_widget.le_dpi.text())),
+            ('rasterize', self.export_widget.cb_rasterize.isChecked()),
+            ('x_label', str(self.export_widget.le_x_label.text())),
+            ('y_label', str(self.export_widget.le_y_label.text())),
+            ('z_label', str(self.export_widget.le_z_label.text())),
+            ('x_format', str(self.export_widget.le_x_format.text())),
+            ('y_format', str(self.export_widget.le_y_format.text())),
+            ('z_format', str(self.export_widget.le_z_format.text())),
+            ('x_div', str(self.export_widget.le_x_div.text())),
+            ('y_div', str(self.export_widget.le_y_div.text())),
+            ('z_div', str(self.export_widget.le_z_div.text())),
+            ('font', str(self.export_widget.le_font.text())),
+            ('font_size', str(self.export_widget.le_font_size.text())),
+            ('width', str(self.export_widget.le_width.text())),
+            ('height', str(self.export_widget.le_height.text())),
+            ('cb_orient', ''),
+            ('cb_pos', ''),
+            ('triangulation', self.export_widget.cb_triangulation.isChecked()),
+            ('tripcolor', self.export_widget.cb_tripcolor.isChecked()),
+            ('linecut', self.export_widget.cb_linecut.isChecked()),
+        ))
+
+        for option, value in state.items():
+            # ConfigParser doesn't like single %
+            value = str(value).replace('%', '%%')
+            self.profile_ini.set('DEFAULT', option, value)
+
+        path = os.path.join(self.profiles_dir, file)
+
+        with open(path, 'w') as config_file:
+            self.profile_ini.write(config_file)
+
+    def set_state(self, state):
+        pass
 
     def get_parameter_names(self):
         if self.dat_file is not None:
@@ -384,56 +505,6 @@ class QTPlot(QtGui.QMainWindow):
             return list(self.data_set.arrays)
         else:
             return []
-
-    def write_to_ini(self, section, keys_values):
-        """
-        Write settings to the qtplot.ini file. If the file is not present, a
-        new one will be created.
-        """
-        path = os.path.dirname(os.path.realpath(__file__))
-        filepath = os.path.join(path, '../qtplot.ini')
-
-        config = configparser.ConfigParser()
-
-        if os.path.isfile(filepath):
-            config.read(filepath)
-
-        if not config.has_section(section):
-            config.add_section(section)
-
-        for key, value in keys_values.items():
-            config.set(section, key, value)
-
-        with open(filepath, 'w') as config_file:
-            config.write(config_file)
-
-    def read_from_ini(self, section, options):
-        """
-        Read settings from the qtplot.ini file. If the file is not present,
-        None will be returned.
-        """
-        path = os.path.dirname(os.path.realpath(__file__))
-        filepath = os.path.join(path, '../qtplot.ini')
-
-        config = configparser.ConfigParser()
-
-        if os.path.isfile(filepath):
-            config.read(filepath)
-
-            if type(options) == str:
-                options = [options]
-
-            has_options = [config.has_option(section, option) for option in options]
-
-            if False not in has_options:
-                values = [config.get(section, option) for option in options]
-
-                if len(values) == 1:
-                    return values[0]
-                else:
-                    return values
-
-        return None
 
     def load_dat_file(self, filename):
         """
@@ -470,7 +541,7 @@ class QTPlot(QtGui.QMainWindow):
         """
         x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
 
-        self.export_widget.set_info(self.name, x_name, y_name, data_name)
+        #self.export_widget.set_info(self.name, x_name, y_name, data_name)
 
         if self.dat_file is not None:
             not_found = self.dat_file.has_columns([x_name, y_name, data_name, order_x, order_y])
@@ -511,16 +582,17 @@ class QTPlot(QtGui.QMainWindow):
 
     def get_axis_names(self):
         """ Get the parameters that are currently selected to be plotted """
-        x_name = str(self.cb_x.currentText())
-        y_name = str(self.cb_y.currentText())
-        data_name = str(self.cb_z.currentText())
-        order_x = str(self.cb_order_x.currentText())
-        order_y = str(self.cb_order_y.currentText())
+        self.x_name = str(self.cb_x.currentText())
+        self.y_name = str(self.cb_y.currentText())
+        self.data_name = str(self.cb_z.currentText())
+        self.order_x = str(self.cb_order_x.currentText())
+        self.order_y = str(self.cb_order_y.currentText())
 
-        return x_name, y_name, data_name, order_x, order_y
+        return self.x_name, self.y_name, self.data_name, self.order_x, self.order_y
 
     def on_load_dat(self, event):
-        filename = str(QtGui.QFileDialog.getOpenFileName(directory=self.open_directory,
+        open_directory = self.profile_settings['open_directory']
+        filename = str(QtGui.QFileDialog.getOpenFileName(directory=open_directory,
                                                          filter='*.dat'))
 
         if filename != "":
@@ -646,9 +718,11 @@ class QTPlot(QtGui.QMainWindow):
             self.on_max_changed(100)
 
     def on_save_matrix(self):
+        save_directory = self.profile_settings['save_directory']
+
         filename = QtGui.QFileDialog.getSaveFileName(self,
                                                      caption='Save file',
-                                                     directory=self.save_directory,
+                                                     directory=save_directory,
                                                      filter='NumPy matrix format (*.npy);;MATLAB matrix format (*.mat)')
         filename = str(filename)
 
@@ -676,6 +750,15 @@ class QTPlot(QtGui.QMainWindow):
         self.load_dat_file(filepath)
 
     def closeEvent(self, event):
+        # Save the qtplot.ini
+        """
+        with open(self.qtplot_ini_file, 'w') as config_file:
+            self.qtplot_ini.write(config_file)
+
+        with open(self.profile_ini_file, 'w') as config_file:
+            self.profile_ini.write(config_file)
+        """
+
         self.linecut.close()
         self.operations.close()
         self.settings.close()
