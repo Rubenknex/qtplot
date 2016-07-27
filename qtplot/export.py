@@ -25,7 +25,6 @@ class ExportWidget(QtGui.QWidget):
         self.cb = None
 
         self.init_ui()
-        self.populate_ui()
 
     def init_ui(self):
         self.canvas = FigureCanvasQTAgg(self.fig)

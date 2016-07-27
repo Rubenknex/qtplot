@@ -9,7 +9,7 @@ class Settings(QtGui.QDialog):
         self.main = parent
 
         self.create_ui()
-        self.populate_ui()
+        #self.populate_ui()
 
     def create_ui(self):
         self.setWindowTitle("Settings")
@@ -67,14 +67,14 @@ class Settings(QtGui.QDialog):
         #self.b_add.setMaximumWidth(50)
         hbl_list.addWidget(self.b_save_state)
 
-        """
+        #"""
         # Open directory
         hbox = QtGui.QHBoxLayout()
         hbox.addWidget(QtGui.QLabel('Open directory:'))
 
         self.le_open_directory = QtGui.QLineEdit(self)
         self.le_open_directory.setEnabled(False)
-        self.le_open_directory.setText(self.main.open_directory)
+        #self.le_open_directory.setText(self.main.open_directory)
         hbox.addWidget(self.le_open_directory)
 
         self.b_browse = QtGui.QPushButton('Browse...')
@@ -88,14 +88,14 @@ class Settings(QtGui.QDialog):
 
         self.le_save_directory = QtGui.QLineEdit(self)
         self.le_save_directory.setEnabled(False)
-        self.le_save_directory.setText(self.main.save_directory)
+        #self.le_save_directory.setText(self.main.save_directory)
         hbox.addWidget(self.le_save_directory)
 
         self.b_browse = QtGui.QPushButton('Browse...')
         self.b_browse.clicked.connect(self.on_save_browse)
         hbox.addWidget(self.b_browse)
         vbl_profile.addLayout(hbox)
-        """
+        #"""
 
         # QTLab .set file tree view
         self.tree = QtGui.QTreeWidget(self)
@@ -128,8 +128,12 @@ class Settings(QtGui.QDialog):
 
         # Set selected profile
         self.lw_profiles.addItems(profile_files)
-        a = self.lw_profiles.findItems(current_profile, QtCore.Qt.MatchExactly)[0]
-        self.lw_profiles.setCurrentItem(a)
+        a = self.lw_profiles.findItems(current_profile, QtCore.Qt.MatchExactly)
+        if len(a) > 0:
+            self.lw_profiles.setCurrentItem(a[0])
+
+        self.le_open_directory.setText(self.main.profile_settings['open_directory'])
+        self.le_save_directory.setText(self.main.profile_settings['save_directory'])
 
     def load_file(self, filename):
         path, ext = os.path.splitext(filename)
@@ -177,8 +181,7 @@ class Settings(QtGui.QDialog):
         if directory != '':
             self.le_open_directory.setText(directory)
 
-            self.main.open_directory = directory
-            self.main.write_to_ini('Settings', {'OpenDirectory': directory})
+            self.main.profile_settings['open_directory'] = directory
 
     def on_save_browse(self, event):
         directory = str(QtGui.QFileDialog.getExistingDirectory(self, "Select Directory"))
@@ -186,8 +189,7 @@ class Settings(QtGui.QDialog):
         if directory != '':
             self.le_save_directory.setText(directory)
 
-            self.main.save_directory = directory
-            self.main.write_to_ini('Settings', {'SaveDirectory': directory})
+            self.main.profile_settings['save_directory'] = directory
 
     def on_default_profile_changed(self, event):
         file = str(self.cb_default_profile.currentText())
@@ -195,7 +197,11 @@ class Settings(QtGui.QDialog):
         self.main.save_default_profile(file)
 
     def on_profile_changed(self, event):
-        pass
+        filename = self.lw_profiles.currentItem().text()
+
+        self.main.open_state(filename)
+
+        #self.main.profile_ini_file = os.path.join(self.main.profiles_dir, file)
 
     def on_add(self, event):
         name = str(self.le_profile.text()) + '.ini'

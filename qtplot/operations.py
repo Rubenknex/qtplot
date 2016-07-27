@@ -100,7 +100,7 @@ class Operation(QtGui.QWidget):
 
     def set_parameters(self, params):
         """Set all the parameters with a dict containing them."""
-        for name, value in params.iteritems():
+        for name, value in params.items():
             self.set_parameter(name, value)
 
 
@@ -117,34 +117,60 @@ class Operations(QtGui.QDialog):
         self.setWindowTitle("Operations")
 
         self.items = {
-            'abs':          [Data2D.abs],
-            'autoflip':     [Data2D.autoflip],
-            'crop':         [Data2D.crop,         [('left', 0), ('right', -1), ('bottom', 0), ('top', -1)]],
-            'dderiv':       [Data2D.dderiv,       [('theta', 0), ('method', ['midpoint', '2nd order central diff'])]],
-            'equalize':     [Data2D.equalize],
-            'even odd':     [Data2D.even_odd,     [('even', True)]],
-            'flip':         [Data2D.flip,         [('x_flip', False), ('y_flip', False)]],
-            'gradmag':      [Data2D.gradmag,      [('method', ['midpoint', '2nd order central diff'])]],
-            'highpass':     [Data2D.highpass,     [('x_width', 3.0), ('y_height', 3.0), ('method', ['gaussian', 'lorentzian', 'exponential', 'thermal'])]],
-            'hist2d':       [Data2D.hist2d,       [('min', 0.0), ('max', 0.0), ('bins', 0)]],
-            'interp grid':  [Data2D.interp_grid,  [('width', 100), ('height', 100)]],
-            'interp x':     [Data2D.interp_x,     [('points', 100)]],
-            'interp y':     [Data2D.interp_y,     [('points', 100)]],
-            'log':          [Data2D.log,          [('subtract', False), ('min', 0.0001)]],
-            'lowpass':      [Data2D.lowpass,      [('x_width', 3.0), ('y_height', 3.0), ('method', ['gaussian', 'lorentzian', 'exponential', 'thermal'])]],
-            'negate':       [Data2D.negate],
-            'norm y':       [Data2D.norm_columns],
-            'norm x':       [Data2D.norm_rows],
-            'offset':       [Data2D.offset,       [('offset', 0.0)]],
-            'offset axes':  [Data2D.offset_axes,  [('x_offset', 0.0), ('y_offset', 0.0)]],
-            'power':        [Data2D.power,        [('power', 1.0)]],
-            'scale axes':   [Data2D.scale_axes,   [('x_scale', 1.0), ('y_scale', 1.0)]],
-            'scale data':   [Data2D.scale_data,   [('factor', 1.0)]],
-            'sub linecut':  [Data2D.sub_linecut,  [('type', ['horizontal', 'vertical']), ('position', float('nan'))]],
+            'abs': [Data2D.abs],
+            'autoflip': [Data2D.autoflip],
+            'crop': [Data2D.crop, [('left', 0),
+                                   ('right', -1),
+                                   ('bottom', 0),
+                                   ('top', -1)]],
+            'dderiv': [Data2D.dderiv, [('theta', 0),
+                                       ('method', [
+                                            'midpoint',
+                                            '2nd order central diff'])]],
+            'equalize': [Data2D.equalize],
+            'even odd': [Data2D.even_odd, [('even', True)]],
+            'flip': [Data2D.flip, [('x_flip', False), ('y_flip', False)]],
+            'gradmag': [Data2D.gradmag, [('method', [
+                                            'midpoint',
+                                            '2nd order central diff'])]],
+            'highpass': [Data2D.highpass, [('x_width', 3.0),
+                                           ('y_height', 3.0), ('method', [
+                                                'gaussian',
+                                                'lorentzian',
+                                                'exponential',
+                                                'thermal'])]],
+            'hist2d': [Data2D.hist2d, [('min', 0.0),
+                                       ('max', 0.0),
+                                       ('bins', 0)]],
+            'interp grid': [Data2D.interp_grid, [('width', 100),
+                                                 ('height', 100)]],
+            'interp x': [Data2D.interp_x, [('points', 100)]],
+            'interp y': [Data2D.interp_y, [('points', 100)]],
+            'log': [Data2D.log, [('subtract', False), ('min', 0.0001)]],
+            'lowpass': [Data2D.lowpass, [('x_width', 3.0),
+                                         ('y_height', 3.0),
+                                         ('method', ['gaussian',
+                                                     'lorentzian',
+                                                     'exponential',
+                                                     'thermal'])]],
+            'negate': [Data2D.negate],
+            'norm y': [Data2D.norm_columns],
+            'norm x': [Data2D.norm_rows],
+            'offset': [Data2D.offset, [('offset', 0.0)]],
+            'offset axes': [Data2D.offset_axes, [('x_offset', 0.0),
+                                                 ('y_offset', 0.0)]],
+            'power': [Data2D.power, [('power', 1.0)]],
+            'scale axes': [Data2D.scale_axes, [('x_scale', 1.0),
+                                               ('y_scale', 1.0)]],
+            'scale data': [Data2D.scale_data, [('factor', 1.0)]],
+            'sub linecut': [Data2D.sub_linecut, [('type', ['horizontal', 'vertical']), ('position', float('nan'))]],
             'sub linecut avg': [Data2D.sub_linecut_avg, [('type', ['horizontal', 'vertical']), ('position', float('nan')), ('size', 3)]],
-            'sub plane':    [Data2D.sub_plane,    [('x_slope', 0.0), ('y_slope', 0.0)]],
-            'xderiv':       [Data2D.xderiv,       [('method', ['midpoint', '2nd order central diff'])]],
-            'yderiv':       [Data2D.yderiv,       [('method', ['midpoint', '2nd order central diff'])]],
+            'sub plane': [Data2D.sub_plane, [('x_slope', 0.0),
+                                             ('y_slope', 0.0)]],
+            'xderiv': [Data2D.xderiv, [('method', ['midpoint',
+                                                   '2nd order central diff'])]],
+            'yderiv': [Data2D.yderiv, [('method', ['midpoint',
+                                                   '2nd order central diff'])]],
         }
 
         self.options = QtGui.QListWidget(self)
@@ -213,6 +239,94 @@ class Operations(QtGui.QDialog):
         self.resize(400, 200)
         self.move(630, 640)
 
+    def load(self, filename):
+        self.queue.clear()
+
+        with open(filename) as f:
+            operations = json.load(f)
+
+        for i in sorted(operations):
+            operation = operations[i]
+
+            enabled = operation['enabled']
+
+            # The key that doesn't have the value 'enabled' is the name
+            for key in operation:
+                if key != 'enabled':
+                    name = key
+
+            item = QtGui.QListWidgetItem(name)
+            item.setCheckState(QtCore.Qt.Checked if enabled else QtCore.Qt.Unchecked)
+            op = Operation(name, self.main, *self.items[name])
+            op.set_parameters(operation[name])
+
+            if six.PY2:
+                item.setData(QtCore.Qt.UserRole, QtCore.QVariant(op))
+            elif six.PY3:
+                item.setData(QtCore.Qt.UserRole, op)
+
+            self.stack.addWidget(op)
+
+            self.queue.addItem(item)
+            self.queue.setCurrentItem(item)
+
+    def save(self, filename):
+        operations = {}
+        for i in range(self.queue.count()):
+                if six.PY2:
+                    op = self.queue.item(i).data(QtCore.Qt.UserRole).toPyObject()
+                elif six.PY3:
+                    op = self.queue.item(i).data(QtCore.Qt.UserRole)
+
+                name, params = op.get_parameters()
+                enabled = self.queue.item(i).checkState() == QtCore.Qt.Checked
+
+                operations[i] = {'enabled': enabled}
+                operations[i][name] = params
+
+        with open(filename, 'w') as f:
+            f.write(json.dumps(operations, indent=4))
+
+    def apply_operations(self, data):
+        copy = data.copy()
+
+        for i in range(self.queue.count()):
+            item = self.queue.item(i)
+
+            if item.checkState() == QtCore.Qt.Unchecked:
+                continue
+
+            if six.PY2:
+                op = item.data(QtCore.Qt.UserRole).toPyObject()
+            elif six.PY3:
+                op = item.data(QtCore.Qt.UserRole)
+
+            if op.name == 'hist2d':
+                if op.get_parameter('bins') == 0:
+                    bins = np.round(np.sqrt(copy.z.shape[0]))
+                    op.set_parameter('bins', int(bins))
+
+                if op.get_parameter('min') == 0:
+                    min, max = np.nanmin(copy.z), np.nanmax(copy.z)
+                    op.set_parameter('min', min)
+                    op.set_parameter('max', max)
+            elif op.name == 'sub linecut' or op.name == 'sub linecut avg':
+                if (self.main.canvas.line_coord is not None and
+                   self.main.canvas.line_type is not None):
+                    if math.isnan(op.get_parameter('position')):
+                        op.set_parameter('type', self.main.canvas.line_type)
+                        op.set_parameter('position', self.main.canvas.line_coord)
+
+            kwargs = op.get_parameters()[1]
+
+            op.func(copy, **kwargs)
+
+        return copy
+
+    def show_window(self):
+        self.show()
+        self.raise_()
+
     def update_plot(func):
         def wrapper(self):
             func(self)
@@ -267,7 +381,7 @@ class Operations(QtGui.QDialog):
 
     @update_plot
     def on_load(self):
-        path = os.path.dirname(os.path.realpath(__file__))
+        path = self.main.operations_dir
         filename = str(QtGui.QFileDialog.getOpenFileName(self,
                                                          'Open file',
                                                          path,
@@ -276,38 +390,10 @@ class Operations(QtGui.QDialog):
         if filename == '':
             return
 
-        self.queue.clear()
-
-        with open(filename) as f:
-            operations = json.load(f)
-
-        for i in sorted(operations):
-            operation = operations[i]
-
-            enabled = operation['enabled']
-
-            # The key that doesn't have the value 'enabled' is the name
-            for key in operation:
-                if key != 'enabled':
-                    name = key
-
-            item = QtGui.QListWidgetItem(name)
-            item.setCheckState(QtCore.Qt.Checked if enabled else QtCore.Qt.Unchecked)
-            op = Operation(name, self.main, *self.items[name])
-            op.set_parameters(operation[name])
-
-            if six.PY2:
-                item.setData(QtCore.Qt.UserRole, QtCore.QVariant(op))
-            elif six.PY3:
-                item.setData(QtCore.Qt.UserRole, op)
-
-            self.stack.addWidget(op)
-
-            self.queue.addItem(item)
-            self.queue.setCurrentItem(item)
+        self.load(filename)
 
     def on_save(self):
-        path = os.path.dirname(os.path.realpath(__file__))
+        path = self.main.operations_dir
         filename = QtGui.QFileDialog.getSaveFileName(self,
                                                      'Save file',
                                                      path,
@@ -316,25 +402,7 @@ class Operations(QtGui.QDialog):
         if filename == '':
             return
 
-        operations = {}
-        for i in range(self.queue.count()):
-                if six.PY2:
-                    op = self.queue.item(i).data(QtCore.Qt.UserRole).toPyObject()
-                elif six.PY3:
-                    op = self.queue.item(i).data(QtCore.Qt.UserRole)
-
-                name, params = op.get_parameters()
-                enabled = self.queue.item(i).checkState() == QtCore.Qt.Checked
-
-                operations[i] = {'enabled': enabled}
-                operations[i][name] = params
-
-        with open(filename, 'w') as f:
-            f.write(json.dumps(operations, indent=4))
-
-    def keyPressEvent(self, event):
-        if event.key() == QtCore.Qt.Key_Return:
-            self.main.on_data_change()
+        self.save(filename)
 
     def on_select_option(self, current, previous):
         if current:
@@ -354,45 +422,9 @@ class Operations(QtGui.QDialog):
     def on_item_clicked(self, item):
         self.main.on_data_change()
 
-    def apply_operations(self, data):
-        copy = data.copy()
-
-        for i in range(self.queue.count()):
-            item = self.queue.item(i)
-
-            if item.checkState() == QtCore.Qt.Unchecked:
-                continue
-
-            if six.PY2:
-                op = item.data(QtCore.Qt.UserRole).toPyObject()
-            elif six.PY3:
-                op = item.data(QtCore.Qt.UserRole)
-
-            if op.name == 'hist2d':
-                if op.get_parameter('bins') == 0:
-                    bins = np.round(np.sqrt(copy.z.shape[0]))
-                    op.set_parameter('bins', int(bins))
-
-                if op.get_parameter('min') == 0:
-                    min, max = np.nanmin(copy.z), np.nanmax(copy.z)
-                    op.set_parameter('min', min)
-                    op.set_parameter('max', max)
-            elif op.name == 'sub linecut' or op.name == 'sub linecut avg':
-                if (self.main.canvas.line_coord is not None and
-                   self.main.canvas.line_type is not None):
-                    if math.isnan(op.get_parameter('position')):
-                        op.set_parameter('type', self.main.canvas.line_type)
-                        op.set_parameter('position', self.main.canvas.line_coord)
-
-            kwargs = op.get_parameters()[1]
-
-            op.func(copy, **kwargs)
-
-        return copy
-
-    def show_window(self):
-        self.show()
-        self.raise_()
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Return:
+            self.main.on_data_change()
 
     def closeEvent(self, event):
         self.hide()

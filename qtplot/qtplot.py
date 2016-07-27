@@ -19,48 +19,11 @@ from .operations import Operations
 from .settings import Settings
 from .canvas import Canvas
 
-
-class QTPlot(QtGui.QMainWindow):
-    """ The main window of the qtplot application. """
-    def __init__(self, filename=None):
-        super(QTPlot, self).__init__(None)
-
-        # Get the home directory of the computer user
-        self.home_dir = os.path.expanduser('~')
-
-        # Create a program directory if it doesn't exist yet
-        self.settings_dir = os.path.join(self.home_dir, '.qtplot')
-        if not os.path.exists(self.settings_dir):
-            os.makedirs(self.settings_dir)
-
-        # Create a profiles directory if it doesn't exist yet
-        self.profiles_dir = os.path.join(self.home_dir, '.qtplot/profiles')
-        if not os.path.exists(self.profiles_dir):
-            os.makedirs(self.profiles_dir)
-
-        # Create an operations directory if it doesn't exist yet
-        self.operations_dir = os.path.join(self.home_dir, '.qtplot/operations')
-        if not os.path.exists(self.operations_dir):
-            os.makedirs(self.operations_dir)
-
-        self.qtplot_ini_file = os.path.join(self.settings_dir, 'qtplot.ini')
-
-        defaults = {'default_profile': 'default.ini'}
-
-        # If a qtplot.ini exists: read it, else: save defaults
-        self.qtplot_ini = configparser.ConfigParser(defaults)
-        if os.path.exists(self.qtplot_ini_file):
-            self.qtplot_ini.read(self.qtplot_ini_file)
-        else:
-            with open(self.qtplot_ini_file, 'w') as config_file:
-                self.qtplot_ini.write(config_file)
-
-        self.profile_ini_file = os.path.join(self.profiles_dir,
-                                             self.qtplot_ini.get(
-                                                'DEFAULT',
-                                                'default_profile'))
-
-        defaults = OrderedDict((
+profile_defaults = OrderedDict((
+            ('operations', ''),
+            ('sub_series_V', ''),
+            ('sub_series_I', ''),
+            ('sub_series_R', ''),
             ('open_directory', ''),
             ('save_directory', ''),
             ('x', ''),
@@ -68,7 +31,7 @@ class QTPlot(QtGui.QMainWindow):
             ('z', ''),
             ('dependent_x', ''),
             ('dependent_y', ''),
-            ('colormap', 'seismic'),
+            ('colormap', 'transform\\Seismic.npy'),
             ('title', '<filename>'),
             ('DPI', '80'),
             ('rasterize', False),
@@ -92,24 +55,11 @@ class QTPlot(QtGui.QMainWindow):
             ('linecut', False),
         ))
 
-        self.profile_settings = defaults
 
-        # Read the profile ini if it exists, else, write defaults to file
-        self.profile_ini = configparser.SafeConfigParser(defaults)
-
-        if not os.path.isfile(self.profile_ini_file):
-            with open(self.profile_ini_file, 'w') as config_file:
-                self.profile_ini.write(config_file)
-
-        self.profile_ini.read(self.profile_ini_file)
-
-        for option in defaults.keys():
-            value = self.profile_ini.get('DEFAULT', option)
-
-            if value in ['False', 'True']:
-                value = self.profile_ini.getboolean('DEFAULT', option)
-
-            self.profile_settings[option] = value
+class QTPlot(QtGui.QMainWindow):
+    """ The main window of the qtplot application. """
+    def __init__(self, filename=None):
+        super(QTPlot, self).__init__(None)
 
         self.first_data_file = True
         self.name = None
@@ -134,6 +84,50 @@ class QTPlot(QtGui.QMainWindow):
 
         if filename is not None:
             self.load_dat_file(filename)
+
+        # Get the home directory of the computer user
+        self.home_dir = os.path.expanduser('~')
+
+        self.settings_dir = os.path.join(self.home_dir, '.qtplot')
+        self.profiles_dir = os.path.join(self.home_dir, '.qtplot', 'profiles')
+        self.operations_dir = os.path.join(self.home_dir, '.qtplot', 'operations')
+
+        # Create the program directories if they don't exist yet
+        for dir in [self.settings_dir, self.profiles_dir, self.operations_dir]:
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+
+        self.qtplot_ini_file = os.path.join(self.settings_dir, 'qtplot.ini')
+
+        defaults = {'default_profile': 'default.ini'}
+        self.qtplot_ini = configparser.SafeConfigParser(defaults)
+        self.profile_ini = configparser.SafeConfigParser(profile_defaults)
+
+        # If a qtplot.ini exists: read it to extract the default profile
+        # Else: save the default qtplot.ini
+        if os.path.exists(self.qtplot_ini_file):
+            self.qtplot_ini.read(self.qtplot_ini_file)
+        else:
+            with open(self.qtplot_ini_file, 'w') as config_file:
+                self.qtplot_ini.write(config_file)
+
+        self.profile_ini_file = os.path.join(self.profiles_dir,
+                                             self.qtplot_ini.get(
+                                                'DEFAULT',
+                                                'default_profile'))
+
+        # if the default profile ini doesn't exist, write defaults to a file
+        if not os.path.isfile(self.profile_ini_file):
+            #self.profile_ini_file = os.path.join(self.profiles_dir,
+            #                                     'default.ini')
+
+            with open(self.profile_ini_file, 'w') as config_file:
+                self.profile_ini.write(config_file)
+
+        self.profile_settings = defaults
+        self.open_state(self.profile_ini_file)
+
+        self.settings.populate_ui()
 
     def init_ui(self):
         self.setWindowTitle('qtplot')
@@ -377,7 +371,7 @@ class QTPlot(QtGui.QMainWindow):
         self.operations.show()
         self.show()
 
-    def update_ui(self, reset=True):
+    def update_ui(self, reset=True, opening_state=False):
         """
         Update the user interface, typically called on loading new data (not
         on updating data).
@@ -399,6 +393,10 @@ class QTPlot(QtGui.QMainWindow):
         self.cb_i.clear()
         self.cb_i.addItems(parameters)
         self.cb_i.setCurrentIndex(i)
+
+        if opening_state:
+            R = self.profile_settings['sub_series_R']
+            self.le_r.setText(R)
 
         i = self.cb_x.currentIndex()
         self.cb_x.clear()
@@ -426,16 +424,18 @@ class QTPlot(QtGui.QMainWindow):
             self.cb_order_y.addItems(parameters)
             self.cb_order_y.setCurrentIndex(i)
 
+        # Set the selected parameters
         if reset and self.first_data_file:
-            self.first_data_file = False
+            #self.first_data_file = False
 
-            combo_boxes = [self.cb_x, self.cb_order_x, self.cb_y,
+            combo_boxes = [self.cb_v, self.cb_i, self.cb_x, self.cb_order_x, self.cb_y,
                            self.cb_order_y, self.cb_z]
-            names = ['x', 'dependent_x', 'y', 'dependent_y', 'z']
-            default_indices = [0, 0, 1, 1, 3]
+            names = ['sub_series_V', 'sub_series_I', 'x', 'dependent_x', 'y', 'dependent_y', 'z']
+            default_indices = [0, 0, 0, 0, 1, 1, 3]
 
             for i, cb in enumerate(combo_boxes):
                 parameter = self.profile_settings[names[i]]
+
                 index = cb.findText(parameter)
 
                 cb.setCurrentIndex(index)
@@ -443,23 +443,49 @@ class QTPlot(QtGui.QMainWindow):
                 if index == -1:
                     cb.setCurrentIndex(default_indices[i])
 
+        # Set the colormap
+        cmap = self.profile_settings['colormap']
+        index = self.cb_cmaps.findText(cmap)
+
+        if index != -1:
+            self.cb_cmaps.setCurrentIndex(index)
+        else:
+            print('could not find colormap', cmap)
+
+    def update_parameters(self):
+        pass
+
     def save_default_profile(self, file):
         self.qtplot_ini.set('DEFAULT', 'default_profile', file)
 
         with open(self.qtplot_ini_file, 'w') as config_file:
             self.qtplot_ini.write(config_file)
 
-    def save_state(self, file):
+    def save_state(self, filename):
+        """
+        Save the current qtplot state into a .ini file and the operations
+        in a corresponding .json file.
+        """
+        profile_name = os.path.splitext(os.path.basename(filename))[0]
+
+        operations_file = os.path.join(self.operations_dir, profile_name + '.json')
+
+        self.operations.save(operations_file)
+
         state = OrderedDict((
-            ('open_directory', ''),
-            ('save_directory', ''),
+            ('operations', operations_file),
+            ('sub_series_V', str(self.cb_v.currentText())),
+            ('sub_series_I', str(self.cb_i.currentText())),
+            ('sub_series_R', str(self.le_r.text())),
+            ('open_directory', self.profile_settings['open_directory']),
+            ('save_directory', self.profile_settings['save_directory']),
             ('x', str(self.cb_x.currentText())),
             ('y', str(self.cb_y.currentText())),
             ('z', str(self.cb_z.currentText())),
             ('dependent_x', str(self.cb_order_x.currentText())),
             ('dependent_y', str(self.cb_order_y.currentText())),
             ('colormap', str(self.cb_cmaps.currentText())),
-            ('title', self.name),
+            ('title', str(self.export_widget.le_title.text())),
             ('DPI', str(self.export_widget.le_dpi.text())),
             ('rasterize', self.export_widget.cb_rasterize.isChecked()),
             ('x_label', str(self.export_widget.le_x_label.text())),
@@ -475,8 +501,8 @@ class QTPlot(QtGui.QMainWindow):
             ('font_size', str(self.export_widget.le_font_size.text())),
             ('width', str(self.export_widget.le_width.text())),
             ('height', str(self.export_widget.le_height.text())),
-            ('cb_orient', ''),
-            ('cb_pos', ''),
+            ('cb_orient', str(self.export_widget.cb_cb_orient.currentText())),
+            ('cb_pos', str(self.export_widget.le_cb_pos.text())),
             ('triangulation', self.export_widget.cb_triangulation.isChecked()),
             ('tripcolor', self.export_widget.cb_tripcolor.isChecked()),
             ('linecut', self.export_widget.cb_linecut.isChecked()),
@@ -485,15 +511,65 @@ class QTPlot(QtGui.QMainWindow):
         for option, value in state.items():
             # ConfigParser doesn't like single %
             value = str(value).replace('%', '%%')
+
             self.profile_ini.set('DEFAULT', option, value)
 
-        path = os.path.join(self.profiles_dir, file)
+        path = os.path.join(self.profiles_dir, filename)
 
         with open(path, 'w') as config_file:
             self.profile_ini.write(config_file)
 
-    def set_state(self, state):
-        pass
+    def open_state(self, filename):
+        """
+        Load all settings into the GUI
+        """
+        self.profile_ini_file = os.path.join(self.profiles_dir, filename)
+        self.profile_name = os.path.splitext(os.path.basename(filename))[0]
+
+        operations_file = os.path.join(self.operations_dir,
+                                       self.profile_name + '.json')
+
+        # Load the operations
+        if os.path.exists(operations_file):
+            self.operations.load(operations_file)
+        else:
+            print('No operations file present for selected profile')
+
+        # Read the specified profile .ini
+        self.profile_ini.read(self.profile_ini_file)
+
+        # Load the profile into a dict
+        for option in profile_defaults.keys():
+            value = self.profile_ini.get('DEFAULT', option)
+
+            if value in ['False', 'True']:
+                value = self.profile_ini.getboolean('DEFAULT', option)
+
+            self.profile_settings[option] = value
+
+        # Update export widget fields
+        #self.update_ui()
+
+        #if self.le_r.text()
+
+        try:
+            R = float(self.profile_settings['sub_series_R'])
+
+            self.sub_series_r(self.profile_settings['sub_series_V'],
+                              self.profile_settings['sub_series_I'],
+                              R)
+        except ValueError:
+            pass
+
+        self.update_ui(opening_state=True)
+
+        self.on_data_change()
+
+        self.export_widget.populate_ui()
+
+        # If we are viewing the export tab, update the plot
+        if self.main_widget.currentWidget() == self.export_widget:
+            self.export_widget.on_update()
 
     def get_parameter_names(self):
         if self.dat_file is not None:
@@ -539,6 +615,10 @@ class QTPlot(QtGui.QMainWindow):
         A clean version of the Data2D is retrieved from the DatFile or DataSet,
         all the operations are applied to the data, and it is plotted.
         """
+        if self.dat_file is None and self.data_set is None:
+            #print('no data present')
+            return
+
         x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
 
         #self.export_widget.set_info(self.name, x_name, y_name, data_name)
@@ -629,23 +709,32 @@ class QTPlot(QtGui.QMainWindow):
 
         self.write_to_ini('Settings', axes)
 
-    def on_sub_series_r(self, event=None):
+    def sub_series_r(self, V_param, I_param, R):
         if self.dat_file is None:
             return
 
-        V, I = str(self.cb_v.currentText()), str(self.cb_i.currentText())
-        R = float(self.le_r.text())
+        V = self.dat_file.df[V_param]
+        I = self.dat_file.df[I_param]
 
-        self.dat_file.df[V + ' - Sub series R'] = self.dat_file.df[V] - self.dat_file.df[I] * R
+        self.dat_file.df[V_param + ' - Sub series R'] = V - I * R
+
+    def on_sub_series_r(self, event=None):
+        V_param = str(self.cb_v.currentText())
+
+        self.sub_series_r(V_param,
+                          str(self.cb_i.currentText()),
+                          float(self.le_r.text()))
 
         self.update_ui(reset=False)
 
         x_col = str(self.cb_x.currentText())
         y_col = str(self.cb_y.currentText())
 
-        if V == x_col:
+        # If the current x/y axis was the voltage axis to be corrected
+        # then switch to the corrected values
+        if V_param == x_col:
             self.cb_x.setCurrentIndex(self.cb_x.count() - 1)
-        elif V == y_col:
+        elif V_param == y_col:
             self.cb_y.setCurrentIndex(self.cb_y.count() - 1)
 
         self.on_data_change()
