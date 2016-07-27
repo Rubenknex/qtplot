@@ -57,7 +57,19 @@ profile_defaults = OrderedDict((
 
 
 class QTPlot(QtGui.QMainWindow):
-    """ The main window of the qtplot application. """
+    """
+    The main window of the qtplot application.
+
+    Program flow:
+
+    Open application
+    -   Create UI
+
+    Load a file (either via UI or startup. startup should be after create UI)
+    Open current state
+
+
+    """
     def __init__(self, filename=None):
         super(QTPlot, self).__init__(None)
 
@@ -81,10 +93,14 @@ class QTPlot(QtGui.QMainWindow):
         self.settings = Settings(self)
 
         self.init_ui()
+        self.init_settings()
+
+        self.settings.populate_ui()
 
         if filename is not None:
             self.load_dat_file(filename)
 
+    def init_settings(self):
         # Get the home directory of the computer user
         self.home_dir = os.path.expanduser('~')
 
@@ -125,9 +141,7 @@ class QTPlot(QtGui.QMainWindow):
                 self.profile_ini.write(config_file)
 
         self.profile_settings = defaults
-        self.open_state(self.profile_ini_file)
-
-        self.settings.populate_ui()
+        #self.open_state(self.profile_ini_file)
 
     def init_ui(self):
         self.setWindowTitle('qtplot')
@@ -250,9 +264,9 @@ class QTPlot(QtGui.QMainWindow):
         self.cb_z.setMaxVisibleItems(25)
         grid.addWidget(self.cb_z, 3, 2)
 
-        self.b_save_default = QtGui.QPushButton('Save to profile')
-        self.b_save_default.clicked.connect(self.on_save_default)
-        grid.addWidget(self.b_save_default, 3, 4)
+        #self.b_save_default = QtGui.QPushButton('Save to profile')
+        #self.b_save_default.clicked.connect(self.on_save_default)
+        #grid.addWidget(self.b_save_default, 3, 4)
 
         groupbox = QtGui.QGroupBox('Data selection')
         groupbox.setLayout(grid)
@@ -380,7 +394,8 @@ class QTPlot(QtGui.QMainWindow):
         that is loaded, it is checked if parameters set as default in the .ini
         are present, which are then immediately selected.
         """
-        self.setWindowTitle(self.name)
+        if self.name is not None:
+            self.setWindowTitle(self.name)
 
         parameters = self.get_parameter_names()
 
@@ -452,6 +467,24 @@ class QTPlot(QtGui.QMainWindow):
         else:
             print('could not find colormap', cmap)
 
+    def load_dat_file(self, filename):
+        """
+        Load a .dat file, it's .set file if present, update the GUI elements,
+        and fire an on_data_change event to update the plots.
+        """
+        self.dat_file = DatFile(filename)
+        self.settings.load_file(filename)
+
+        if filename != self.filename:
+            path, self.name = os.path.split(filename)
+            self.filename = filename
+
+            self.open_state(self.profile_ini_file)
+
+            #self.update_ui()
+
+        #self.on_data_change()
+
     def update_parameters(self):
         pass
 
@@ -520,9 +553,7 @@ class QTPlot(QtGui.QMainWindow):
             self.profile_ini.write(config_file)
 
     def open_state(self, filename):
-        """
-        Load all settings into the GUI
-        """
+        """ Load all settings into the GUI """
         self.profile_ini_file = os.path.join(self.profiles_dir, filename)
         self.profile_name = os.path.splitext(os.path.basename(filename))[0]
 
@@ -547,11 +578,6 @@ class QTPlot(QtGui.QMainWindow):
 
             self.profile_settings[option] = value
 
-        # Update export widget fields
-        #self.update_ui()
-
-        #if self.le_r.text()
-
         try:
             R = float(self.profile_settings['sub_series_R'])
 
@@ -564,6 +590,8 @@ class QTPlot(QtGui.QMainWindow):
         self.update_ui(opening_state=True)
 
         self.on_data_change()
+
+        self.on_cmap_change()
 
         self.export_widget.populate_ui()
 
@@ -581,22 +609,6 @@ class QTPlot(QtGui.QMainWindow):
             return list(self.data_set.arrays)
         else:
             return []
-
-    def load_dat_file(self, filename):
-        """
-        Load a .dat file, it's .set file if present, update the GUI elements,
-        and fire an on_data_change event to update the plots.
-        """
-        self.dat_file = DatFile(filename)
-        self.settings.load_file(filename)
-
-        if filename != self.filename:
-            path, self.name = os.path.split(filename)
-            self.filename = filename
-
-            self.update_ui()
-
-        self.on_data_change()
 
     def set_data_set(self, data_set, update_ui=False):
         self.data_set = data_set
@@ -713,10 +725,13 @@ class QTPlot(QtGui.QMainWindow):
         if self.dat_file is None:
             return
 
-        V = self.dat_file.df[V_param]
-        I = self.dat_file.df[I_param]
 
-        self.dat_file.df[V_param + ' - Sub series R'] = V - I * R
+        if (V_param in self.dat_file.columns and
+           I_param in self.dat_file.columns):
+            V = self.dat_file.df[V_param]
+            I = self.dat_file.df[I_param]
+
+            self.dat_file.df[V_param + ' - Sub series R'] = V - I * R
 
     def on_sub_series_r(self, event=None):
         V_param = str(self.cb_v.currentText())
@@ -739,7 +754,7 @@ class QTPlot(QtGui.QMainWindow):
 
         self.on_data_change()
 
-    def on_cmap_change(self, event):
+    def on_cmap_change(self, event=None):
         selected_cmap = str(self.cb_cmaps.currentText())
 
         path = os.path.dirname(os.path.realpath(__file__))

@@ -197,7 +197,7 @@ class Settings(QtGui.QDialog):
         self.main.save_default_profile(file)
 
     def on_profile_changed(self, event):
-        filename = self.lw_profiles.currentItem().text()
+        filename = str(self.lw_profiles.currentItem().text())
 
         self.main.open_state(filename)
 
@@ -219,7 +219,7 @@ class Settings(QtGui.QDialog):
         self.cb_default_profile.addItem(name)
 
     def on_remove(self, event):
-        file = self.lw_profiles.currentItem().text()
+        file = str(self.lw_profiles.currentItem().text())
 
         path = os.path.join(self.main.profiles_dir, file)
 
@@ -229,7 +229,7 @@ class Settings(QtGui.QDialog):
         self.lw_profiles.takeItem(self.lw_profiles.currentRow())
 
     def on_save_state(self, event):
-        file = self.lw_profiles.currentItem().text()
+        file = str(self.lw_profiles.currentItem().text())
         self.main.save_state(file)
 
     def on_item_changed(self, widget):

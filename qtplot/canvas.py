@@ -284,10 +284,12 @@ class Canvas(scene.SceneCanvas):
 
             if 0 <= sx < sw and 0 <= sy < sh:
                 x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
-                xstr, ystr = eng_format(x, 1), eng_format(y, 1)
-                self.parent.status_bar.showMessage('X: %s\t\t\tY: %s' % (xstr, ystr))
 
-                self.draw_linecut(event)
+                if not np.isnan(x) and not np.isnan(y):
+                    xstr, ystr = eng_format(x, 1), eng_format(y, 1)
+                    self.parent.status_bar.showMessage('X: %s\t\t\tY: %s' % (xstr, ystr))
+
+                    self.draw_linecut(event)
 
     def on_resize(self, event):
         width, height = event.physical_size

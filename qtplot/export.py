@@ -209,8 +209,8 @@ class ExportWidget(QtGui.QWidget):
     def on_update(self):
         if self.main.data is not None:
             font = {
-                'family': self.le_font.text(),
-                'size': int(self.le_font_size.text())
+                'family': str(self.le_font.text()),
+                'size': int(str(self.le_font_size.text()))
             }
 
             mpl.rc('font', **font)
