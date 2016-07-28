@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import ndimage, interpolate
 from scipy.spatial import qhull
+from pandas.io.api import read_table
 
 
 class DatFile:
@@ -46,7 +47,7 @@ class DatFile:
 
                 self.ndim = len(self.shape)
 
-        self.data = np.loadtxt(filename, comments='#', delimiter='\t')
+        self.data = read_table(filename, comment='#', sep='\t', header=None).values
 
     def get_column(self, name):
         if name in self.ids:
@@ -62,13 +63,14 @@ class DatFile:
             self.data = np.hstack((self.data, values[:, np.newaxis]))
 
     def get_data(self, x, y, z):
+        t0 = time.time()
         if x == '':
             print('ERROR: You have to select an x-parameter')
             return None
 
         if y != '' and self.ndim < 2:
             print('ERROR: You cannot have a y-parameter for a 1-D dataset')
-            return None
+            y = ''
 
         x_setpoints = self.data[:, 0]
 
@@ -92,6 +94,7 @@ class DatFile:
         pivot = np.zeros((len(rows), len(cols), 3)) * np.nan
         pivot[row_ind, col_ind] = np.vstack((x_data, y_data, z_data)).T
 
+        print('get_data', t0, time.time())
         return Data2D(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2],
                       (False, False),
                       (False, False))
