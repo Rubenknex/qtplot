@@ -134,9 +134,14 @@ class Canvas(scene.SceneCanvas):
         self.ymin = np.nanmin(vertices['a_position'][:,1])
         self.ymax = np.nanmax(vertices['a_position'][:,1])
 
+        if self.xmin == self.xmax or self.ymin == self.ymax:
+            print('ERROR: Cannot plot because min and max values are the same')
+            return
+
         self.cm_dx = (self.xmax - self.xmin) * 0.1
 
         self.view = translate((0, 0, 0))
+
         self.projection = ortho(self.xmin, self.xmax + self.cm_dx,
                                 self.ymin, self.ymax, -1, 1)
 

@@ -97,20 +97,6 @@ class DatFile:
         y = pivot[:,:,1]
         z = pivot[:,:,2]
 
-        # This is not very pretty but I don't see another way.
-        # In order to have the datapoint matrices transposed the right way,
-        # information about which setpoint belong to which parameter is needed.
-        # We don't select this anymore, so we transpose the matrices such that
-        # the range of values on a row of the x-coordinate matrix is larger
-        # than for a column, which is a reasonable assumption.
-        row_range = np.nanmax(x, axis=0) - np.nanmin(x, axis=0)
-        col_range = np.nanmax(x, axis=1) - np.nanmin(x, axis=1)
-
-        if np.average(row_range) > np.average(col_range):
-            x = x.T
-            y = y.T
-            z = z.T
-
         return Data2D(x, y, z, (False, False), (False, False))
 
 
@@ -147,6 +133,20 @@ class Data2D:
     """
     def __init__(self, x, y, z,
                  equidistant=(False, False), varying=(False, False)):
+        # This is not very pretty but I don't see another way.
+        # In order to have the datapoint matrices transposed the right way,
+        # information about which setpoint belong to which parameter is needed.
+        # We don't select this anymore, so we transpose the matrices such that
+        # the range of values on a row of the x-coordinate matrix is larger
+        # than for a column, which is a reasonable assumption.
+        row_range = np.nanmax(x, axis=0) - np.nanmin(x, axis=0)
+        col_range = np.nanmax(x, axis=1) - np.nanmin(x, axis=1)
+
+        if np.average(row_range) > np.average(col_range):
+            x = x.T
+            y = y.T
+            z = z.T
+
         self.x, self.y, self.z = x, y, z
 
         self.equidistant = equidistant
