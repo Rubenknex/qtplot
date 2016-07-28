@@ -168,10 +168,6 @@ class QTPlot(QtGui.QMainWindow):
         self.b_swap_axes.clicked.connect(self.on_swap_axes)
         hbox.addWidget(self.b_swap_axes)
 
-        self.b_swap = QtGui.QPushButton('Swap dep. var.', self)
-        self.b_swap.clicked.connect(self.on_swap_order)
-        hbox.addWidget(self.b_swap)
-
         self.b_linecut = QtGui.QPushButton('Linecut')
         self.b_linecut.clicked.connect(self.linecut.show_window)
         hbox.addWidget(self.b_linecut)
@@ -357,7 +353,7 @@ class QTPlot(QtGui.QMainWindow):
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
 
-        self.resize(200, 740)
+        self.resize(500, 740)
         self.move(100, 100)
 
         self.setAcceptDrops(True)
@@ -655,13 +651,6 @@ class QTPlot(QtGui.QMainWindow):
         x, y = self.cb_x.currentIndex(), self.cb_y.currentIndex()
         self.cb_x.setCurrentIndex(y)
         self.cb_y.setCurrentIndex(x)
-
-        self.on_swap_order(event)
-
-    def on_swap_order(self, event):
-        x, y = self.cb_order_x.currentIndex(), self.cb_order_y.currentIndex()
-        self.cb_order_x.setCurrentIndex(y)
-        self.cb_order_y.setCurrentIndex(x)
 
         self.on_data_change()
 

@@ -93,9 +93,25 @@ class DatFile:
         pivot = np.zeros((len(rows), len(cols), 3)) * np.nan
         pivot[row_ind, col_ind] = np.vstack((x_data, y_data, z_data)).T
 
-        return Data2D(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2],
-                      (False, False),
-                      (False, False))
+        x = pivot[:,:,0]
+        y = pivot[:,:,1]
+        z = pivot[:,:,2]
+
+        # This is not very pretty but I don't see another way.
+        # In order to have the datapoint matrices transposed the right way,
+        # information about which setpoint belong to which parameter is needed.
+        # We don't select this anymore, so we transpose the matrices such that
+        # the range of values on a row of the x-coordinate matrix is larger
+        # than for a column, which is a reasonable assumption.
+        row_range = np.nanmax(x, axis=0) - np.nanmin(x, axis=0)
+        col_range = np.nanmax(x, axis=1) - np.nanmin(x, axis=1)
+
+        if np.average(row_range) > np.average(col_range):
+            x = x.T
+            y = y.T
+            z = z.T
+
+        return Data2D(x, y, z, (False, False), (False, False))
 
 
 def create_kernel(x_dev, y_dev, cutoff, distr):
@@ -331,6 +347,11 @@ class Data2D:
             return self.x[y_index], self.z[y_index], y_index
 
     def get_closest_x(self, x_coord):
+        print(x_coord)
+        print(min(self.x[-1,:], key=lambda x:abs(x - x_coord)))
+        x = self.x[0,:]
+        print(x)
+        return x[np.abs(x - x_coord).argmin()]
         return min(self.x[0,:], key=lambda x:abs(x - x_coord))
 
     def get_closest_y(self, y_coord):
