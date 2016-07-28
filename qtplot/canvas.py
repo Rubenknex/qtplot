@@ -207,7 +207,7 @@ class Canvas(scene.SceneCanvas):
         # We need to check wether the canvas has had time to redraw itself
         # because continuous mouse movement events surpress the redrawing.
         if self.data is not None and self.has_redrawn:
-            x_name, y_name, data_name, order_x, order_y = self.parent.get_axis_names()
+            x_name, y_name, data_name = self.parent.get_axis_names()
 
             # If we need to draw the linecut at a new position
             if not old_position and event.button in [1, 2, 3]:

@@ -58,9 +58,8 @@ class DatFile:
         else:
             self.ids.append(name)
             self.labels.append(name)
-            print(self.data.shape)
+
             self.data = np.hstack((self.data, values[:, np.newaxis]))
-            print(self.data.shape)
 
     def get_data(self, x, y, z):
         if x == '':

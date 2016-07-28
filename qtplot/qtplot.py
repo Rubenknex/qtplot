@@ -231,15 +231,6 @@ class QTPlot(QtGui.QMainWindow):
         self.cb_x.setMaxVisibleItems(25)
         grid.addWidget(self.cb_x, 1, 2)
 
-        lbl_order_x = QtGui.QLabel('Dependent variable X: ', self)
-        lbl_order_x.setMaximumWidth(110)
-        grid.addWidget(lbl_order_x, 1, 3)
-
-        self.cb_order_x = QtGui.QComboBox(self)
-        self.cb_order_x.activated.connect(self.on_data_change)
-        self.cb_order_x.setMaxVisibleItems(25)
-        grid.addWidget(self.cb_order_x, 1, 4)
-
         lbl_y = QtGui.QLabel("Y:", self)
         grid.addWidget(lbl_y, 2, 1)
 
@@ -247,14 +238,6 @@ class QTPlot(QtGui.QMainWindow):
         self.cb_y.activated.connect(self.on_data_change)
         self.cb_y.setMaxVisibleItems(25)
         grid.addWidget(self.cb_y, 2, 2)
-
-        lbl_order_y = QtGui.QLabel('Dependent variable Y:', self)
-        grid.addWidget(lbl_order_y, 2, 3)
-
-        self.cb_order_y = QtGui.QComboBox(self)
-        self.cb_order_y.activated.connect(self.on_data_change)
-        self.cb_order_y.setMaxVisibleItems(25)
-        grid.addWidget(self.cb_order_y, 2, 4)
 
         lbl_d = QtGui.QLabel("Data:", self)
         grid.addWidget(lbl_d, 3, 1)
@@ -428,24 +411,13 @@ class QTPlot(QtGui.QMainWindow):
         self.cb_z.addItems(parameters)
         self.cb_z.setCurrentIndex(i)
 
-        if self.dat_file is not None:
-            i = self.cb_order_x.currentIndex()
-            self.cb_order_x.clear()
-            self.cb_order_x.addItems(parameters)
-            self.cb_order_x.setCurrentIndex(i)
-
-            i = self.cb_order_y.currentIndex()
-            self.cb_order_y.clear()
-            self.cb_order_y.addItems(parameters)
-            self.cb_order_y.setCurrentIndex(i)
-
         # Set the selected parameters
         if reset and self.first_data_file:
             #self.first_data_file = False
 
-            combo_boxes = [self.cb_v, self.cb_i, self.cb_x, self.cb_order_x, self.cb_y,
-                           self.cb_order_y, self.cb_z]
-            names = ['sub_series_V', 'sub_series_I', 'x', 'dependent_x', 'y', 'dependent_y', 'z']
+            combo_boxes = [self.cb_v, self.cb_i, self.cb_x, self.cb_y,
+                           self.cb_z]
+            names = ['sub_series_V', 'sub_series_I', 'x', 'y', 'z']
             default_indices = [0, 0, 1, 1, 2, 2, 4]
 
             for i, cb in enumerate(combo_boxes):
@@ -632,32 +604,15 @@ class QTPlot(QtGui.QMainWindow):
             #print('no data present')
             return
 
-        x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
+        x_name, y_name, data_name = self.get_axis_names()
 
         #self.export_widget.set_info(self.name, x_name, y_name, data_name)
 
         if self.dat_file is not None:
-            """
-            not_found = self.dat_file.has_columns([x_name, y_name, data_name, order_x, order_y])
-            if not_found is not None:
-                self.status_bar.showMessage('ERROR: Could not find column \'' +
-                    not_found + '\', try saving the correct one using \'Remember columns\'')
-
-                return
-            """
-
-
-
-            #try:
-                #self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
             self.data = self.dat_file.get_data(x_name, y_name, data_name)
 
             if self.data is None:
                 return
-            #except Exception:
-            #    print('ERROR: Cannot pivot data into a matrix with these columns')
-
-            #    return
         elif self.data_set is not None:
             x = self.data_set.arrays[x_name].array
             y = self.data_set.arrays[y_name].array
@@ -686,10 +641,8 @@ class QTPlot(QtGui.QMainWindow):
         self.x_name = str(self.cb_x.currentText())
         self.y_name = str(self.cb_y.currentText())
         self.data_name = str(self.cb_z.currentText())
-        self.order_x = str(self.cb_order_x.currentText())
-        self.order_y = str(self.cb_order_y.currentText())
 
-        return self.x_name, self.y_name, self.data_name, self.order_x, self.order_y
+        return self.x_name, self.y_name, self.data_name
 
     def on_load_dat(self, event):
         open_directory = self.profile_settings['open_directory']
@@ -734,11 +687,9 @@ class QTPlot(QtGui.QMainWindow):
         if self.dat_file is None:
             return
 
-
         if (V_param in self.dat_file.ids and
            I_param in self.dat_file.ids):
             V = self.dat_file.get_column(V_param)
-            print(V.shape)
             I = self.dat_file.get_column(I_param)
 
             self.dat_file.set_column(V_param + ' - Sub series R', V - I * R)
