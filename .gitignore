@@ -10,6 +10,7 @@ test.png
 *.ini
 
 # Distribution / packaging
+test.py
 dist
 packaging.bat
 upload.bat
