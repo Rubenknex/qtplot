@@ -29,8 +29,6 @@ profile_defaults = OrderedDict((
             ('x', '-'),
             ('y', '-'),
             ('z', '-'),
-            ('dependent_x', ''),
-            ('dependent_y', ''),
             ('colormap', 'transform\\Seismic.npy'),
             ('title', '<filename>'),
             ('DPI', '80'),
@@ -487,8 +485,6 @@ class QTPlot(QtGui.QMainWindow):
             ('x', str(self.cb_x.currentText())),
             ('y', str(self.cb_y.currentText())),
             ('z', str(self.cb_z.currentText())),
-            ('dependent_x', str(self.cb_order_x.currentText())),
-            ('dependent_y', str(self.cb_order_y.currentText())),
             ('colormap', str(self.cb_cmaps.currentText())),
             ('title', str(self.export_widget.le_title.text())),
             ('DPI', str(self.export_widget.le_dpi.text())),
@@ -557,7 +553,7 @@ class QTPlot(QtGui.QMainWindow):
                               self.profile_settings['sub_series_I'],
                               R)
         except ValueError:
-            pass
+            print('ERROR: Could not parse resistance value')
 
         self.update_ui(opening_state=True)
 
@@ -601,7 +597,6 @@ class QTPlot(QtGui.QMainWindow):
         all the operations are applied to the data, and it is plotted.
         """
         if self.dat_file is None and self.data_set is None:
-            #print('no data present')
             return
 
         x_name, y_name, data_name = self.get_axis_names()
@@ -669,19 +664,6 @@ class QTPlot(QtGui.QMainWindow):
         self.cb_order_y.setCurrentIndex(x)
 
         self.on_data_change()
-
-    def on_save_default(self, event):
-        x_name, y_name, data_name, order_x, order_y = self.get_axis_names()
-
-        axes = {
-            'X':        x_name,
-            'X order':  order_x,
-            'Y':        y_name,
-            'Y Order':  order_y,
-            'Data':     data_name,
-        }
-
-        self.write_to_ini('Settings', axes)
 
     def sub_series_r(self, V_param, I_param, R):
         if self.dat_file is None:
@@ -815,15 +797,6 @@ class QTPlot(QtGui.QMainWindow):
         self.load_dat_file(filepath)
 
     def closeEvent(self, event):
-        # Save the qtplot.ini
-        """
-        with open(self.qtplot_ini_file, 'w') as config_file:
-            self.qtplot_ini.write(config_file)
-
-        with open(self.profile_ini_file, 'w') as config_file:
-            self.profile_ini.write(config_file)
-        """
-
         self.linecut.close()
         self.operations.close()
         self.settings.close()
