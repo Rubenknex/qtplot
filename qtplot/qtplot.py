@@ -26,9 +26,9 @@ profile_defaults = OrderedDict((
             ('sub_series_R', ''),
             ('open_directory', ''),
             ('save_directory', ''),
-            ('x', ''),
-            ('y', ''),
-            ('z', ''),
+            ('x', '-'),
+            ('y', '-'),
+            ('z', '-'),
             ('dependent_x', ''),
             ('dependent_y', ''),
             ('colormap', 'transform\\Seismic.npy'),
@@ -397,7 +397,7 @@ class QTPlot(QtGui.QMainWindow):
         if self.name is not None:
             self.setWindowTitle(self.name)
 
-        parameters = self.get_parameter_names()
+        parameters = [''] + self.get_parameter_names()
 
         i = self.cb_v.currentIndex()
         self.cb_v.clear()
@@ -446,7 +446,7 @@ class QTPlot(QtGui.QMainWindow):
             combo_boxes = [self.cb_v, self.cb_i, self.cb_x, self.cb_order_x, self.cb_y,
                            self.cb_order_y, self.cb_z]
             names = ['sub_series_V', 'sub_series_I', 'x', 'dependent_x', 'y', 'dependent_y', 'z']
-            default_indices = [0, 0, 0, 0, 1, 1, 3]
+            default_indices = [0, 0, 1, 1, 2, 2, 4]
 
             for i, cb in enumerate(combo_boxes):
                 parameter = self.profile_settings[names[i]]
@@ -601,7 +601,8 @@ class QTPlot(QtGui.QMainWindow):
 
     def get_parameter_names(self):
         if self.dat_file is not None:
-            return self.dat_file.df.columns.values
+            #return list(self.dat_file.df.columns.values)
+            return self.dat_file.ids
         elif self.data_set is not None:
             # Sort in some kind of order?
             # Make property of DataSetLite?
@@ -636,19 +637,27 @@ class QTPlot(QtGui.QMainWindow):
         #self.export_widget.set_info(self.name, x_name, y_name, data_name)
 
         if self.dat_file is not None:
+            """
             not_found = self.dat_file.has_columns([x_name, y_name, data_name, order_x, order_y])
             if not_found is not None:
                 self.status_bar.showMessage('ERROR: Could not find column \'' +
                     not_found + '\', try saving the correct one using \'Remember columns\'')
 
                 return
+            """
 
-            try:
-                self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
-            except Exception:
-                print('ERROR: Cannot pivot data into a matrix with these columns')
 
+
+            #try:
+                #self.data = self.dat_file.get_data(x_name, y_name, data_name, order_x, order_y)
+            self.data = self.dat_file.get_data(x_name, y_name, data_name)
+
+            if self.data is None:
                 return
+            #except Exception:
+            #    print('ERROR: Cannot pivot data into a matrix with these columns')
+
+            #    return
         elif self.data_set is not None:
             x = self.data_set.arrays[x_name].array
             y = self.data_set.arrays[y_name].array
@@ -726,12 +735,13 @@ class QTPlot(QtGui.QMainWindow):
             return
 
 
-        if (V_param in self.dat_file.columns and
-           I_param in self.dat_file.columns):
-            V = self.dat_file.df[V_param]
-            I = self.dat_file.df[I_param]
+        if (V_param in self.dat_file.ids and
+           I_param in self.dat_file.ids):
+            V = self.dat_file.get_column(V_param)
+            print(V.shape)
+            I = self.dat_file.get_column(I_param)
 
-            self.dat_file.df[V_param + ' - Sub series R'] = V - I * R
+            self.dat_file.set_column(V_param + ' - Sub series R', V - I * R)
 
     def on_sub_series_r(self, event=None):
         V_param = str(self.cb_v.currentText())
