@@ -63,7 +63,6 @@ class DatFile:
             self.data = np.hstack((self.data, values[:, np.newaxis]))
 
     def get_data(self, x, y, z):
-        t0 = time.time()
         if x == '':
             print('ERROR: You have to select an x-parameter')
             return None
@@ -94,7 +93,6 @@ class DatFile:
         pivot = np.zeros((len(rows), len(cols), 3)) * np.nan
         pivot[row_ind, col_ind] = np.vstack((x_data, y_data, z_data)).T
 
-        print('get_data', t0, time.time())
         return Data2D(pivot[:,:,0], pivot[:,:,1], pivot[:,:,2],
                       (False, False),
                       (False, False))
