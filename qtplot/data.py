@@ -347,11 +347,6 @@ class Data2D:
             return self.x[y_index], self.z[y_index], y_index
 
     def get_closest_x(self, x_coord):
-        print(x_coord)
-        print(min(self.x[-1,:], key=lambda x:abs(x - x_coord)))
-        x = self.x[0,:]
-        print(x)
-        return x[np.abs(x - x_coord).argmin()]
         return min(self.x[0,:], key=lambda x:abs(x - x_coord))
 
     def get_closest_y(self, y_coord):
