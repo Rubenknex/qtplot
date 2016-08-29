@@ -139,8 +139,8 @@ class Data2D:
         # We don't select this anymore, so we transpose the matrices such that
         # the range of values on a row of the x-coordinate matrix is larger
         # than for a column, which is a reasonable assumption.
-        row_range = np.nanmax(x, axis=0) - np.nanmin(x, axis=0)
-        col_range = np.nanmax(x, axis=1) - np.nanmin(x, axis=1)
+        row_range = np.abs(np.nanmax(x, axis=0) - np.nanmin(x, axis=0))
+        col_range = np.abs(np.nanmax(x, axis=1) - np.nanmin(x, axis=1))
 
         if np.average(row_range) > np.average(col_range):
             x = x.T
