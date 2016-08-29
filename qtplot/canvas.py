@@ -257,6 +257,12 @@ class Canvas(scene.SceneCanvas):
                                                        self.line_coord,
                                                        self.parent.name,
                                                        'Distance (-)', data_name, x_name)
+
+                        # Display slope in status bar
+                        dx = self.line_positions[1][0] - self.line_positions[0][0]
+                        dy = self.line_positions[1][1] - self.line_positions[0][1]
+                        text = 'Slope: {:.3f}\tInv: {:.3f}'.format(dy / dx, dx / dy)
+                        self.parent.l_slope.setText(text)
                 elif event.button == 3:
                     self.line_type = 'vertical'
                     self.line_coord = self.data.get_closest_x(x)
@@ -292,7 +298,7 @@ class Canvas(scene.SceneCanvas):
 
                 if not np.isnan(x) and not np.isnan(y):
                     xstr, ystr = eng_format(x, 1), eng_format(y, 1)
-                    self.parent.status_bar.showMessage('X: %s\t\t\tY: %s' % (xstr, ystr))
+                    self.parent.l_position.setText('X: %s\tY: %s' % (xstr, ystr))
 
                     self.draw_linecut(event)
 

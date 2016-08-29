@@ -348,6 +348,10 @@ class QTPlot(QtGui.QMainWindow):
         vbox.addLayout(hbox4)
 
         self.status_bar = QtGui.QStatusBar()
+        self.l_position = QtGui.QLabel()
+        self.status_bar.addWidget(self.l_position, 1)
+        self.l_slope = QtGui.QLabel('Slope: -')
+        self.status_bar.addWidget(self.l_slope)
         self.setStatusBar(self.status_bar)
 
         self.main_widget.setFocus()
@@ -622,10 +626,10 @@ class QTPlot(QtGui.QMainWindow):
         #self.canvas.draw_linecut(None, old_position=True)
         self.canvas.update()
 
-        if np.isnan(self.data.z).any():
-            self.status_bar.showMessage("Warning: Data contains NaN values")
-        else:
-            self.status_bar.showMessage("")
+        #if np.isnan(self.data.z).any():
+        #    self.status_bar.showMessage("Warning: Data contains NaN values")
+        #else:
+        #    self.status_bar.showMessage("")
 
     def get_axis_names(self):
         """ Get the parameters that are currently selected to be plotted """
