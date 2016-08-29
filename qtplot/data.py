@@ -31,7 +31,7 @@ class DatFile:
                         self.shape = self.shape + (size,)
 
                     # When a line starts with a number we reached the data
-
+                    if len(line) > 0 and line[0] != '#':
                         # Count the number of non length-1 dimensions
                         self.ndim = sum(d > 1 for d in self.shape)
                         break
