@@ -647,6 +647,8 @@ class QTPlot(QtGui.QMainWindow):
         if self.filename:
             self.load_dat_file(self.filename)
 
+            self.on_data_change()
+
     def on_swap_axes(self, event):
         x, y = self.cb_x.currentIndex(), self.cb_y.currentIndex()
         self.cb_x.setCurrentIndex(y)
