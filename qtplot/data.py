@@ -282,14 +282,6 @@ class Data2D:
             l0, l1 = xc[:,[0]], xc[:,[1]]
             r1, r0 = xc[:,[-2]], xc[:,[-1]]
 
-            # If there are missing datapoints on the top/bottom, copy the
-            # x-coordinates from the row below or above it.
-            nans = np.isnan(xc[0])
-            xc[0,nans] = xc[1,nans]
-
-            nans = np.isnan(xc[-1])
-            xc[-1,nans] = xc[-2,nans]
-
             # If there are more than 2 columns/rows, we can extrapolate the
             # datapoint coordinates. Else two columns/rows will not be plotted
             # when plotting an incomplete dataset.
@@ -308,7 +300,10 @@ class Data2D:
             # Create center points by adding the differences divided by 2 to the original coordinates
             x = xc[:,:-1] + np.diff(xc, axis=1) / 2.0
             # Add a row to the bottom so that the x coords have the same dimension as the y coords
-            x = np.vstack((x, x[-1]))
+            if np.isnan(x[0]).any():
+                x = np.vstack((x, x[-1]))
+            else:
+                x = np.vstack((x[0], x))
         else:
             # If data is 1d, make one axis range from -.5 to .5
             x = np.hstack((xc - 1, xc[:,[0]] + 1))
@@ -319,26 +314,24 @@ class Data2D:
             t0, t1 = yc[0], yc[1]
             b1, b0 = yc[-2], yc[-1]
 
-            nans = np.isnan(yc[:,0])
-            yc[nans,0] = yc[nans,1]
-
-            nans = np.isnan(yc[:,-1])
-            yc[nans,-1] = yc[nans,-2]
-
             if yc.shape[0] > 2:
                 t2 = yc[2]
                 nans = np.isnan(t0)
                 t0[nans] = 2*t1[nans] - t2[nans]
-                yc[0] = t0
+                #yc[0] = t0
 
                 b2 = yc[-3]
                 nans = np.isnan(b0)
                 b0[nans] = 2*b1[nans] - b2[nans]
-                yc[-1] = b0
+                #yc[-1] = b0
 
             yc = np.vstack([2*t0 - t1, yc, 2*b0 - b1])
             y = yc[:-1,:] + np.diff(yc, axis=0) / 2.0
-            y = np.hstack([y, y[:,[-1]]])
+
+            if np.isnan(y[:,[0]]).any():
+                y = np.hstack([y, y[:,[-1]]])
+            else:
+                y = np.hstack([y[:,[0]], y])
         else:
             y = np.vstack([yc - 1, yc[0] + 1])
             y = np.hstack([y, y[:,[0]]])
