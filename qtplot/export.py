@@ -314,8 +314,8 @@ class ExportWidget(QtGui.QWidget):
 
         pres = app.ActivePresentation
 
-        # Paste the plot on the last slide
-        slide = pres.Slides[len(pres.Slides) - 1]
+        # Paste the plot on the active slide
+        slide = app.ActiveWindow.View.Slide
         slide.Shapes.Paste()
 
         shape = slide.Shapes[len(slide.Shapes) - 1]
