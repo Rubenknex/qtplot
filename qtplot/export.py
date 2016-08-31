@@ -40,6 +40,10 @@ class ExportWidget(QtGui.QWidget):
         self.b_copy.clicked.connect(self.on_copy)
         hbox.addWidget(self.b_copy)
 
+        self.b_to_ppt = QtGui.QPushButton('To PPT (Win)', self)
+        self.b_to_ppt.clicked.connect(self.on_to_ppt)
+        hbox.addWidget(self.b_to_ppt)
+
         self.b_export = QtGui.QPushButton('Export...', self)
         self.b_export.clicked.connect(self.on_export)
         hbox.addWidget(self.b_export)
@@ -292,6 +296,31 @@ class ExportWidget(QtGui.QWidget):
 
         img = QtGui.QImage(path)
         QtGui.QApplication.clipboard().setImage(img)
+
+    def on_to_ppt(self):
+        """
+        Some win32 COM magic to interact with powerpoint
+        """
+        try:
+            import win32com.client
+        except ImportError:
+            print('ERROR: The win32com library needs to be installed')
+            return
+
+        # First, copy to the clipboard
+        self.on_copy()
+
+        app = win32com.client.Dispatch('PowerPoint.Application')
+
+        pres = app.ActivePresentation
+
+        # Paste the plot on the last slide
+        slide = pres.Slides[len(pres.Slides) - 1]
+        slide.Shapes.Paste()
+
+        shape = slide.Shapes[len(slide.Shapes) - 1]
+        shape.ActionSettings[0].Action = 9
+        shape.ActionSettings[0].Run = 'qtplot-console "%s"' % self.main.filename
 
     def on_export(self):
         path = os.path.dirname(os.path.realpath(__file__))
