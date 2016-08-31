@@ -186,8 +186,6 @@ class Data2D:
             yrow = miny + np.arange(y.shape[0]) * diffy
             self.y = np.tile(yrow[:,np.newaxis], (1, y.shape[1]))
 
-        print(self.x_name)
-
     def save(self, filename):
         """
         Save the 2D data to a file.
@@ -208,10 +206,6 @@ class Data2D:
                 f.write('# Timestamp: %s\n' % self.timestamp)
                 f.write('\n')
 
-                print(len(self.x_name), self.x_name)
-                print(len(self.y_name), self.y_name)
-                print(len(self.z_name), self.z_name)
-
                 f.write('# Column 1\n')
                 f.write('#\tname: %s\n' % self.x_name)
                 f.write('#\tsize: %d\n' % self.x.shape[1])
@@ -228,8 +222,8 @@ class Data2D:
 
                 # Write formatted data
                 a = np.vstack((self.x.ravel(), self.y.ravel(), self.z.ravel())).T
+
                 df = pd.DataFrame(a)
-                #df.to_clipboard()
                 df.to_csv(f, sep='\t', float_format='%.12e', index=False, header=False, chunksize=10)
 
     def set_data(self, x, y, z):
