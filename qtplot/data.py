@@ -470,9 +470,14 @@ class Data2D:
         if top < 0:
             top = self.z.shape[0] + top + 1
 
-        self.set_data(self.x[bottom:top,left:right],
-                      self.y[bottom:top,left:right],
-                      self.z[bottom:top,left:right])
+        if (left < right and bottom < top and
+            0 <= left <= self.z.shape[1] and 0 <= right <= self.z.shape[1] and
+            0 <= bottom <= self.z.shape[0] and 0 <= top <= self.z.shape[0]):
+            self.set_data(self.x[bottom:top,left:right],
+                          self.y[bottom:top,left:right],
+                          self.z[bottom:top,left:right])
+        else:
+            print('ERROR: Invalid crop settings')
 
     def dderiv(self, theta=0.0, method='midpoint'):
         """Calculate the component of the gradient in a specific direction."""
