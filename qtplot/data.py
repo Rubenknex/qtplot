@@ -6,6 +6,8 @@ from scipy.spatial import qhull
 from pandas.io.api import read_table
 import pandas as pd
 
+from .util import FixedOrderFormatter
+
 
 class DatFile:
     """ Class which contains the column based DataFrame of the data. """
@@ -103,11 +105,15 @@ class DatFile:
         if self.ndim > 1:
             y_size = self.shape[1]
 
+        data = np.zeros((x_size * y_size, 3)) * np.nan
+
+        data[:len(x_data)] = np.vstack((x_data, y_data, z_data)).T
+
         row_ind = np.repeat(np.arange(y_size), x_size)
         col_ind = np.tile(np.arange(x_size), y_size)
 
         pivot = np.zeros((y_size, x_size, 3)) * np.nan
-        pivot[row_ind, col_ind] = np.vstack((x_data, y_data, z_data)).T
+        pivot[row_ind, col_ind] = data
 
         x = pivot[:,:,0]
         y = pivot[:,:,1]
@@ -412,6 +418,35 @@ class Data2D:
         x, y = self.get_quadrilaterals(self.x, self.y)
 
         return tuple(map(np.ma.masked_invalid, [x, y, self.z]))
+
+    def plot(self, fig, ax, cmap='seismic', ):
+        ax.clear()
+
+        x, y, z = self.get_pcolor()
+
+        quadmesh = ax.pcolormesh(x, y, z,
+                                      cmap=cmap,
+                                      rasterized=True)
+
+        #quadmesh.set_clim(self.main.canvas.colormap.get_limits())
+
+        ax.axis('tight')
+
+        ax.set_title(self.filename)
+        ax.set_xlabel(self.x_name)
+        ax.set_ylabel(self.y_name)
+
+        ax.xaxis.set_major_formatter(FixedOrderFormatter('%.0f', 1e0))
+        ax.yaxis.set_major_formatter(FixedOrderFormatter('%.0f', 1e0))
+
+        cb = fig.colorbar(quadmesh)
+
+        cb.formatter = FixedOrderFormatter('%.0f', 1)
+        cb.update_ticks()
+        cb.set_label(self.z_name)
+        cb.draw_all()
+
+        fig.tight_layout()
 
     def get_column_at(self, x):
         x_index = np.where(self.x[0,:]==self.get_closest_x(x))[0][0]
