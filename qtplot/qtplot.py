@@ -765,19 +765,21 @@ class QTPlot(QtGui.QMainWindow):
         filename = QtGui.QFileDialog.getSaveFileName(self,
                                                      caption='Save file',
                                                      directory=save_directory,
-                                                     filter='NumPy matrix format (*.npy);;MATLAB matrix format (*.mat)')
+                                                     filter='QTLab data format (*.dat);;NumPy binary matrix format (*.npy);;MATLAB matrix format (*.mat)')
         filename = str(filename)
 
         if filename != '' and self.dat_file is not None:
             base = os.path.basename(filename)
             name, ext = os.path.splitext(base)
 
-            mat = np.dstack((self.data.x.data, self.data.y.data, self.data.z.data))
+            #mat = np.dstack((self.data.x.data, self.data.y.data, self.data.z.data))
 
-            if ext == '.npy':
-                np.save(filename, mat)
-            elif ext == '.mat':
-                io.savemat(filename, {'data': mat})
+            #if ext == '.npy':
+            #    np.save(filename, mat)
+            #elif ext == '.mat':
+            #    io.savemat(filename, {'data': mat})
+
+            self.data.save(filename)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
