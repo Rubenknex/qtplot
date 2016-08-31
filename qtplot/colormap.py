@@ -1,10 +1,14 @@
 import numpy as np
 import matplotlib as mpl
+import os
 
 
 class Colormap:
     def __init__(self, filename):
-        self.colors = np.loadtxt(filename)
+        dir = os.path.dirname(os.path.realpath(__file__))
+        path = os.path.join(dir, filename)
+
+        self.colors = np.loadtxt(path)
         self.gamma = 1
         self.min, self.max = 0, 1
 
