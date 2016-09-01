@@ -4,7 +4,9 @@ import os
 
 
 class Colormap:
+    """ Represents a colormap to be used for plotting. """
     def __init__(self, filename):
+        """ Construct from a spyview colormap. """
         dir = os.path.dirname(os.path.realpath(__file__))
         path = os.path.join(dir, filename)
 
@@ -38,6 +40,6 @@ class Colormap:
     def get_mpl_colormap(self):
         """
         Create a matplotlib colormap object that can be used in the cmap
-        argument of some plotting functions.
+        argument of some matplotlib plotting functions.
         """
         return mpl.colors.ListedColormap(self.get_colors().astype(float) / 255.0)

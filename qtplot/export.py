@@ -312,15 +312,11 @@ class ExportWidget(QtGui.QWidget):
 
         app = win32com.client.Dispatch('PowerPoint.Application')
 
-        pres = app.ActivePresentation
-
         # Paste the plot on the active slide
         slide = app.ActiveWindow.View.Slide
-        slide.Shapes.Paste()
 
-        shape = slide.Shapes[len(slide.Shapes) - 1]
-        shape.ActionSettings[0].Action = 9
-        shape.ActionSettings[0].Run = 'qtplot-console "%s"' % self.main.filename
+        shape = slide.Shapes.Paste()
+        shape.ActionSettings[0].Hyperlink.Address = self.main.abs_filename
 
     def on_export(self):
         path = os.path.dirname(os.path.realpath(__file__))

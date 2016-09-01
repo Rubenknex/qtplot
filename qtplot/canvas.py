@@ -328,7 +328,6 @@ class Canvas(scene.SceneCanvas):
 
             # If we are within the plot window
             if 0 <= sx < sw and 0 <= sy < sh:
-                print(event.pos, type(event.pos))
                 x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
 
                 if not np.isnan(x) and not np.isnan(y):

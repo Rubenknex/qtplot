@@ -55,19 +55,7 @@ profile_defaults = OrderedDict((
 
 
 class QTPlot(QtGui.QMainWindow):
-    """
-    The main window of the qtplot application.
-
-    Program flow:
-
-    Open application
-    -   Create UI
-
-    Load a file (either via UI or startup. startup should be after create UI)
-    Open current state
-
-
-    """
+    """ The main window of the qtplot application. """
     def __init__(self, filename=None):
         super(QTPlot, self).__init__(None)
 
@@ -77,6 +65,7 @@ class QTPlot(QtGui.QMainWindow):
 
         # In case of a .dat file
         self.filename = None
+        self.abs_filename = None
         self.dat_file = None
 
         # In case of a qcodes DataSet(Lite)
@@ -281,6 +270,7 @@ class QTPlot(QtGui.QMainWindow):
                 cmap_files.append(relfile)
 
         self.cb_cmaps.addItems(cmap_files)
+        self.cb_cmaps.setMaxVisibleItems(25)
 
         hbox_gamma1.addWidget(self.cb_cmaps)
 
@@ -448,6 +438,7 @@ class QTPlot(QtGui.QMainWindow):
         if filename != self.filename:
             path, self.name = os.path.split(filename)
             self.filename = filename
+            self.abs_filename = os.path.abspath(filename)
 
             self.open_state(self.profile_ini_file)
 
@@ -609,6 +600,7 @@ class QTPlot(QtGui.QMainWindow):
             if self.data is None:
                 return
         elif self.data_set is not None:
+            # Create a Data2D object from qcodes DataSet
             x = self.data_set.arrays[x_name].array
             y = self.data_set.arrays[y_name].array
             z = self.data_set.arrays[data_name].array
