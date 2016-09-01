@@ -23,6 +23,8 @@ class Operation(QtGui.QWidget):
 
         height = 1
 
+        # For every parameter in the Operation widget, create the appropriate
+        # parameter widget depending on the data type
         for widget in widgets:
             w_name, data = widget
 
@@ -53,6 +55,8 @@ class Operation(QtGui.QWidget):
 
             height += 1
 
+        # sub linecut is a special case since it requires information from
+        # the main window (linecut position)
         if name == 'sub linecut' or name == 'sub linecut avg':
             b_current = QtGui.QPushButton('Current linecut')
             b_current.clicked.connect(self.on_current_linecut)
@@ -64,7 +68,7 @@ class Operation(QtGui.QWidget):
         self.items['position'].setText(str(self.main.canvas.line_coord))
 
     def get_parameter(self, name):
-        """Return the casted value of a property."""
+        """ Return the casted value of a property. """
         if name in self.items:
             widget = self.items[name]
             cast = self.types[name]
@@ -77,7 +81,7 @@ class Operation(QtGui.QWidget):
                 return str(widget.currentText())
 
     def set_parameter(self, name, value):
-        """Set a property to a value."""
+        """ Set a property to a value. """
         if name in self.items:
             widget = self.items[name]
 
@@ -105,6 +109,7 @@ class Operation(QtGui.QWidget):
 
 
 class Operations(QtGui.QDialog):
+    """ The window containing all operations. """
     def __init__(self, parent=None):
         super(Operations, self).__init__(None)
 
@@ -116,6 +121,12 @@ class Operations(QtGui.QDialog):
     def init_ui(self):
         self.setWindowTitle("Operations")
 
+        # The format of an operation entry is as follows:
+        # 'name': [function, [param1, param2]]
+        # Of which the parameters are tuples:
+        # Number:  ('name', default_value)
+        # Bool:    ('name', default_value)
+        # Options: ('name', [list of string options])
         self.items = {
             'abs': [Data2D.abs],
             'autoflip': [Data2D.autoflip],
@@ -255,11 +266,18 @@ class Operations(QtGui.QDialog):
                 if key != 'enabled':
                     name = key
 
+            # Create the item for the operations list
             item = QtGui.QListWidgetItem(name)
-            item.setCheckState(QtCore.Qt.Checked if enabled else QtCore.Qt.Unchecked)
+
+            if enabled:
+                item.setCheckState(QtCore.Qt.Checked)
+            else:
+                item.setCheckState(QtCore.Qt.Unchecked)
+
             op = Operation(name, self.main, *self.items[name])
             op.set_parameters(operation[name])
 
+            # Store the Operation in the widget
             if six.PY2:
                 item.setData(QtCore.Qt.UserRole, QtCore.QVariant(op))
             elif six.PY3:
@@ -273,16 +291,18 @@ class Operations(QtGui.QDialog):
     def save(self, filename):
         operations = {}
         for i in range(self.queue.count()):
-                if six.PY2:
-                    op = self.queue.item(i).data(QtCore.Qt.UserRole).toPyObject()
-                elif six.PY3:
-                    op = self.queue.item(i).data(QtCore.Qt.UserRole)
+            item = self.queue.item(i)
 
-                name, params = op.get_parameters()
-                enabled = self.queue.item(i).checkState() == QtCore.Qt.Checked
+            if six.PY2:
+                op = item.data(QtCore.Qt.UserRole).toPyObject()
+            elif six.PY3:
+                op = item.data(QtCore.Qt.UserRole)
 
-                operations[i] = {'enabled': enabled}
-                operations[i][name] = params
+            name, params = op.get_parameters()
+            enabled = self.queue.item(i).checkState() == QtCore.Qt.Checked
+
+            operations[i] = {'enabled': enabled}
+            operations[i][name] = params
 
         with open(filename, 'w') as f:
             f.write(json.dumps(operations, indent=4))
@@ -301,6 +321,7 @@ class Operations(QtGui.QDialog):
             elif six.PY3:
                 op = item.data(QtCore.Qt.UserRole)
 
+            # Special logic is needed for the hist2 and sub linecut
             if op.name == 'hist2d':
                 if op.get_parameter('bins') == 0:
                     bins = np.round(np.sqrt(copy.z.shape[0]))

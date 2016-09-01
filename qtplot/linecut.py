@@ -13,12 +13,12 @@ from .util import FixedOrderFormatter, eng_format
 
 class Linetrace(plt.Line2D):
     """
-    Represents a linetrace from the data
+    Represents a linetrace from the data. The purpose of this class is
+    to be able to store incremental linetraces in an array.
 
-    x/y: Arrays containing x and y data
-    type: Type of linetrace, 'horizontal' or 'vertical'
-    position: The position of the linetrace in x or y direction
-    depending on the type
+    x/y:        Arrays containing x and y data
+    type:       Type of linetrace, 'horizontal' or 'vertical'
+    position:   The x/y coordinate at which the linetrace was taken
     """
     def __init__(self, x, y, type, position):
         plt.Line2D.__init__(self, x, y, color='red', linewidth=0.5)
