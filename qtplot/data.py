@@ -421,10 +421,14 @@ class Data2D:
 
         return tuple(map(np.ma.masked_invalid, [x, y, self.z]))
 
-    def plot(self, fig, ax, cmap='seismic', ):
+    def plot(self, fig, ax, cmap='seismic'):
         ax.clear()
 
         x, y, z = self.get_pcolor()
+
+        if type(cmap) != 'str':
+            # It's probably a qtplot Colormap
+            cmap = cmap.get_mpl_colormap()
 
         quadmesh = ax.pcolormesh(x, y, z,
                                       cmap=cmap,
@@ -438,8 +442,8 @@ class Data2D:
         ax.set_xlabel(self.x_name)
         ax.set_ylabel(self.y_name)
 
-        ax.xaxis.set_major_formatter(FixedOrderFormatter('%.0f', 1e0))
-        ax.yaxis.set_major_formatter(FixedOrderFormatter('%.0f', 1e0))
+        ax.xaxis.set_major_formatter(FixedOrderFormatter())
+        ax.yaxis.set_major_formatter(FixedOrderFormatter())
 
         cb = fig.colorbar(quadmesh)
 
@@ -448,6 +452,38 @@ class Data2D:
         cb.set_label(self.z_name)
         cb.draw_all()
 
+        fig.tight_layout()
+
+    def plot_linetrace(self, fig, ax, type, coordinate, **kwargs):
+        ax.clear()
+
+        ax.set_title(self.filename)
+        ax.set_ylabel(self.z_name)
+
+        ax.xaxis.set_major_formatter(FixedOrderFormatter())
+        ax.yaxis.set_major_formatter(FixedOrderFormatter())
+
+        if 'color' not in kwargs:
+            kwargs['color'] = 'red'
+        if 'linewidth' not in kwargs:
+            kwargs['linewidth'] = 0.5
+
+        if type == 'horizontal':
+            ax.set_xlabel(self.x_name)
+
+            x, y, index = self.get_row_at(coordinate)
+            z = np.nanmean(self.y[index,:])
+
+            ax.plot(x, y, **kwargs)
+        elif type == 'vertical':
+            ax.set_xlabel(self.y_name)
+
+            x, y, index = self.get_column_at(coordinate)
+            z = np.nanmean(self.x[:,index])
+
+            ax.plot(x, y, **kwargs)
+
+        #ax.set_aspect('auto')
         fig.tight_layout()
 
     def get_column_at(self, x):
