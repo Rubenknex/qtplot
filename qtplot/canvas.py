@@ -28,7 +28,7 @@ void main()
 }
 """
 
-# Vertex and fragment shader to draw the colormap bar next to the plot
+# Vertex and fragment shader to draw the colorbar next to the plot
 colormap_vert = """
 attribute vec2 a_position;
 attribute float a_texcoord;
@@ -55,7 +55,7 @@ void main()
 }
 """
 
-# Vertex and fragment shader to draw the actual data quads
+# Vertex and fragment shader to draw the actual data vertices
 data_vert = """
 attribute vec2 a_position;
 attribute float a_value;
@@ -109,17 +109,18 @@ class Canvas(scene.SceneCanvas):
         path = os.path.join(path, 'colormaps/transform/Seismic.npy')
         self.colormap = Colormap(path)
 
-        self.colormap_program = gloo.Program(colormap_vert, colormap_frag)
+        self.colorbar_program = gloo.Program(colormap_vert, colormap_frag)
 
         #  horizontal / vertical / diagonal
         self.line_type = None
         # x for a vertical line, y for a horizontal line
         self.line_coord = None
         # start and end points
-        self.line_positions = [(0, 0), (0, 0)]
+        self.mouse_start = (0, 0)
+        self.mouse_end = (0, 0)
 
         self.linecut_program = gloo.Program(linecut_vert, linecut_frag)
-        self.linecut_program['a_position'] = self.line_positions
+        self.linecut_program['a_position'] = [self.mouse_start, self.mouse_end]
 
         gloo.set_clear_color((1, 1, 1, 1))
 
@@ -138,20 +139,24 @@ class Canvas(scene.SceneCanvas):
             print('ERROR: Cannot plot because min and max values are the same')
             return
 
+        # Determines the width of the colorbar
         self.cm_dx = (self.xmax - self.xmin) * 0.1
 
         self.view = translate((0, 0, 0))
 
+        # Orthogonal projection matrix
         self.projection = ortho(self.xmin, self.xmax + self.cm_dx,
                                 self.ymin, self.ymax, -1, 1)
 
         self.data_program['u_view'] = self.view
         self.data_program['u_projection'] = self.projection
-        self.data_program['u_colormap'] = gloo.Texture1D(self.colormap.get_colors(),
-                                                         interpolation='linear')
 
-        self.colormap_program['u_view'] = self.view
-        self.colormap_program['u_projection'] = self.projection
+        cmap_texture = gloo.Texture1D(self.colormap.get_colors(),
+                                      interpolation='linear')
+        self.data_program['u_colormap'] = cmap_texture
+
+        self.colorbar_program['u_view'] = self.view
+        self.colorbar_program['u_projection'] = self.projection
 
         self.linecut_program['u_view'] = self.view
         self.linecut_program['u_projection'] = self.projection
@@ -162,6 +167,7 @@ class Canvas(scene.SceneCanvas):
         self.update()
 
     def generate_vertices(self, data):
+        """ Generate vertices for the dataset quadrilaterals """
         xq, yq = data.get_quadrilaterals(data.x, data.y)
 
         # Top left
@@ -188,29 +194,36 @@ class Canvas(scene.SceneCanvas):
         total_vertices = len(x1) * 6
         vertices = xy.reshape((total_vertices, 2))
 
-        vertex_data = np.zeros(total_vertices, dtype=[('a_position', np.float32, 2),
-                                                      ('a_value',    np.float32, 1)])
+        dtype = [('a_position', np.float32, 2), ('a_value', np.float32, 1)]
+        vertex_data = np.zeros(total_vertices, dtype=dtype)
         vertex_data['a_position'] = vertices
 
-        # Repeat the values six times for every two datapoint triangles
+        # Repeat the values six times for every six vertices required
+        # by the two datapoint triangles
         vertex_data['a_value'] = np.repeat(data.z.ravel(), 6, axis=0)
 
         return vertex_data
 
     def screen_to_data_coords(self, pos):
-        sw, sh = self.size
-        sx, sy = pos
+        """ Convert mouse position in the plot to data coordinates """
+        screen_w, screen_h = self.size
+        screen_x, screen_y = pos
 
-        relx, rely = float(sx*1.1) / sw, float(sh - sy) / sh
+        # Calculate in normalized coordinates
+        relx = float(screen_x*1.1) / screen_w
+        rely = float(screen_h - screen_y) / screen_h
 
+        # Convert to data coords using data min/max values
         dx = self.xmin + (relx) * (self.xmax - self.xmin)
         dy = self.ymin + (rely) * (self.ymax - self.ymin)
 
         return dx, dy
 
     def draw_linecut(self, event, old_position=False, initial_press=False):
-        # We need to check wether the canvas has had time to redraw itself
-        # because continuous mouse movement events surpress the redrawing.
+        """ Draw the linecut depending on which mouse button was used """
+        # We need to check whether the canvas has had time to redraw itself
+        # because continuous mouse movement events are too fast and
+        # surpress the redrawing.
         if self.data is not None and self.has_redrawn:
             x_name, y_name, data_name = self.parent.get_axis_names()
 
@@ -218,68 +231,88 @@ class Canvas(scene.SceneCanvas):
             if not old_position and event.button in [1, 2, 3]:
                 x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
 
-                # Set up the parameters and data for either a horizontal or vertical linecut
+                # Set up the parameters and data for either a horizontal or
+                # vertical linecut
                 if event.button == 1:
                     self.line_type = 'horizontal'
                     self.line_coord = self.data.get_closest_y(y)
-                    self.line_positions = [(self.xmin, self.line_coord),
-                                           (self.xmax, self.line_coord)]
+                    self.mouse_start = (self.xmin, self.line_coord)
+                    self.mouse_end = (self.xmax, self.line_coord)
 
+                    # Get the data row
                     x, y, index = self.data.get_row_at(y)
                     z = np.nanmean(self.data.y[index,:])
 
                     self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
                                                        self.line_coord,
                                                        self.parent.name,
-                                                       x_name, data_name, y_name)
+                                                       x_name, data_name,
+                                                       y_name)
                 elif event.button == 2:
                     self.line_type = 'diagonal'
 
-                    if initial_press:
-                        x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
-                        self.line_positions = [(x, y), (x, y)]
-                    else:
-                        x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
-                        self.line_positions[1] = (x, y)
+                    mouse_pos = (event.pos[0], event.pos[1])
 
-                        x_points = np.linspace(self.line_positions[0][0], self.line_positions[1][0], 500)
-                        y_points = np.linspace(self.line_positions[0][1], self.line_positions[1][1], 500)
+                    if initial_press:
+                        # Store the initial location as start and end
+                        x, y = self.screen_to_data_coords(mouse_pos)
+                        self.mouse_start = (x, y)
+                        self.mouse_end = (x, y)
+                    else:
+                        x, y = self.screen_to_data_coords(mouse_pos)
+                        self.mouse_end = (x, y)
+
+                        # Create datapoints on the line to interpolate over
+                        x_start, y_start = self.mouse_start
+                        x_points = np.linspace(x_start, x, 500)
+                        y_points = np.linspace(y_start, y, 500)
 
                         if self.data_changed:
                             self.data.generate_triangulation()
                             self.data_changed = False
 
-                        vals = self.data.interpolate(np.column_stack((x_points, y_points)))
+                        vals = self.data.interpolate(
+                            np.column_stack((x_points, y_points)))
 
-                        dist = np.hypot(x_points - x_points[0], y_points - y_points[0])
+                        # Create data for the x-axis using hypotenuse
+                        dist = np.hypot(x_points - x_points[0],
+                                        y_points - y_points[0])
 
-                        self.parent.linecut.plot_linetrace(dist, vals, 0, self.line_type,
-                                                       self.line_coord,
-                                                       self.parent.name,
-                                                       'Distance (-)', data_name, x_name)
+                        self.parent.linecut.plot_linetrace(dist, vals, 0,
+                                                           self.line_type,
+                                                           self.line_coord,
+                                                           self.parent.name,
+                                                           'Distance (-)',
+                                                           data_name, x_name)
 
-                        # Display slope in status bar
-                        dx = self.line_positions[1][0] - self.line_positions[0][0]
-                        dy = self.line_positions[1][1] - self.line_positions[0][1]
-                        text = 'Slope: {:.3f}\tInv: {:.3f}'.format(dy / dx, dx / dy)
+                        # Display slope and inverse slope in status bar
+                        dx = x - x_start
+                        dy = y - y_start
+                        text = 'Slope: {:.3e}\tInv: {:.3e}'.format(dy / dx,
+                                                                   dx / dy)
+
                         self.parent.l_slope.setText(text)
                 elif event.button == 3:
                     self.line_type = 'vertical'
                     self.line_coord = self.data.get_closest_x(x)
-                    self.line_positions = [(self.line_coord, self.ymin),
-                                           (self.line_coord, self.ymax)]
+                    self.mouse_start = (self.line_coord, self.ymin)
+                    self.mouse_end = (self.line_coord, self.ymax)
 
+                    # Get the data column
                     x, y, index = self.data.get_column_at(x)
                     z = np.nanmean(self.data.x[:,index])
 
                     self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
                                                        self.line_coord,
                                                        self.parent.name,
-                                                       y_name, data_name, x_name)
+                                                       y_name, data_name,
+                                                       x_name)
 
                 self.has_redrawn = False
 
-            self.linecut_program['a_position'] = self.line_positions
+            # Set the line endpoints in the shader program
+            self.linecut_program['a_position'] = [self.mouse_start,
+                                                  self.mouse_end]
 
             self.update()
         else:
@@ -293,12 +326,16 @@ class Canvas(scene.SceneCanvas):
             sw, sh = self.size
             sx, sy = event.pos
 
+            # If we are within the plot window
             if 0 <= sx < sw and 0 <= sy < sh:
+                print(event.pos, type(event.pos))
                 x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
 
                 if not np.isnan(x) and not np.isnan(y):
-                    xstr, ystr = eng_format(x, 1), eng_format(y, 1)
-                    self.parent.l_position.setText('X: %s\tY: %s' % (xstr, ystr))
+                    # Show the coordinates in the statusbar
+                    text = 'X: %s\tY: %s' % (eng_format(x, 1),
+                                             eng_format(y, 1))
+                    self.parent.l_position.setText(text)
 
                     self.draw_linecut(event)
 
@@ -311,21 +348,26 @@ class Canvas(scene.SceneCanvas):
 
         if self.data is not None:
             # Draw first the data, then colormap, and then linecut
-            self.data_program['u_colormap'] = gloo.Texture1D(self.colormap.get_colors())
+            cmap_texture = gloo.Texture1D(self.colormap.get_colors(),
+                                          interpolation='linear')
+
+            # Drawing of the plot
+            self.data_program['u_colormap'] = cmap_texture
             self.data_program['z_min'] = self.colormap.min
             self.data_program['z_max'] = self.colormap.max
             self.data_program.draw('triangles')
 
-            self.colormap_program['u_colormap'] = gloo.Texture1D(
-                self.colormap.get_colors(), interpolation='linear')
+            # Drawing of the colormap bar
+            self.colorbar_program['u_colormap'] = cmap_texture
+            colorbar_vertices = [(self.xmax + self.cm_dx*.2, self.ymax),
+                                 (self.xmax + self.cm_dx*.2, self.ymin),
+                                 (self.xmax + self.cm_dx,    self.ymax),
+                                 (self.xmax + self.cm_dx,    self.ymin)]
+            self.colorbar_program['a_position'] = colorbar_vertices
+            self.colorbar_program['a_texcoord'] = [[1], [0], [1], [0]]
+            self.colorbar_program.draw('triangle_strip')
 
-            self.colormap_program['a_position'] = [(self.xmax + self.cm_dx*.2, self.ymax),
-                                             (self.xmax + self.cm_dx*.2, self.ymin),
-                                             (self.xmax + self.cm_dx, self.ymax),
-                                             (self.xmax + self.cm_dx, self.ymin)]
-            self.colormap_program['a_texcoord'] = [[1], [0], [1], [0]]
-            self.colormap_program.draw('triangle_strip')
-
+            # Drawing of the linecut
             self.linecut_program.draw('lines')
 
         self.has_redrawn = True
