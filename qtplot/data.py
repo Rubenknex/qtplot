@@ -105,10 +105,12 @@ class DatFile:
         if self.ndim > 1:
             y_size = self.shape[1]
 
+        # Put the data into a NaN-filled array, because it can be
+        # an incomplete dataset
         data = np.zeros((x_size * y_size, 3)) * np.nan
-
         data[:len(x_data)] = np.vstack((x_data, y_data, z_data)).T
 
+        # Generate pivoting indices
         row_ind = np.repeat(np.arange(y_size), x_size)
         col_ind = np.tile(np.arange(x_size), y_size)
 
