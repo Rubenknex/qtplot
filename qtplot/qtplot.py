@@ -84,6 +84,7 @@ class QTPlot(QtGui.QMainWindow):
 
         self.init_ui()
         self.init_settings()
+        self.init_logging()
 
         self.settings.populate_ui()
 
@@ -132,6 +133,25 @@ class QTPlot(QtGui.QMainWindow):
 
         self.profile_settings = defaults
         #self.open_state(self.profile_ini_file)
+
+    def init_logging(self):
+        formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+
+        log_file = os.path.join(self.settings_dir, 'log.txt')
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        root_logger.addHandler(console_handler)
+
+        def my_handler(type, value, tb):
+            logger.exception(str(value))
+
+        sys.excepthook = my_handler
 
     def init_ui(self):
         self.setWindowTitle('qtplot')
@@ -796,9 +816,6 @@ class QTPlot(QtGui.QMainWindow):
 
 
 def main():
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-    logging.info('Starting qtplot with arguments {}'.format(sys.argv))
-
     app = QtGui.QApplication(sys.argv)
 
     if len(sys.argv) > 1:

@@ -503,6 +503,8 @@ class Data2D:
 
         fig.tight_layout()
 
+        return cb
+
     def plot_linetrace(self, fig, ax, type, coordinate, **kwargs):
         ax.clear()
 
