@@ -165,33 +165,35 @@ class ExportWidget(QtGui.QWidget):
         vbox.addWidget(groupbox_figure)
 
     def populate_ui(self):
-        self.le_title.setText(self.main.profile_settings['title'])
-        self.le_dpi.setText(self.main.profile_settings['DPI'])
-        self.cb_rasterize.setChecked(bool(self.main.profile_settings['rasterize']))
+        profile = self.main.profile_settings
 
-        self.le_x_label.setText(self.main.profile_settings['x_label'])
-        self.le_y_label.setText(self.main.profile_settings['y_label'])
-        self.le_z_label.setText(self.main.profile_settings['z_label'])
+        self.le_title.setText(profile['title'])
+        self.le_dpi.setText(profile['DPI'])
+        self.cb_rasterize.setChecked(bool(profile['rasterize']))
 
-        self.le_x_format.setText(self.main.profile_settings['x_format'])
-        self.le_y_format.setText(self.main.profile_settings['y_format'])
-        self.le_z_format.setText(self.main.profile_settings['z_format'])
+        self.le_x_label.setText(profile['x_label'])
+        self.le_y_label.setText(profile['y_label'])
+        self.le_z_label.setText(profile['z_label'])
 
-        self.le_x_div.setText(self.main.profile_settings['x_div'])
-        self.le_y_div.setText(self.main.profile_settings['y_div'])
-        self.le_z_div.setText(self.main.profile_settings['z_div'])
+        self.le_x_format.setText(profile['x_format'])
+        self.le_y_format.setText(profile['y_format'])
+        self.le_z_format.setText(profile['z_format'])
 
-        self.le_font.setText(self.main.profile_settings['font'])
-        self.le_width.setText(self.main.profile_settings['width'])
+        self.le_x_div.setText(profile['x_div'])
+        self.le_y_div.setText(profile['y_div'])
+        self.le_z_div.setText(profile['z_div'])
+
+        self.le_font.setText(profile['font'])
+        self.le_width.setText(profile['width'])
         # cb orient
 
-        self.le_font_size.setText(self.main.profile_settings['font_size'])
-        self.le_height.setText(self.main.profile_settings['height'])
+        self.le_font_size.setText(profile['font_size'])
+        self.le_height.setText(profile['height'])
         # cb pos
 
-        self.cb_triangulation.setChecked(bool(self.main.profile_settings['triangulation']))
-        self.cb_tripcolor.setChecked(bool(self.main.profile_settings['tripcolor']))
-        self.cb_linecut.setChecked(bool(self.main.profile_settings['linecut']))
+        self.cb_triangulation.setChecked(bool(profile['triangulation']))
+        self.cb_tripcolor.setChecked(bool(profile['tripcolor']))
+        self.cb_linecut.setChecked(bool(profile['linecut']))
 
     def keyPressEvent(self, e):
         if e.key() == QtCore.Qt.Key_Return:

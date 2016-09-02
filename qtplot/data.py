@@ -8,7 +8,7 @@ from scipy.spatial import qhull
 from pandas.io.api import read_table
 import pandas as pd
 
-from .util import FixedOrderFormatter
+from .util import FixedOrderFormatter, eng_format
 
 logger = logging.getLogger(__name__)
 
@@ -470,7 +470,8 @@ class Data2D:
 
         return tuple(map(np.ma.masked_invalid, [x, y, self.z]))
 
-    def plot(self, fig, ax, cmap='seismic'):
+    def plot(self, fig, ax, cmap='seismic', font_family='', font_size=12,
+             tripcolor=False, show_triangulation=False):
         ax.clear()
 
         x, y, z = self.get_pcolor()
@@ -505,10 +506,10 @@ class Data2D:
 
         return cb
 
-    def plot_linetrace(self, fig, ax, type, coordinate, **kwargs):
+    def plot_linetrace(self, fig, ax, type, coordinate,
+                       include_coordinate=True, **kwargs):
         ax.clear()
 
-        ax.set_title(self.filename)
         ax.set_ylabel(self.z_name)
 
         ax.xaxis.set_major_formatter(FixedOrderFormatter())
@@ -519,8 +520,17 @@ class Data2D:
         if 'linewidth' not in kwargs:
             kwargs['linewidth'] = 0.5
 
+        title = '{0}\n{1} = {2}'
+
         if type == 'horizontal':
             ax.set_xlabel(self.x_name)
+
+            if include_coordinate:
+                ax.set_title(title.format(self.filename,
+                                          self.y_name,
+                                          eng_format(coordinate, 1)))
+            else:
+                ax.set_title(self.filename)
 
             x, y, index = self.get_row_at(coordinate)
             z = np.nanmean(self.y[index,:])
@@ -528,6 +538,13 @@ class Data2D:
             ax.plot(x, y, **kwargs)
         elif type == 'vertical':
             ax.set_xlabel(self.y_name)
+
+            if include_coordinate:
+                ax.set_title(title.format(self.filename,
+                                          self.x_name,
+                                          eng_format(coordinate, 1)))
+            else:
+                ax.set_title(self.filename)
 
             x, y, index = self.get_column_at(coordinate)
             z = np.nanmean(self.x[:,index])

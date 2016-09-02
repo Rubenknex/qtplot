@@ -148,6 +148,7 @@ class QTPlot(QtGui.QMainWindow):
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
 
+        # Write exceptions to the log
         def my_handler(type, value, tb):
             logger.exception(str(value))
 
@@ -252,6 +253,9 @@ class QTPlot(QtGui.QMainWindow):
         self.cb_z.activated.connect(self.on_data_change)
         self.cb_z.setMaxVisibleItems(25)
         grid.addWidget(self.cb_z, 3, 2)
+
+        self.combo_boxes = [self.cb_v, self.cb_i,
+                            self.cb_x, self.cb_y, self.cb_z]
 
         #self.b_save_default = QtGui.QPushButton('Save to profile')
         #self.b_save_default.clicked.connect(self.on_save_default)
@@ -393,45 +397,25 @@ class QTPlot(QtGui.QMainWindow):
 
         parameters = [''] + self.get_parameter_names()
 
-        i = self.cb_v.currentIndex()
-        self.cb_v.clear()
-        self.cb_v.addItems(parameters)
-        self.cb_v.setCurrentIndex(i)
+        # Repopulate the combo boxes
+        for cb in self.combo_boxes:
+            i = cb.currentIndex()
 
-        i = self.cb_i.currentIndex()
-        self.cb_i.clear()
-        self.cb_i.addItems(parameters)
-        self.cb_i.setCurrentIndex(i)
+            cb.clear()
+            cb.addItems(parameters)
+            cb.setCurrentIndex(i)
 
+        # Load the series resistance
         if opening_state:
             R = self.profile_settings['sub_series_R']
             self.le_r.setText(R)
 
-        i = self.cb_x.currentIndex()
-        self.cb_x.clear()
-        self.cb_x.addItems(parameters)
-        self.cb_x.setCurrentIndex(i)
-
-        i = self.cb_y.currentIndex()
-        self.cb_y.clear()
-        self.cb_y.addItems(parameters)
-        self.cb_y.setCurrentIndex(i)
-
-        i = self.cb_z.currentIndex()
-        self.cb_z.clear()
-        self.cb_z.addItems(parameters)
-        self.cb_z.setCurrentIndex(i)
-
         # Set the selected parameters
         if reset and self.first_data_file:
-            #self.first_data_file = False
-
-            combo_boxes = [self.cb_v, self.cb_i, self.cb_x, self.cb_y,
-                           self.cb_z]
             names = ['sub_series_V', 'sub_series_I', 'x', 'y', 'z']
             default_indices = [0, 0, 1, 1, 2, 2, 4]
 
-            for i, cb in enumerate(combo_boxes):
+            for i, cb in enumerate(self.combo_boxes):
                 parameter = self.profile_settings[names[i]]
 
                 index = cb.findText(parameter)
@@ -641,10 +625,8 @@ class QTPlot(QtGui.QMainWindow):
         #self.canvas.draw_linecut(None, old_position=True)
         self.canvas.update()
 
-        #if np.isnan(self.data.z).any():
-        #    self.status_bar.showMessage("Warning: Data contains NaN values")
-        #else:
-        #    self.status_bar.showMessage("")
+        if np.isnan(self.data.z).any():
+            logger.warning('The data contains NaN values')
 
     def get_axis_names(self):
         """ Get the parameters that are currently selected to be plotted """
@@ -786,13 +768,6 @@ class QTPlot(QtGui.QMainWindow):
         if filename != '' and self.dat_file is not None:
             base = os.path.basename(filename)
             name, ext = os.path.splitext(base)
-
-            #mat = np.dstack((self.data.x.data, self.data.y.data, self.data.z.data))
-
-            #if ext == '.npy':
-            #    np.save(filename, mat)
-            #elif ext == '.mat':
-            #    io.savemat(filename, {'data': mat})
 
             self.data.save(filename)
 
