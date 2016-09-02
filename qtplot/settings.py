@@ -135,45 +135,25 @@ class Settings(QtGui.QDialog):
         self.le_open_directory.setText(self.main.profile_settings['open_directory'])
         self.le_save_directory.setText(self.main.profile_settings['save_directory'])
 
-    def load_file(self, filename):
-        path, ext = os.path.splitext(filename)
-        settings_file = path + '.set'
-        settings_file_name = os.path.split(settings_file)[1]
+    def fill_tree(self):
+        if self.main.dat_file is not None:
+            settings = self.main.dat_file.qtlab_settings
+            widgets = []
 
-        if os.path.exists(settings_file):
-            with open(settings_file) as f:
-                self.lines = f.readlines()
+            for key, item in settings.items():
+                if isinstance(item, dict):
+                    parent = QtGui.QTreeWidgetItem(None, [key, ''])
 
-            self.fill_tree(self.lines)
+                    for key, item in item.items():
+                        child = QtGui.QTreeWidgetItem(parent, [key, item])
+                        child.setCheckState(0, QtCore.Qt.Unchecked)
+                else:
+                    parent = QtGui.QTreeWidgetItem(None, [key, item])
 
-            self.setWindowTitle(settings_file_name)
-        else:
-            self.setWindowTitle('Could not find ' + settings_file_name)
-
-    def fill_tree(self, lines):
-        self.tree.clear()
-
-        widgets = []
-
-        for line in lines:
-            line = line.rstrip('\n\t\r')
-
-            if line == '':
-                continue
-
-            if not line.startswith('\t'):
-                name, value = line.split(': ', 1)
-
-                parent = QtGui.QTreeWidgetItem(None, [name, value])
                 parent.setCheckState(0, QtCore.Qt.Unchecked)
                 widgets.append(parent)
-            else:
-                name, value = line.split(': ', 1)
 
-                child = QtGui.QTreeWidgetItem(parent, [name.strip(), value])
-                child.setCheckState(0, QtCore.Qt.Unchecked)
-
-        self.tree.insertTopLevelItems(0, widgets)
+            self.tree.insertTopLevelItems(0, widgets)
 
     def on_open_browse(self, event):
         directory = str(QtGui.QFileDialog.getExistingDirectory(self, "Select Directory"))

@@ -433,7 +433,7 @@ class QTPlot(QtGui.QMainWindow):
         and fire an on_data_change event to update the plots.
         """
         self.dat_file = DatFile(filename)
-        self.settings.load_file(filename)
+        self.settings.fill_tree()
 
         if filename != self.filename:
             path, self.name = os.path.split(filename)

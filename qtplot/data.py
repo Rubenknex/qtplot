@@ -1,4 +1,5 @@
 import os
+from collections import OrderedDict
 
 import numpy as np
 from scipy import ndimage, interpolate, io
@@ -57,6 +58,46 @@ class DatFile:
                 self.ndim = len(self.shape)
 
         self.data = read_table(filename, comment='#', sep='\t', header=None).values
+
+        self.load_qtlab_settings(filename)
+
+    def load_qtlab_settings(self, filename):
+        self.qtlab_settings = OrderedDict()
+
+        path, ext = os.path.splitext(filename)
+        settings_file = path + '.set'
+        settings_file_name = os.path.split(settings_file)[1]
+
+        if os.path.exists(settings_file):
+            with open(settings_file) as f:
+                lines = f.readlines()
+
+            current_instrument = None
+
+            for line in lines:
+                line = line.rstrip('\n\t\r')
+
+                if line == '':
+                    continue
+
+                if not line.startswith('\t'):
+                    name, value = line.split(': ', 1)
+
+                    if (line.startswith('Filename: ') or
+                       line.startswith('Timestamp: ')):
+                        self.qtlab_settings.update([(name, value)])
+                    else:
+                        current_instrument = value
+                        new = [(current_instrument, OrderedDict())]
+                        self.qtlab_settings.update(new)
+                else:
+                    param, value = line.split(': ', 1)
+                    param = param.strip()
+
+                    new = [(param, value)]
+                    self.qtlab_settings[current_instrument].update(new)
+        else:
+            print('WARNING: Could not find settings file %s' % settings_file_name)
 
     def get_column(self, name):
         if name in self.ids:
@@ -675,7 +716,6 @@ class Data2D:
         for i in range(cols):
             f = interpolate.interp1d(self.y[:,i].ravel(), self.z[:,i].ravel(),
                                      bounds_error=False, fill_value=np.nan)
-            print(f(y).T[0].shape)
             values[:,i] = f(y).ravel()
 
         x_avg = np.average(self.x, axis=0)
