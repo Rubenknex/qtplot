@@ -4,6 +4,7 @@ from six.moves import configparser
 import matplotlib as mpl
 import numpy as np
 import os
+import logging
 import sys
 import time
 from collections import OrderedDict
@@ -18,6 +19,8 @@ from .linecut import Linecut
 from .operations import Operations
 from .settings import Settings
 from .canvas import Canvas
+
+logger = logging.getLogger(__name__)
 
 profile_defaults = OrderedDict((
             ('operations', ''),
@@ -425,7 +428,7 @@ class QTPlot(QtGui.QMainWindow):
         if index != -1:
             self.cb_cmaps.setCurrentIndex(index)
         else:
-            print('could not find colormap', cmap)
+            logger.error('Could not find the colormap file %s' % cmap)
 
     def load_dat_file(self, filename):
         """
@@ -523,7 +526,7 @@ class QTPlot(QtGui.QMainWindow):
         if os.path.exists(operations_file):
             self.operations.load(operations_file)
         else:
-            print('No operations file present for selected profile')
+            logger.warning('No operations file present for the selected profile')
 
         # Read the specified profile .ini
         self.profile_ini.read(self.profile_ini_file)
@@ -544,7 +547,7 @@ class QTPlot(QtGui.QMainWindow):
                               self.profile_settings['sub_series_I'],
                               R)
         except ValueError:
-            print('ERROR: Could not parse resistance value')
+            logger.warning('Could not parse the resistance value in the profile')
 
         self.update_ui(opening_state=True)
 
@@ -793,6 +796,9 @@ class QTPlot(QtGui.QMainWindow):
 
 
 def main():
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+    logging.info('Starting qtplot with arguments {}'.format(sys.argv))
+
     app = QtGui.QApplication(sys.argv)
 
     if len(sys.argv) > 1:

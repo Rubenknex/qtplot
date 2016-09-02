@@ -1,11 +1,14 @@
 import numpy as np
 import os
+import logging
 
 from vispy import gloo, scene
 from vispy.util.transforms import ortho, translate
 
 from .colormap import Colormap
 from .util import eng_format
+
+logger = logging.getLogger(__name__)
 
 # Vertex and fragment shader used to draw the linecut line
 # The red color is hardcoded in the fragment shader
@@ -136,7 +139,8 @@ class Canvas(scene.SceneCanvas):
         self.ymax = np.nanmax(vertices['a_position'][:,1])
 
         if self.xmin == self.xmax or self.ymin == self.ymax:
-            print('ERROR: Cannot plot because min and max values are the same')
+            logger.error('Cannot plot because min and max values of vertices are identical')
+
             return
 
         # Determines the width of the colorbar
