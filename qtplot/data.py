@@ -119,6 +119,20 @@ class DatFile:
             self.data = np.hstack((self.data, values[:, np.newaxis]))
 
     def get_data(self, x_name, y_name, z_name):
+        """
+        Types of datasets:
+        -   matrix of x and y setpoints
+        -   partially filled matrix of x and y setpoints
+        -   measured datapoints, this is more inconvenient
+
+        Procedure:
+        -   Find unique values in x and y setpoints
+            Look for all arrays with a size parameter, these are setpoints
+        -   Fill matrix with all combinations and z values
+
+        For processed data (along publication):
+        -   Should always include x and y setpoints, then loading is easy
+        """
         if x_name == '':
             logger.error('You have to select a parameter for the x-axis')
 
