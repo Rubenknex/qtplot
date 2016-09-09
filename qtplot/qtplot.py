@@ -425,6 +425,16 @@ class QTPlot(QtGui.QMainWindow):
                 if index == -1:
                     cb.setCurrentIndex(default_indices[i])
 
+        # If the dataset is 1D; disable the y-parameter combobox
+        if self.dat_file is not None:
+            one_dimensional = self.dat_file.ndim == 1
+
+            if self.dat_file.ndim == 1:
+                self.cb_y.setCurrentIndex(0)
+                self.cb_y.setEnabled(False)
+            else:
+                self.cb_y.setEnabled(True)
+
         # Set the colormap
         cmap = self.profile_settings['colormap']
         index = self.cb_cmaps.findText(cmap)
