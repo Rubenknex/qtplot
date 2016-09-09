@@ -21,6 +21,7 @@ class DatFile:
 
         self.ids = []
         self.labels = []
+        self.sizes = {}
         self.shape = ()
         self.ndim = 0
 
@@ -38,12 +39,17 @@ class DatFile:
 
                     if line.startswith('# Timestamp: '):
                         self.timestamp = line.split(': ', 1)[1]
-                    if line.startswith('#\tname'):
+                    elif line.startswith('#\tname'):
                         name = line.split(': ', 1)[1]
+
                         self.ids.append(name)
                         self.labels.append(name)
                     elif line.startswith('#\tsize'):
                         size = int(line.split(': ', 1)[1])
+
+                        if size > 1:
+                            self.sizes[self.ids[-1]] = size
+
                         self.shape = self.shape + (size,)
 
                     # When a line starts with a number we reached the data
@@ -120,18 +126,11 @@ class DatFile:
 
     def get_data(self, x_name, y_name, z_name):
         """
-        Types of datasets:
-        -   matrix of x and y setpoints
-        -   partially filled matrix of x and y setpoints
-        -   measured datapoints, this is more inconvenient
-
         Procedure:
-        -   Find unique values in x and y setpoints
-            Look for all arrays with a size parameter, these are setpoints
-        -   Fill matrix with all combinations and z values
-
-        For processed data (along publication):
-        -   Should always include x and y setpoints, then loading is easy
+        -   Find columns with size > 1 property, these are the setpoints
+        -   Find unique values in the case of two setpoint columns
+        -   Pivot into matrix together with selected x, y, and z columns
+        -   Transpose to correct form by checking data ranges
         """
         if x_name == '':
             logger.error('You have to select a parameter for the x-axis')
@@ -139,46 +138,40 @@ class DatFile:
             return None
 
         if y_name != '' and self.ndim < 2:
-            logger.error('You cannot have a y-axis parameter for a 1D dataset')
+            logger.warning('Ignoring the y-axis parameter since it is a 1D dataset')
 
             y_name = ''
 
-        x_setpoints = self.data[:, 0]
+        setpoint_columns = list(self.sizes.keys())
 
-        x_data = self.data[:, self.ids.index(x_name)]
-        z_data = self.data[:, self.ids.index(z_name)]
+        if len(setpoint_columns) == 0:
+            logger.error('No setpoint columns with a size property were found')
 
-        if y_name == '':
-            # This is a single trace
-            y_setpoints = [0]
-            y_data = np.zeros(self.data.shape[0])
-        else:
-            # This is 2-D data
-            # TODO: QTLab saves data for 3 variables by default
-            # If 'z' is used, change the 1 on the next line to 2
-            y_setpoints = self.data[:, 1]
-            y_data = self.data[:, self.ids.index(y_name)]
+            return None
+        elif len(setpoint_columns) > 2:
+            logger.warning('Multiple setpoint columns with a size property were found, using the first two')
 
-        rows, row_ind = np.unique(y_setpoints, return_inverse=True)
+        # Retrieve the setpoint data, start with 0 for y
+        x_setpoints = self.get_column(setpoint_columns[0])
+        y_setpoints = [0]
+
+        # Retrieve the x, y, and z data
+        x_data = self.get_column(x_name)
+        y_data = np.zeros(self.data.shape[0])
+        z_data = self.get_column(z_name)
+
+        # Retrieve y setpoints and data if present
+        if len(setpoint_columns) > 1 and y_name != '':
+            y_setpoints = self.get_column(setpoint_columns[1])
+            y_data = self.get_column(y_name)
+
+        # Find all unique setpoint values
         cols, col_ind = np.unique(x_setpoints, return_inverse=True)
+        rows, row_ind = np.unique(y_setpoints, return_inverse=True)
 
-        x_size = self.shape[0]
-        y_size = 1
-
-        if self.ndim > 1:
-            y_size = self.shape[1]
-
-        # Put the data into a NaN-filled array, because it can be
-        # an incomplete dataset
-        data = np.zeros((x_size * y_size, 3)) * np.nan
-        data[:len(x_data)] = np.vstack((x_data, y_data, z_data)).T
-
-        # Generate pivoting indices
-        row_ind = np.repeat(np.arange(y_size), x_size)
-        col_ind = np.tile(np.arange(x_size), y_size)
-
-        pivot = np.zeros((y_size, x_size, 3)) * np.nan
-        pivot[row_ind, col_ind] = data
+        # Pivot all data into matrix using unique setpoint indices
+        pivot = np.zeros((len(rows), len(cols), 3)) * np.nan
+        pivot[row_ind, col_ind] = np.vstack((x_data, y_data, z_data)).T
 
         x = pivot[:,:,0]
         y = pivot[:,:,1]
@@ -543,8 +536,6 @@ class Data2D:
                 ax.set_title(title.format(self.filename,
                                           self.y_name,
                                           eng_format(coordinate, 1)))
-            else:
-                ax.set_title(self.filename)
 
             x, y, index = self.get_row_at(coordinate)
             z = np.nanmean(self.y[index,:])
@@ -557,8 +548,6 @@ class Data2D:
                 ax.set_title(title.format(self.filename,
                                           self.x_name,
                                           eng_format(coordinate, 1)))
-            else:
-                ax.set_title(self.filename)
 
             x, y, index = self.get_column_at(coordinate)
             z = np.nanmean(self.x[:,index])
