@@ -149,8 +149,9 @@ class QTPlot(QtGui.QMainWindow):
         root_logger.addHandler(console_handler)
 
         # Write exceptions to the log
-        def my_handler(type, value, tb):
-            logger.exception(str(value))
+        def my_handler(exc_type, exc_value, exc_traceback):
+            exc_info = (exc_type, exc_value, exc_traceback)
+            logger.error('Uncaught exception', exc_info=exc_info)
 
         sys.excepthook = my_handler
 
