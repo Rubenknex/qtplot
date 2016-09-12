@@ -148,6 +148,8 @@ class DatFile:
             logger.error('No setpoint columns with a size property were found')
 
             return None
+        elif len(setpoint_columns) == 1:
+            setpoint_columns.append('')
         elif len(setpoint_columns) > 2:
             logger.warning('Multiple setpoint columns with a size property were found, using the first two')
 
@@ -251,6 +253,10 @@ class Data2D:
         self.equidistant = equidistant
         self.varying = varying
         self.tri = None
+
+        # Store column and row averages for linetrace lookup
+        self.x_means = np.nanmean(self.x, axis=0)
+        self.y_means = np.nanmean(self.y, axis=1)
 
         if self.varying[0] is True or self.varying[1] is True:
             minx = np.nanmin(x)
@@ -590,20 +596,14 @@ class Data2D:
         fig.tight_layout()
 
     def get_column_at(self, x):
-        x_index = np.where(self.x[0,:]==self.get_closest_x(x))[0][0]
+        index = np.argmin(np.abs(self.x_means - x))
 
-        if self.equidistant[0]:
-            return self.y[:,x_index], self.z[:,x_index], x_index
-        else:
-            return self.y[:,x_index], self.z[:,x_index], x_index
+        return self.y[:,index], self.z[:,index], index
 
     def get_row_at(self, y):
-        y_index = np.where(self.y[:,0]==self.get_closest_y(y))[0][0]
+        index = np.argmin(np.abs(self.y_means - y))
 
-        if self.equidistant[1]:
-            return self.x[y_index], self.z[y_index], y_index
-        else:
-            return self.x[y_index], self.z[y_index], y_index
+        return self.x[index], self.z[index], index
 
     def get_closest_x(self, x_coord):
         return min(self.x[0,:], key=lambda x:abs(x - x_coord))
