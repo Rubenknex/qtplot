@@ -1,5 +1,6 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import textwrap
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from PyQt4 import QtGui, QtCore
@@ -257,7 +258,9 @@ class ExportWidget(QtGui.QWidget):
 
             self.ax.axis('tight')
 
-            self.ax.set_title(self.format_label(self.le_title.text()))
+            title = self.format_label(str(self.le_title.text()))
+            title = '\n'.join(textwrap.wrap(title, 40, replace_whitespace=False))
+            self.ax.set_title(title)
             self.ax.set_xlabel(self.format_label(self.le_x_label.text()))
             self.ax.set_ylabel(self.format_label(self.le_y_label.text()))
 
