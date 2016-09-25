@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+import textwrap
 from itertools import cycle
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
@@ -217,6 +218,7 @@ class Linecut(QtGui.QDialog):
         if self.cb_include_z.checkState() == QtCore.Qt.Checked:
             title = '{0}\n{1} = {2}'.format(title, otherlabel, eng_format(z, 1))
 
+        title = '\n'.join(textwrap.wrap(title, 40, replace_whitespace=False))
         self.ax.set_title(title)
 
         self.ax.set_xlabel(xlabel)
