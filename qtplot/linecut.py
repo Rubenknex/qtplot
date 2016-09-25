@@ -246,7 +246,7 @@ class Linecut(QtGui.QDialog):
 
             offset = float(self.le_offset.text())
             line = Linetrace(x, y + index * offset, type, position)
-            line.set_color(self.colors.next())
+            line.set_color(next(self.colors))
 
             self.linetraces.append(line)
             self.ax.add_line(line)
