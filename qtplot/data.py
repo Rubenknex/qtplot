@@ -69,7 +69,8 @@ class DatFile:
 
                 self.ndim = len(self.shape)
 
-        self.data = read_table(filename, comment='#', sep='\t', header=None).values
+        self.data = read_table(filename, comment='#', sep='\t',
+                               header=None).values
 
         self.load_qtlab_settings(filename)
 
@@ -596,11 +597,15 @@ class Data2D:
         fig.tight_layout()
 
     def get_column_at(self, x):
+        self.x_means = np.nanmean(self.x, axis=0)
+
         index = np.argmin(np.abs(self.x_means - x))
 
         return self.y[:,index], self.z[:,index], index
 
     def get_row_at(self, y):
+        self.y_means = np.nanmean(self.y, axis=1)
+
         index = np.argmin(np.abs(self.y_means - y))
 
         return self.x[index], self.z[index], index
