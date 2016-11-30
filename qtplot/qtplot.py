@@ -9,7 +9,8 @@ import sys
 import time
 from collections import OrderedDict
 
-from PyQt4 import QtGui, QtCore
+from qtpy import QtWidgets, QtCore
+
 from scipy import io
 
 from .colormap import Colormap
@@ -57,7 +58,7 @@ profile_defaults = OrderedDict((
         ))
 
 
-class QTPlot(QtGui.QMainWindow):
+class QTPlot(QtWidgets.QMainWindow):
     """ The main window of the qtplot application. """
     def __init__(self, filename=None):
         super(QTPlot, self).__init__(None)
@@ -158,9 +159,9 @@ class QTPlot(QtGui.QMainWindow):
     def init_ui(self):
         self.setWindowTitle('qtplot')
 
-        self.main_widget = QtGui.QTabWidget(self)
+        self.main_widget = QtWidgets.QTabWidget(self)
 
-        self.view_widget = QtGui.QWidget()
+        self.view_widget = QtWidgets.QWidget()
         self.main_widget.addTab(self.view_widget, 'View')
         self.export_widget = ExportWidget(self)
         self.main_widget.addTab(self.export_widget, 'Export')
@@ -168,89 +169,89 @@ class QTPlot(QtGui.QMainWindow):
         self.canvas = Canvas(self)
 
         # Top row buttons
-        hbox = QtGui.QHBoxLayout()
+        hbox = QtWidgets.QHBoxLayout()
 
-        self.b_load = QtGui.QPushButton('Load...')
+        self.b_load = QtWidgets.QPushButton('Load...')
         self.b_load.clicked.connect(self.on_load_dat)
         hbox.addWidget(self.b_load)
 
-        self.b_refresh = QtGui.QPushButton('Refresh')
+        self.b_refresh = QtWidgets.QPushButton('Refresh')
         self.b_refresh.clicked.connect(self.on_refresh)
         hbox.addWidget(self.b_refresh)
 
-        self.b_swap_axes = QtGui.QPushButton('Swap axes', self)
+        self.b_swap_axes = QtWidgets.QPushButton('Swap axes', self)
         self.b_swap_axes.clicked.connect(self.on_swap_axes)
         hbox.addWidget(self.b_swap_axes)
 
-        self.b_linecut = QtGui.QPushButton('Linecut')
+        self.b_linecut = QtWidgets.QPushButton('Linecut')
         self.b_linecut.clicked.connect(self.linecut.show_window)
         hbox.addWidget(self.b_linecut)
 
-        self.b_operations = QtGui.QPushButton('Operations')
+        self.b_operations = QtWidgets.QPushButton('Operations')
         self.b_operations.clicked.connect(self.operations.show_window)
         hbox.addWidget(self.b_operations)
 
         # Subtracting series R
-        r_hbox = QtGui.QHBoxLayout()
+        r_hbox = QtWidgets.QHBoxLayout()
 
-        lbl_sub = QtGui.QLabel('Sub series R:')
+        lbl_sub = QtWidgets.QLabel('Sub series R:')
         lbl_sub.setMaximumWidth(70)
         r_hbox.addWidget(lbl_sub)
 
-        lbl_v = QtGui.QLabel('V:')
+        lbl_v = QtWidgets.QLabel('V:')
         lbl_v.setMaximumWidth(10)
         r_hbox.addWidget(lbl_v)
 
-        self.cb_v = QtGui.QComboBox(self)
+        self.cb_v = QtWidgets.QComboBox(self)
         self.cb_v.setMaxVisibleItems(25)
         r_hbox.addWidget(self.cb_v)
 
-        lbl_i = QtGui.QLabel('I:')
+        lbl_i = QtWidgets.QLabel('I:')
         lbl_i.setMaximumWidth(10)
         r_hbox.addWidget(lbl_i)
 
-        self.cb_i = QtGui.QComboBox(self)
+        self.cb_i = QtWidgets.QComboBox(self)
         self.cb_i.setMaxVisibleItems(25)
         r_hbox.addWidget(self.cb_i)
 
-        lbl_r = QtGui.QLabel('R:')
+        lbl_r = QtWidgets.QLabel('R:')
         lbl_r.setMaximumWidth(10)
         r_hbox.addWidget(lbl_r)
 
-        self.le_r = QtGui.QLineEdit(self)
+        self.le_r = QtWidgets.QLineEdit(self)
         self.le_r.setMaximumWidth(50)
         self.le_r.returnPressed.connect(self.on_sub_series_r)
         r_hbox.addWidget(self.le_r)
 
-        self.b_ok = QtGui.QPushButton('Ok', self)
+        self.b_ok = QtWidgets.QPushButton('Ok', self)
         self.b_ok.clicked.connect(self.on_sub_series_r)
         self.b_ok.setMaximumWidth(50)
         r_hbox.addWidget(self.b_ok)
 
         # Selecting columns and orders
-        grid = QtGui.QGridLayout()
+        grid = QtWidgets.QGridLayout()
 
-        lbl_x = QtGui.QLabel("X:", self)
+        lbl_x = QtWidgets.QLabel("X:", self)
         lbl_x.setMaximumWidth(10)
         grid.addWidget(lbl_x, 1, 1)
 
-        self.cb_x = QtGui.QComboBox(self)
+        self.cb_x = QtWidgets.QComboBox(self)
         self.cb_x.activated.connect(self.on_data_change)
         self.cb_x.setMaxVisibleItems(25)
         grid.addWidget(self.cb_x, 1, 2)
 
-        lbl_y = QtGui.QLabel("Y:", self)
+        lbl_y = QtWidgets.QLabel("Y:", self)
         grid.addWidget(lbl_y, 2, 1)
 
-        self.cb_y = QtGui.QComboBox(self)
+        self.cb_y = QtWidgets.QComboBox(self)
         self.cb_y.activated.connect(self.on_data_change)
         self.cb_y.setMaxVisibleItems(25)
         grid.addWidget(self.cb_y, 2, 2)
 
-        lbl_d = QtGui.QLabel("Data:", self)
+        lbl_d = QtWidgets.QLabel("Data:", self)
         grid.addWidget(lbl_d, 3, 1)
 
-        self.cb_z = QtGui.QComboBox(self)
+        self.cb_z = QtWidgets.QComboBox(self)
         self.cb_z.activated.connect(self.on_data_change)
         self.cb_z.setMaxVisibleItems(25)
         grid.addWidget(self.cb_z, 3, 2)
@@ -258,27 +259,27 @@ class QTPlot(QtGui.QMainWindow):
         self.combo_boxes = [self.cb_v, self.cb_i,
                             self.cb_x, self.cb_y, self.cb_z]
 
-        #self.b_save_default = QtGui.QPushButton('Save to profile')
+        #self.b_save_default = QtWidgets.QPushButton('Save to profile')
         #self.b_save_default.clicked.connect(self.on_save_default)
         #grid.addWidget(self.b_save_default, 3, 4)
 
-        groupbox = QtGui.QGroupBox('Data selection')
+        groupbox = QtWidgets.QGroupBox('Data selection')
         groupbox.setLayout(grid)
 
         # Colormap
-        vbox_gamma = QtGui.QVBoxLayout()
-        hbox_gamma1 = QtGui.QHBoxLayout()
-        hbox_gamma2 = QtGui.QHBoxLayout()
+        vbox_gamma = QtWidgets.QVBoxLayout()
+        hbox_gamma1 = QtWidgets.QHBoxLayout()
+        hbox_gamma2 = QtWidgets.QHBoxLayout()
         vbox_gamma.addLayout(hbox_gamma1)
         vbox_gamma.addLayout(hbox_gamma2)
 
         # Reset colormap button
-        self.cb_reset_cmap = QtGui.QCheckBox('Reset on plot')
+        self.cb_reset_cmap = QtWidgets.QCheckBox('Reset on plot')
         self.cb_reset_cmap.setCheckState(QtCore.Qt.Checked)
         hbox_gamma1.addWidget(self.cb_reset_cmap)
 
         # Colormap combobox
-        self.cb_cmaps = QtGui.QComboBox(self)
+        self.cb_cmaps = QtWidgets.QComboBox(self)
         self.cb_cmaps.activated.connect(self.on_cmap_change)
 
         path = os.path.dirname(os.path.realpath(__file__))
@@ -303,19 +304,19 @@ class QTPlot(QtGui.QMainWindow):
         hbox_gamma1.addWidget(self.cb_cmaps)
 
         # Colormap minimum text box
-        self.le_min = QtGui.QLineEdit(self)
+        self.le_min = QtWidgets.QLineEdit(self)
         self.le_min.setMaximumWidth(100)
         self.le_min.returnPressed.connect(self.on_min_max_entered)
         hbox_gamma2.addWidget(self.le_min)
 
         # Colormap minimum slider
-        self.s_min = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.s_min = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.s_min.setMaximum(100)
         self.s_min.sliderMoved.connect(self.on_min_changed)
         hbox_gamma2.addWidget(self.s_min)
 
         # Colormap gamma slider
-        self.s_gamma = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.s_gamma = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.s_gamma.setMinimum(-100)
         self.s_gamma.setMaximum(100)
         self.s_gamma.setValue(0)
@@ -323,38 +324,38 @@ class QTPlot(QtGui.QMainWindow):
         hbox_gamma2.addWidget(self.s_gamma)
 
         # Colormap maximum slider
-        self.s_max = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.s_max = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.s_max.setMaximum(100)
         self.s_max.setValue(self.s_max.maximum())
         self.s_max.sliderMoved.connect(self.on_max_changed)
         hbox_gamma2.addWidget(self.s_max)
 
         # Colormap maximum text box
-        self.le_max = QtGui.QLineEdit(self)
+        self.le_max = QtWidgets.QLineEdit(self)
         self.le_max.setMaximumWidth(100)
         self.le_max.returnPressed.connect(self.on_min_max_entered)
         hbox_gamma2.addWidget(self.le_max)
 
-        self.b_reset = QtGui.QPushButton('Reset')
+        self.b_reset = QtWidgets.QPushButton('Reset')
         self.b_reset.clicked.connect(self.on_cm_reset)
         hbox_gamma1.addWidget(self.b_reset)
 
-        groupbox_gamma = QtGui.QGroupBox('Colormap')
+        groupbox_gamma = QtWidgets.QGroupBox('Colormap')
         groupbox_gamma.setLayout(vbox_gamma)
 
         # Bottom row buttons
-        hbox4 = QtGui.QHBoxLayout()
+        hbox4 = QtWidgets.QHBoxLayout()
 
-        self.b_save_matrix = QtGui.QPushButton('Save data...')
+        self.b_save_matrix = QtWidgets.QPushButton('Save data...')
         self.b_save_matrix.clicked.connect(self.on_save_matrix)
         hbox4.addWidget(self.b_save_matrix)
 
-        self.b_settings = QtGui.QPushButton('Settings')
+        self.b_settings = QtWidgets.QPushButton('Settings')
         self.b_settings.clicked.connect(self.settings.show_window)
         hbox4.addWidget(self.b_settings)
 
         # Main vertical box
-        vbox = QtGui.QVBoxLayout(self.view_widget)
+        vbox = QtWidgets.QVBoxLayout(self.view_widget)
         #vbox.addWidget(self.toolbar)
         vbox.addWidget(self.canvas.native)
         vbox.addLayout(hbox)
@@ -365,10 +366,10 @@ class QTPlot(QtGui.QMainWindow):
         vbox.addWidget(groupbox_gamma)
         vbox.addLayout(hbox4)
 
-        self.status_bar = QtGui.QStatusBar()
-        self.l_position = QtGui.QLabel()
+        self.status_bar = QtWidgets.QStatusBar()
+        self.l_position = QtWidgets.QLabel()
         self.status_bar.addWidget(self.l_position, 1)
-        self.l_slope = QtGui.QLabel('Slope: -')
+        self.l_slope = QtWidgets.QLabel('Slope: -')
         self.status_bar.addWidget(self.l_slope)
         self.setStatusBar(self.status_bar)
 
@@ -649,7 +650,7 @@ class QTPlot(QtGui.QMainWindow):
 
     def on_load_dat(self, event):
         open_directory = self.profile_settings['open_directory']
-        filename = str(QtGui.QFileDialog.getOpenFileName(directory=open_directory,
+        filename = str(QtWidgets.QFileDialog.getOpenFileName(directory=open_directory,
                                                          filter='*.dat'))
 
         if filename != "":
@@ -770,7 +771,7 @@ class QTPlot(QtGui.QMainWindow):
     def on_save_matrix(self):
         save_directory = self.profile_settings['save_directory']
 
-        filename = QtGui.QFileDialog.getSaveFileName(self,
+        filename = QtWidgets.QFileDialog.getSaveFileName(self,
                                                      caption='Save file',
                                                      directory=save_directory,
                                                      filter='QTLab data format (*.dat);;NumPy binary matrix format (*.npy);;MATLAB matrix format (*.mat)')
@@ -802,7 +803,7 @@ class QTPlot(QtGui.QMainWindow):
 
 
 def main():
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
 
     if len(sys.argv) > 1:
         main = QTPlot(filename=sys.argv[1])

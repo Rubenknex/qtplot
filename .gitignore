@@ -15,3 +15,7 @@ dist
 packaging.bat
 upload.bat
 *.egg-info
+
+# Sublime
+*.sublime-project
+*.sublime-workspace

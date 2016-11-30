@@ -3,16 +3,16 @@ import matplotlib.pyplot as plt
 import textwrap
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
-from PyQt4 import QtGui, QtCore
+from qtpy import QtWidgets, QtCore
 from scipy import spatial
 
 from .util import FixedOrderFormatter
 import os
 
 
-class ExportWidget(QtGui.QWidget):
+class ExportWidget(QtWidgets.QWidget):
     def __init__(self, main):
-        QtGui.QWidget.__init__(self)
+        QtWidgets.QWidget.__init__(self)
 
         # Set some matplotlib font settings
         mpl.rcParams['mathtext.fontset'] = 'custom'
@@ -31,133 +31,133 @@ class ExportWidget(QtGui.QWidget):
         self.canvas = FigureCanvasQTAgg(self.fig)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
-        hbox = QtGui.QHBoxLayout()
+        hbox = QtWidgets.QHBoxLayout()
 
-        self.b_update = QtGui.QPushButton('Update', self)
+        self.b_update = QtWidgets.QPushButton('Update', self)
         self.b_update.clicked.connect(self.on_update)
         hbox.addWidget(self.b_update)
 
-        self.b_copy = QtGui.QPushButton('Copy to clipboard', self)
+        self.b_copy = QtWidgets.QPushButton('Copy to clipboard', self)
         self.b_copy.clicked.connect(self.on_copy)
         hbox.addWidget(self.b_copy)
 
-        self.b_to_ppt = QtGui.QPushButton('To PPT (Win)', self)
+        self.b_to_ppt = QtWidgets.QPushButton('To PPT (Win)', self)
         self.b_to_ppt.clicked.connect(self.on_to_ppt)
         hbox.addWidget(self.b_to_ppt)
 
-        self.b_export = QtGui.QPushButton('Export...', self)
+        self.b_export = QtWidgets.QPushButton('Export...', self)
         self.b_export.clicked.connect(self.on_export)
         hbox.addWidget(self.b_export)
 
-        grid_general = QtGui.QGridLayout()
+        grid_general = QtWidgets.QGridLayout()
 
-        grid_general.addWidget(QtGui.QLabel('Title'), 1, 1)
-        self.le_title = QtGui.QLineEdit('test')
+        grid_general.addWidget(QtWidgets.QLabel('Title'), 1, 1)
+        self.le_title = QtWidgets.QLineEdit('test')
         grid_general.addWidget(self.le_title, 1, 2)
 
-        grid_general.addWidget(QtGui.QLabel('DPI'), 1, 3)
-        self.le_dpi = QtGui.QLineEdit('80')
+        grid_general.addWidget(QtWidgets.QLabel('DPI'), 1, 3)
+        self.le_dpi = QtWidgets.QLineEdit('80')
         self.le_dpi.setMaximumWidth(50)
         grid_general.addWidget(self.le_dpi, 1, 4)
 
-        grid_general.addWidget(QtGui.QLabel('Rasterize'), 1, 5)
-        self.cb_rasterize = QtGui.QCheckBox('')
+        grid_general.addWidget(QtWidgets.QLabel('Rasterize'), 1, 5)
+        self.cb_rasterize = QtWidgets.QCheckBox('')
         grid_general.addWidget(self.cb_rasterize, 1, 6)
 
-        grid = QtGui.QGridLayout()
+        grid = QtWidgets.QGridLayout()
 
-        grid.addWidget(QtGui.QLabel('X Label'), 2, 1)
-        self.le_x_label = QtGui.QLineEdit('test')
+        grid.addWidget(QtWidgets.QLabel('X Label'), 2, 1)
+        self.le_x_label = QtWidgets.QLineEdit('test')
         grid.addWidget(self.le_x_label, 2, 2)
 
-        grid.addWidget(QtGui.QLabel('X Format'), 2, 3)
-        self.le_x_format = QtGui.QLineEdit('%.0f')
+        grid.addWidget(QtWidgets.QLabel('X Format'), 2, 3)
+        self.le_x_format = QtWidgets.QLineEdit('%.0f')
         self.le_x_format.setMaximumWidth(50)
         grid.addWidget(self.le_x_format, 2, 4)
 
-        grid.addWidget(QtGui.QLabel('X Div'), 2, 5)
-        self.le_x_div = QtGui.QLineEdit('1e0')
+        grid.addWidget(QtWidgets.QLabel('X Div'), 2, 5)
+        self.le_x_div = QtWidgets.QLineEdit('1e0')
         self.le_x_div.setMaximumWidth(50)
         grid.addWidget(self.le_x_div, 2, 6)
 
 
-        grid.addWidget(QtGui.QLabel('Y Label'), 3, 1)
-        self.le_y_label = QtGui.QLineEdit('test')
+        grid.addWidget(QtWidgets.QLabel('Y Label'), 3, 1)
+        self.le_y_label = QtWidgets.QLineEdit('test')
         grid.addWidget(self.le_y_label, 3, 2)
 
-        grid.addWidget(QtGui.QLabel('Y Format'), 3, 3)
-        self.le_y_format = QtGui.QLineEdit('%.0f')
+        grid.addWidget(QtWidgets.QLabel('Y Format'), 3, 3)
+        self.le_y_format = QtWidgets.QLineEdit('%.0f')
         self.le_y_format.setMaximumWidth(50)
         grid.addWidget(self.le_y_format, 3, 4)
 
-        grid.addWidget(QtGui.QLabel('Y Div'), 3, 5)
-        self.le_y_div = QtGui.QLineEdit('1e0')
+        grid.addWidget(QtWidgets.QLabel('Y Div'), 3, 5)
+        self.le_y_div = QtWidgets.QLineEdit('1e0')
         self.le_y_div.setMaximumWidth(50)
         grid.addWidget(self.le_y_div, 3, 6)
 
 
-        grid.addWidget(QtGui.QLabel('Z Label'), 4, 1)
-        self.le_z_label = QtGui.QLineEdit('test')
+        grid.addWidget(QtWidgets.QLabel('Z Label'), 4, 1)
+        self.le_z_label = QtWidgets.QLineEdit('test')
         grid.addWidget(self.le_z_label, 4, 2)
 
-        grid.addWidget(QtGui.QLabel('Z Format'), 4, 3)
-        self.le_z_format = QtGui.QLineEdit('%.0f')
+        grid.addWidget(QtWidgets.QLabel('Z Format'), 4, 3)
+        self.le_z_format = QtWidgets.QLineEdit('%.0f')
         self.le_z_format.setMaximumWidth(50)
         grid.addWidget(self.le_z_format, 4, 4)
 
-        grid.addWidget(QtGui.QLabel('Z Div'), 4, 5)
-        self.le_z_div = QtGui.QLineEdit('1e0')
+        grid.addWidget(QtWidgets.QLabel('Z Div'), 4, 5)
+        self.le_z_div = QtWidgets.QLineEdit('1e0')
         self.le_z_div.setMaximumWidth(50)
         grid.addWidget(self.le_z_div, 4, 6)
 
-        groupbox_labels = QtGui.QGroupBox('Labels')
+        groupbox_labels = QtWidgets.QGroupBox('Labels')
         groupbox_labels.setLayout(grid)
 
-        grid = QtGui.QGridLayout()
+        grid = QtWidgets.QGridLayout()
 
-        grid.addWidget(QtGui.QLabel('Font'), 5, 1)
-        self.le_font = QtGui.QLineEdit('Vera Sans')
+        grid.addWidget(QtWidgets.QLabel('Font'), 5, 1)
+        self.le_font = QtWidgets.QLineEdit('Vera Sans')
         grid.addWidget(self.le_font, 5, 2)
 
-        grid.addWidget(QtGui.QLabel('Font size'), 6, 1)
-        self.le_font_size = QtGui.QLineEdit('12')
+        grid.addWidget(QtWidgets.QLabel('Font size'), 6, 1)
+        self.le_font_size = QtWidgets.QLineEdit('12')
         grid.addWidget(self.le_font_size, 6, 2)
 
 
-        grid.addWidget(QtGui.QLabel('Width'), 5, 3)
-        self.le_width = QtGui.QLineEdit('3')
+        grid.addWidget(QtWidgets.QLabel('Width'), 5, 3)
+        self.le_width = QtWidgets.QLineEdit('3')
         grid.addWidget(self.le_width, 5, 4)
 
-        grid.addWidget(QtGui.QLabel('Height'), 6, 3)
-        self.le_height = QtGui.QLineEdit('3')
+        grid.addWidget(QtWidgets.QLabel('Height'), 6, 3)
+        self.le_height = QtWidgets.QLineEdit('3')
         grid.addWidget(self.le_height, 6, 4)
 
 
-        grid.addWidget(QtGui.QLabel('CB Orient'), 5, 5)
-        self.cb_cb_orient = QtGui.QComboBox()
+        grid.addWidget(QtWidgets.QLabel('CB Orient'), 5, 5)
+        self.cb_cb_orient = QtWidgets.QComboBox()
         self.cb_cb_orient.addItems(['vertical', 'horizontal'])
         grid.addWidget(self.cb_cb_orient, 5, 6)
 
-        grid.addWidget(QtGui.QLabel('CB Pos'), 6, 5)
-        self.le_cb_pos = QtGui.QLineEdit('0 0 1 1')
+        grid.addWidget(QtWidgets.QLabel('CB Pos'), 6, 5)
+        self.le_cb_pos = QtWidgets.QLineEdit('0 0 1 1')
         grid.addWidget(self.le_cb_pos, 6, 6)
 
-        groupbox_figure = QtGui.QGroupBox('Figure')
+        groupbox_figure = QtWidgets.QGroupBox('Figure')
         groupbox_figure.setLayout(grid)
 
-        grid.addWidget(QtGui.QLabel('Triangulation'), 7, 1)
-        self.cb_triangulation = QtGui.QCheckBox('')
+        grid.addWidget(QtWidgets.QLabel('Triangulation'), 7, 1)
+        self.cb_triangulation = QtWidgets.QCheckBox('')
         grid.addWidget(self.cb_triangulation, 7, 2)
 
-        grid.addWidget(QtGui.QLabel('Tripcolor'), 7, 3)
-        self.cb_tripcolor = QtGui.QCheckBox('')
+        grid.addWidget(QtWidgets.QLabel('Tripcolor'), 7, 3)
+        self.cb_tripcolor = QtWidgets.QCheckBox('')
         grid.addWidget(self.cb_tripcolor, 7, 4)
 
-        grid.addWidget(QtGui.QLabel('Linecut'), 7, 5)
-        self.cb_linecut = QtGui.QCheckBox('')
+        grid.addWidget(QtWidgets.QLabel('Linecut'), 7, 5)
+        self.cb_linecut = QtWidgets.QCheckBox('')
         grid.addWidget(self.cb_linecut, 7, 6)
 
-        vbox = QtGui.QVBoxLayout(self)
+        vbox = QtWidgets.QVBoxLayout(self)
         vbox.addWidget(self.toolbar)
         vbox.addWidget(self.canvas)
         vbox.addLayout(hbox)
@@ -299,8 +299,8 @@ class ExportWidget(QtGui.QWidget):
         path = os.path.join(path, 'test.png')
         self.fig.savefig(path)
 
-        img = QtGui.QImage(path)
-        QtGui.QApplication.clipboard().setImage(img)
+        img = QtWidgets.QImage(path)
+        QtWidgets.QApplication.clipboard().setImage(img)
 
     def on_to_ppt(self):
         """
@@ -325,7 +325,7 @@ class ExportWidget(QtGui.QWidget):
 
     def on_export(self):
         path = os.path.dirname(os.path.realpath(__file__))
-        filename = QtGui.QFileDialog.getSaveFileName(self,
+        filename = QtWidgets.QFileDialog.getSaveFileName(self,
                                                      'Export figure',
                                                      path,
                                                      'Portable Network Graphics (*.png);;Portable Document Format (*.pdf);;Postscript (*.ps);;Encapsulated Postscript (*.eps);;Scalable Vector Graphics (*.svg)')

@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='qtplot',
-      version='0.1.0.dev18',
+      version='0.1.0.dev19',
       description='Data plotting and analysis tool',
       url='https://github.com/Rubenknex/qtplot',
       author='Ruben van Gulik',
@@ -14,6 +14,7 @@ setup(name='qtplot',
                 'qtplot/colormaps/transform',
                 'qtplot/colormaps/wsxm'],
       install_requires=[
+        'QtPy',
         'pyopengl',
         'vispy',
       ],
