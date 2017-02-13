@@ -4,17 +4,17 @@ import json
 import math
 import six
 
-from qtpy import QtWidgets, QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 
 from .data import Data2D
 
 
-class Operation(QtWidgets.QWidget):
+class Operation(QtGui.QWidget):
     """Contains the name and GUI widgets for the parameters of an operation."""
     def __init__(self, name, main, func, widgets=[]):
         super(Operation, self).__init__(None)
 
-        layout = QtWidgets.QGridLayout(self)
+        layout = QtGui.QGridLayout(self)
         self.name = name
         self.main = main
         self.func = func
@@ -29,22 +29,22 @@ class Operation(QtWidgets.QWidget):
             w_name, data = widget
 
             if type(data) == bool:
-                checkbox = QtWidgets.QCheckBox(w_name)
+                checkbox = QtGui.QCheckBox(w_name)
                 checkbox.setChecked(data)
                 checkbox.stateChanged.connect(self.main.on_data_change)
                 layout.addWidget(checkbox, height, 2)
 
                 self.items[w_name] = checkbox
             elif type(data) == int or type(data) == float:
-                lineedit = QtWidgets.QLineEdit(str(data))
+                lineedit = QtGui.QLineEdit(str(data))
                 lineedit.setValidator(QtGui.QDoubleValidator())
-                layout.addWidget(QtWidgets.QLabel(w_name), height, 1)
+                layout.addWidget(QtGui.QLabel(w_name), height, 1)
                 layout.addWidget(lineedit, height, 2)
 
                 self.items[w_name] = lineedit
             elif type(data) == list:
-                layout.addWidget(QtWidgets.QLabel(w_name), height, 1)
-                combobox = QtWidgets.QComboBox()
+                layout.addWidget(QtGui.QLabel(w_name), height, 1)
+                combobox = QtGui.QComboBox()
                 combobox.activated.connect(self.main.on_data_change)
                 combobox.addItems(data)
                 layout.addWidget(combobox, height, 2)
@@ -58,7 +58,7 @@ class Operation(QtWidgets.QWidget):
         # sub linecut is a special case since it requires information from
         # the main window (linecut position)
         if name == 'sub linecut' or name == 'sub linecut avg':
-            b_current = QtWidgets.QPushButton('Current linecut')
+            b_current = QtGui.QPushButton('Current linecut')
             b_current.clicked.connect(self.on_current_linecut)
             layout.addWidget(b_current, height, 2)
 
@@ -73,11 +73,11 @@ class Operation(QtWidgets.QWidget):
             widget = self.items[name]
             cast = self.types[name]
 
-            if type(widget) is QtWidgets.QCheckBox:
+            if type(widget) is QtGui.QCheckBox:
                 return cast(widget.isChecked())
-            elif type(widget) is QtWidgets.QLineEdit:
+            elif type(widget) is QtGui.QLineEdit:
                 return cast(str(widget.text()))
-            elif type(widget) is QtWidgets.QComboBox:
+            elif type(widget) is QtGui.QComboBox:
                 return str(widget.currentText())
 
     def set_parameter(self, name, value):
@@ -85,11 +85,11 @@ class Operation(QtWidgets.QWidget):
         if name in self.items:
             widget = self.items[name]
 
-            if type(widget) is QtWidgets.QCheckBox:
+            if type(widget) is QtGui.QCheckBox:
                 widget.setChecked(bool(value))
-            elif type(widget) is QtWidgets.QLineEdit:
+            elif type(widget) is QtGui.QLineEdit:
                 widget.setText(str(value))
-            elif type(widget) is QtWidgets.QComboBox:
+            elif type(widget) is QtGui.QComboBox:
                 index = widget.findText(value)
                 widget.setCurrentIndex(index)
 
@@ -108,7 +108,7 @@ class Operation(QtWidgets.QWidget):
             self.set_parameter(name, value)
 
 
-class Operations(QtWidgets.QDialog):
+class Operations(QtGui.QDialog):
     """ The window containing all operations. """
     def __init__(self, parent=None):
         super(Operations, self).__init__(None)
@@ -184,46 +184,46 @@ class Operations(QtWidgets.QDialog):
                                                    '2nd order central diff'])]],
         }
 
-        self.options = QtWidgets.QListWidget(self)
+        self.options = QtGui.QListWidget(self)
         self.options.addItems(sorted(self.items.keys()))
         self.options.currentItemChanged.connect(self.on_select_option)
 
-        self.b_add = QtWidgets.QPushButton('Add')
+        self.b_add = QtGui.QPushButton('Add')
         self.b_add.clicked.connect(self.on_add)
 
-        self.b_up = QtWidgets.QPushButton('Up')
+        self.b_up = QtGui.QPushButton('Up')
         self.b_up.clicked.connect(self.on_up)
 
-        self.b_down = QtWidgets.QPushButton('Down')
+        self.b_down = QtGui.QPushButton('Down')
         self.b_down.clicked.connect(self.on_down)
 
-        self.b_remove = QtWidgets.QPushButton('Remove')
+        self.b_remove = QtGui.QPushButton('Remove')
         self.b_remove.clicked.connect(self.on_remove)
 
-        self.b_clear = QtWidgets.QPushButton('Clear')
+        self.b_clear = QtGui.QPushButton('Clear')
         self.b_clear.clicked.connect(self.on_clear)
 
-        self.b_update = QtWidgets.QPushButton('Update')
+        self.b_update = QtGui.QPushButton('Update')
         self.b_update.clicked.connect(self.on_update)
 
-        self.b_load = QtWidgets.QPushButton('Load...')
+        self.b_load = QtGui.QPushButton('Load...')
         self.b_load.clicked.connect(self.on_load)
 
-        self.b_save = QtWidgets.QPushButton('Save...')
+        self.b_save = QtGui.QPushButton('Save...')
         self.b_save.clicked.connect(self.on_save)
 
-        self.queue = QtWidgets.QListWidget(self)
+        self.queue = QtGui.QListWidget(self)
         self.queue.currentItemChanged.connect(self.on_selected_changed)
         self.queue.itemClicked.connect(self.on_item_clicked)
 
-        self.le_help = QtWidgets.QLineEdit(self)
+        self.le_help = QtGui.QLineEdit(self)
         self.le_help.setReadOnly(True)
 
-        main_vbox = QtWidgets.QVBoxLayout()
+        main_vbox = QtGui.QVBoxLayout()
 
-        hbox = QtWidgets.QHBoxLayout()
+        hbox = QtGui.QHBoxLayout()
 
-        vbox = QtWidgets.QVBoxLayout()
+        vbox = QtGui.QVBoxLayout()
         vbox.addWidget(self.b_add)
         vbox.addWidget(self.b_up)
         vbox.addWidget(self.b_down)
@@ -233,9 +233,9 @@ class Operations(QtWidgets.QDialog):
         vbox.addWidget(self.b_load)
         vbox.addWidget(self.b_save)
 
-        vbox2 = QtWidgets.QVBoxLayout()
+        vbox2 = QtGui.QVBoxLayout()
         vbox2.addWidget(self.queue)
-        self.stack = QtWidgets.QStackedWidget()
+        self.stack = QtGui.QStackedWidget()
         vbox2.addWidget(self.stack)
 
         hbox.addWidget(self.options)
@@ -267,7 +267,7 @@ class Operations(QtWidgets.QDialog):
                     name = key
 
             # Create the item for the operations list
-            item = QtWidgets.QListWidgetItem(name)
+            item = QtGui.QListWidgetItem(name)
 
             if enabled:
                 item.setCheckState(QtCore.Qt.Checked)
@@ -360,7 +360,7 @@ class Operations(QtWidgets.QDialog):
         if self.options.currentItem():
             name = str(self.options.currentItem().text())
 
-            item = QtWidgets.QListWidgetItem(name)
+            item = QtGui.QListWidgetItem(name)
             item.setCheckState(QtCore.Qt.Checked)
             operation = Operation(name, self.main, *self.items[name])
 
@@ -403,7 +403,7 @@ class Operations(QtWidgets.QDialog):
     @update_plot
     def on_load(self):
         path = self.main.operations_dir
-        filename = str(QtWidgets.QFileDialog.getOpenFileName(self,
+        filename = str(QtGui.QFileDialog.getOpenFileName(self,
                                                          'Open file',
                                                          path,
                                                          '*.json'))
@@ -415,7 +415,7 @@ class Operations(QtWidgets.QDialog):
 
     def on_save(self):
         path = self.main.operations_dir
-        filename = QtWidgets.QFileDialog.getSaveFileName(self,
+        filename = QtGui.QFileDialog.getSaveFileName(self,
                                                      'Save file',
                                                      path,
                                                      '.json')

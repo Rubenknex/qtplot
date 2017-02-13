@@ -7,7 +7,7 @@ from itertools import cycle
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
 
-from qtpy import QtWidgets, QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 
 from .util import FixedOrderFormatter, eng_format
 
@@ -28,7 +28,7 @@ class Linetrace(plt.Line2D):
         self.position = position
 
 
-class Linecut(QtWidgets.QDialog):
+class Linecut(QtGui.QDialog):
     def __init__(self, parent=None):
         super(Linecut, self).__init__(None)
 
@@ -51,58 +51,58 @@ class Linecut(QtWidgets.QDialog):
         self.canvas.mpl_connect('button_press_event', self.on_click)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
-        grid = QtWidgets.QGridLayout()
+        grid = QtGui.QGridLayout()
 
-        self.cb_reset_cmap = QtWidgets.QCheckBox('Reset on plot')
+        self.cb_reset_cmap = QtGui.QCheckBox('Reset on plot')
         self.cb_reset_cmap.setCheckState(QtCore.Qt.Checked)
         grid.addWidget(self.cb_reset_cmap, 1, 1)
 
-        self.b_save = QtWidgets.QPushButton('Data to clipboard', self)
+        self.b_save = QtGui.QPushButton('Data to clipboard', self)
         self.b_save.clicked.connect(self.on_clipboard)
         grid.addWidget(self.b_save, 1, 2)
 
-        self.b_save_dat = QtWidgets.QPushButton('Save data...', self)
+        self.b_save_dat = QtGui.QPushButton('Save data...', self)
         self.b_save_dat.clicked.connect(self.on_save)
         grid.addWidget(self.b_save_dat, 1, 3)
 
-        self.b_copy = QtWidgets.QPushButton('Figure to clipboard', self)
+        self.b_copy = QtGui.QPushButton('Figure to clipboard', self)
         self.b_copy.clicked.connect(self.on_copy_figure)
-        QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_figure)
+        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_figure)
         grid.addWidget(self.b_copy, 1, 4)
 
-        self.cb_include_z = QtWidgets.QCheckBox('Include Z')
+        self.cb_include_z = QtGui.QCheckBox('Include Z')
         self.cb_include_z.setCheckState(QtCore.Qt.Checked)
         grid.addWidget(self.cb_include_z, 1, 5)
 
-        grid.addWidget(QtWidgets.QLabel('Linecuts'), 2, 1)
+        grid.addWidget(QtGui.QLabel('Linecuts'), 2, 1)
 
-        self.cb_incremental = QtWidgets.QCheckBox('Incremental')
+        self.cb_incremental = QtGui.QCheckBox('Incremental')
         self.cb_incremental.setCheckState(QtCore.Qt.Unchecked)
         grid.addWidget(self.cb_incremental, 2, 2)
 
-        grid.addWidget(QtWidgets.QLabel('Offset:'), 2, 3)
+        grid.addWidget(QtGui.QLabel('Offset:'), 2, 3)
 
-        self.le_offset = QtWidgets.QLineEdit('0', self)
+        self.le_offset = QtGui.QLineEdit('0', self)
         grid.addWidget(self.le_offset, 2, 4)
 
-        self.b_clear_lines = QtWidgets.QPushButton('Clear', self)
+        self.b_clear_lines = QtGui.QPushButton('Clear', self)
         self.b_clear_lines.clicked.connect(self.on_clear_lines)
         grid.addWidget(self.b_clear_lines, 2, 5)
 
-        grid.addWidget(QtWidgets.QLabel('Points'), 3, 1)
-        self.cb_point = QtWidgets.QComboBox(self)
+        grid.addWidget(QtGui.QLabel('Points'), 3, 1)
+        self.cb_point = QtGui.QComboBox(self)
         self.cb_point.addItems(['X,Y', 'X', 'Y'])
         grid.addWidget(self.cb_point, 3, 2)
 
-        grid.addWidget(QtWidgets.QLabel('Significance'))
-        self.sb_significance = QtWidgets.QSpinBox(self)
+        grid.addWidget(QtGui.QLabel('Significance'))
+        self.sb_significance = QtGui.QSpinBox(self)
         grid.addWidget(self.sb_significance, 3, 4)
 
-        self.b_clear_points = QtWidgets.QPushButton('Clear', self)
+        self.b_clear_points = QtGui.QPushButton('Clear', self)
         self.b_clear_points.clicked.connect(self.on_clear_points)
         grid.addWidget(self.b_clear_points, 3, 5)
 
-        layout = QtWidgets.QVBoxLayout()
+        layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
         layout.addLayout(grid)
@@ -165,7 +165,7 @@ class Linecut(QtWidgets.QDialog):
             return
 
         path = os.path.dirname(os.path.realpath(__file__))
-        filename = QtWidgets.QFileDialog.getSaveFileName(self,
+        filename = QtGui.QFileDialog.getSaveFileName(self,
                                                      'Save file',
                                                      path,
                                                      '.dat')
@@ -181,8 +181,8 @@ class Linecut(QtWidgets.QDialog):
         path = os.path.join(path, 'test.png')
         self.fig.savefig(path, bbox_inches='tight')
 
-        img = QtWidgets.QImage(path)
-        QtWidgets.QApplication.clipboard().setImage(img)
+        img = QtGui.QImage(path)
+        QtGui.QApplication.clipboard().setImage(img)
 
     def on_clear_lines(self):
         for line in self.linetraces:
@@ -246,7 +246,7 @@ class Linecut(QtWidgets.QDialog):
 
             offset = float(self.le_offset.text())
             line = Linetrace(x, y + index * offset, type, position)
-            line.set_color(next(self.colors))
+            line.set_color(self.colors.next())
 
             self.linetraces.append(line)
             self.ax.add_line(line)
