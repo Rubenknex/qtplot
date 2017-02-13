@@ -4,6 +4,10 @@
 
 Qtplot is compatible with both Python 2 and 3. Using the Anaconda Python distribution (https://www.continuum.io/downloads) is recommended to make installing packages like `numpy` and `scipy` easier.
 
+Create a new environment:
+
+`conda create --name qtplot python=3.5`
+
 Install qtplot:
 
 `pip install qtplot`
