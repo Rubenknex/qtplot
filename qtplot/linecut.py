@@ -21,6 +21,7 @@ class Linetrace(plt.Line2D):
     type:       Type of linetrace, 'horizontal' or 'vertical'
     position:   The x/y coordinate at which the linetrace was taken
     """
+
     def __init__(self, x, y, type, position):
         plt.Line2D.__init__(self, x, y, color='red', linewidth=0.5)
 
@@ -67,7 +68,8 @@ class Linecut(QtGui.QDialog):
 
         self.b_copy = QtGui.QPushButton('Figure to clipboard', self)
         self.b_copy.clicked.connect(self.on_copy_figure)
-        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"), self, self.on_copy_figure)
+        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"),
+                        self, self.on_copy_figure)
         grid.addWidget(self.b_copy, 1, 4)
 
         self.cb_include_z = QtGui.QCheckBox('Include Z')
@@ -120,7 +122,7 @@ class Linecut(QtGui.QDialog):
             ydiff = (maxy - miny) * .1
 
             self.ax.axis([minx - xdiff, maxx + xdiff,
-                         miny - ydiff, maxy + ydiff])
+                          miny - ydiff, maxy + ydiff])
 
             self.canvas.draw()
 

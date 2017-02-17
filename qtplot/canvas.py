@@ -43,6 +43,7 @@ varying float v_texcoord;
 
 void main (void) {
     v_texcoord = a_texcoord;
+
     gl_Position = u_projection * u_view * vec4(a_position.x, a_position.y, 0.0, 1.0);
 }
 """
@@ -98,6 +99,7 @@ class Canvas(scene.SceneCanvas):
     it is colored by using the normalized data value and a
     colormap texture in the fragment shader.
     """
+
     def __init__(self, parent=None):
         scene.SceneCanvas.__init__(self, parent=parent)
 
@@ -133,13 +135,14 @@ class Canvas(scene.SceneCanvas):
 
         vertices = self.generate_vertices(data)
 
-        self.xmin = np.nanmin(vertices['a_position'][:,0])
-        self.xmax = np.nanmax(vertices['a_position'][:,0])
-        self.ymin = np.nanmin(vertices['a_position'][:,1])
-        self.ymax = np.nanmax(vertices['a_position'][:,1])
+        self.xmin = np.nanmin(vertices['a_position'][:, 0])
+        self.xmax = np.nanmax(vertices['a_position'][:, 0])
+        self.ymin = np.nanmin(vertices['a_position'][:, 1])
+        self.ymax = np.nanmax(vertices['a_position'][:, 1])
 
         if self.xmin == self.xmax or self.ymin == self.ymax:
-            logger.error('Cannot plot because min and max values of vertices are identical')
+            logger.error(('Cannot plot because min and max values of'
+                          ' vertices are identical'))
 
             return
 
@@ -178,22 +181,22 @@ class Canvas(scene.SceneCanvas):
         x1 = xq[0:-1, 0:-1].ravel()
         y1 = yq[0:-1, 0:-1].ravel()
         # Bottom left
-        x2 = xq[1:,   0:-1].ravel()
-        y2 = yq[1:,   0:-1].ravel()
+        x2 = xq[1:, 0:-1].ravel()
+        y2 = yq[1:, 0:-1].ravel()
         # Bottom right
-        x3 = xq[1:,   1:].ravel()
-        y3 = yq[1:,   1:].ravel()
+        x3 = xq[1:, 1:].ravel()
+        y3 = yq[1:, 1:].ravel()
         # Top right
         x4 = xq[0:-1, 1:].ravel()
         y4 = yq[0:-1, 1:].ravel()
 
         # Two triangles / six vertices per datapoint
-        xy = np.concatenate((x1[:,np.newaxis], y1[:,np.newaxis],
-                             x2[:,np.newaxis], y2[:,np.newaxis],
-                             x4[:,np.newaxis], y4[:,np.newaxis],
-                             x2[:,np.newaxis], y2[:,np.newaxis],
-                             x4[:,np.newaxis], y4[:,np.newaxis],
-                             x3[:,np.newaxis], y3[:,np.newaxis]), axis=1)
+        xy = np.concatenate((x1[:, np.newaxis], y1[:, np.newaxis],
+                             x2[:, np.newaxis], y2[:, np.newaxis],
+                             x4[:, np.newaxis], y4[:, np.newaxis],
+                             x2[:, np.newaxis], y2[:, np.newaxis],
+                             x4[:, np.newaxis], y4[:, np.newaxis],
+                             x3[:, np.newaxis], y3[:, np.newaxis]), axis=1)
 
         total_vertices = len(x1) * 6
         vertices = xy.reshape((total_vertices, 2))
@@ -214,7 +217,7 @@ class Canvas(scene.SceneCanvas):
         screen_x, screen_y = pos
 
         # Calculate in normalized coordinates
-        relx = float(screen_x*1.1) / screen_w
+        relx = float(screen_x * 1.1) / screen_w
         rely = float(screen_h - screen_y) / screen_h
 
         # Convert to data coords using data min/max values
@@ -245,7 +248,7 @@ class Canvas(scene.SceneCanvas):
 
                     # Get the data row
                     x, y, index = self.data.get_row_at(y)
-                    z = np.nanmean(self.data.y[index,:])
+                    z = np.nanmean(self.data.y[index, :])
 
                     self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
                                                        self.line_coord,
@@ -304,7 +307,7 @@ class Canvas(scene.SceneCanvas):
 
                     # Get the data column
                     x, y, index = self.data.get_column_at(x)
-                    z = np.nanmean(self.data.x[:,index])
+                    z = np.nanmean(self.data.x[:, index])
 
                     self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
                                                        self.line_coord,
@@ -362,10 +365,10 @@ class Canvas(scene.SceneCanvas):
 
             # Drawing of the colormap bar
             self.colorbar_program['u_colormap'] = cmap_texture
-            colorbar_vertices = [(self.xmax + self.cm_dx*.2, self.ymax),
-                                 (self.xmax + self.cm_dx*.2, self.ymin),
-                                 (self.xmax + self.cm_dx,    self.ymax),
-                                 (self.xmax + self.cm_dx,    self.ymin)]
+            colorbar_vertices = [(self.xmax + self.cm_dx * .2, self.ymax),
+                                 (self.xmax + self.cm_dx * .2, self.ymin),
+                                 (self.xmax + self.cm_dx, self.ymax),
+                                 (self.xmax + self.cm_dx, self.ymin)]
             self.colorbar_program['a_position'] = colorbar_vertices
             self.colorbar_program['a_texcoord'] = [[1], [0], [1], [0]]
             self.colorbar_program.draw('triangle_strip')

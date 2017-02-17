@@ -1,16 +1,13 @@
 from __future__ import print_function
 
 from six.moves import configparser
-import matplotlib as mpl
 import numpy as np
 import os
 import logging
 import sys
-import time
 from collections import OrderedDict
 
 from PyQt4 import QtGui, QtCore
-from scipy import io
 
 from .colormap import Colormap
 from .data import DatFile, Data2D
@@ -23,42 +20,43 @@ from .canvas import Canvas
 logger = logging.getLogger(__name__)
 
 profile_defaults = OrderedDict((
-            ('operations', ''),
-            ('sub_series_V', ''),
-            ('sub_series_I', ''),
-            ('sub_series_R', ''),
-            ('open_directory', ''),
-            ('save_directory', ''),
-            ('x', '-'),
-            ('y', '-'),
-            ('z', '-'),
-            ('colormap', 'transform\\Seismic.npy'),
-            ('title', '<filename>'),
-            ('DPI', '80'),
-            ('rasterize', False),
-            ('x_label', '<x>'),
-            ('y_label', '<y>'),
-            ('z_label', '<z>'),
-            ('x_format', '%%.0f'),
-            ('y_format', '%%.0f'),
-            ('z_format', '%%.0f'),
-            ('x_div', '1e0'),
-            ('y_div', '1e0'),
-            ('z_div', '1e0'),
-            ('font', 'Vera Sans'),
-            ('font_size', '12'),
-            ('width', '3'),
-            ('height', '3'),
-            ('cb_orient', 'vertical'),
-            ('cb_pos', '0 0 1 1'),
-            ('triangulation', False),
-            ('tripcolor', False),
-            ('linecut', False),
-        ))
+    ('operations', ''),
+    ('sub_series_V', ''),
+    ('sub_series_I', ''),
+    ('sub_series_R', ''),
+    ('open_directory', ''),
+    ('save_directory', ''),
+    ('x', '-'),
+    ('y', '-'),
+    ('z', '-'),
+    ('colormap', 'transform\\Seismic.npy'),
+    ('title', '<filename>'),
+    ('DPI', '80'),
+    ('rasterize', False),
+    ('x_label', '<x>'),
+    ('y_label', '<y>'),
+    ('z_label', '<z>'),
+    ('x_format', '%%.0f'),
+    ('y_format', '%%.0f'),
+    ('z_format', '%%.0f'),
+    ('x_div', '1e0'),
+    ('y_div', '1e0'),
+    ('z_div', '1e0'),
+    ('font', 'Vera Sans'),
+    ('font_size', '12'),
+    ('width', '3'),
+    ('height', '3'),
+    ('cb_orient', 'vertical'),
+    ('cb_pos', '0 0 1 1'),
+    ('triangulation', False),
+    ('tripcolor', False),
+    ('linecut', False),
+))
 
 
 class QTPlot(QtGui.QMainWindow):
     """ The main window of the qtplot application. """
+
     def __init__(self, filename=None):
         super(QTPlot, self).__init__(None)
 
@@ -96,8 +94,10 @@ class QTPlot(QtGui.QMainWindow):
         self.home_dir = os.path.expanduser('~')
 
         self.settings_dir = os.path.join(self.home_dir, '.qtplot')
-        self.profiles_dir = os.path.join(self.home_dir, '.qtplot', 'profiles')
-        self.operations_dir = os.path.join(self.home_dir, '.qtplot', 'operations')
+        self.profiles_dir = os.path.join(self.home_dir, '.qtplot',
+                                                        'profiles')
+        self.operations_dir = os.path.join(self.home_dir, '.qtplot',
+                                                          'operations')
 
         # Create the program directories if they don't exist yet
         for dir in [self.settings_dir, self.profiles_dir, self.operations_dir]:
@@ -118,21 +118,16 @@ class QTPlot(QtGui.QMainWindow):
             with open(self.qtplot_ini_file, 'w') as config_file:
                 self.qtplot_ini.write(config_file)
 
+        default_profile = self.qtplot_ini.get('DEFAULT', 'default_profile')
         self.profile_ini_file = os.path.join(self.profiles_dir,
-                                             self.qtplot_ini.get(
-                                                'DEFAULT',
-                                                'default_profile'))
+                                             default_profile)
 
         # if the default profile ini doesn't exist, write defaults to a file
         if not os.path.isfile(self.profile_ini_file):
-            #self.profile_ini_file = os.path.join(self.profiles_dir,
-            #                                     'default.ini')
-
             with open(self.profile_ini_file, 'w') as config_file:
                 self.profile_ini.write(config_file)
 
         self.profile_settings = defaults
-        #self.open_state(self.profile_ini_file)
 
     def init_logging(self):
         formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
@@ -258,10 +253,6 @@ class QTPlot(QtGui.QMainWindow):
         self.combo_boxes = [self.cb_v, self.cb_i,
                             self.cb_x, self.cb_y, self.cb_z]
 
-        #self.b_save_default = QtGui.QPushButton('Save to profile')
-        #self.b_save_default.clicked.connect(self.on_save_default)
-        #grid.addWidget(self.b_save_default, 3, 4)
-
         groupbox = QtGui.QGroupBox('Data selection')
         groupbox.setLayout(grid)
 
@@ -355,13 +346,10 @@ class QTPlot(QtGui.QMainWindow):
 
         # Main vertical box
         vbox = QtGui.QVBoxLayout(self.view_widget)
-        #vbox.addWidget(self.toolbar)
         vbox.addWidget(self.canvas.native)
         vbox.addLayout(hbox)
         vbox.addLayout(r_hbox)
-        #vbox.addLayout(grid)
         vbox.addWidget(groupbox)
-        #vbox.addLayout(hbox_gamma)
         vbox.addWidget(groupbox_gamma)
         vbox.addLayout(hbox4)
 
@@ -428,8 +416,6 @@ class QTPlot(QtGui.QMainWindow):
 
         # If the dataset is 1D; disable the y-parameter combobox
         if self.dat_file is not None:
-            one_dimensional = self.dat_file.ndim == 1
-
             if self.dat_file.ndim == 1:
                 self.cb_y.setCurrentIndex(0)
                 self.cb_y.setEnabled(False)
@@ -460,9 +446,9 @@ class QTPlot(QtGui.QMainWindow):
 
             self.open_state(self.profile_ini_file)
 
-            #self.update_ui()
+            # self.update_ui()
 
-        #self.on_data_change()
+        # self.on_data_change()
 
     def update_parameters(self):
         pass
@@ -480,7 +466,8 @@ class QTPlot(QtGui.QMainWindow):
         """
         profile_name = os.path.splitext(os.path.basename(filename))[0]
 
-        operations_file = os.path.join(self.operations_dir, profile_name + '.json')
+        operations_file = os.path.join(self.operations_dir,
+                                       profile_name + '.json')
 
         self.operations.save(operations_file)
 
@@ -541,7 +528,7 @@ class QTPlot(QtGui.QMainWindow):
         if os.path.exists(operations_file):
             self.operations.load(operations_file)
         else:
-            logger.warning('No operations file present for the selected profile')
+            logger.warning('No operations file present for selected profile')
 
         # Read the specified profile .ini
         self.profile_ini.read(self.profile_ini_file)
@@ -562,7 +549,7 @@ class QTPlot(QtGui.QMainWindow):
                               self.profile_settings['sub_series_I'],
                               R)
         except ValueError:
-            logger.warning('Could not parse the resistance value in the profile')
+            logger.warning('Could not parse resistance value in the profile')
 
         self.update_ui(opening_state=True)
 
@@ -578,7 +565,7 @@ class QTPlot(QtGui.QMainWindow):
 
     def get_parameter_names(self):
         if self.dat_file is not None:
-            #return list(self.dat_file.df.columns.values)
+            # return list(self.dat_file.df.columns.values)
             return self.dat_file.ids
         elif self.data_set is not None:
             # Sort in some kind of order?
@@ -610,7 +597,7 @@ class QTPlot(QtGui.QMainWindow):
 
         x_name, y_name, data_name = self.get_axis_names()
 
-        #self.export_widget.set_info(self.name, x_name, y_name, data_name)
+        # self.export_widget.set_info(self.name, x_name, y_name, data_name)
 
         if self.dat_file is not None:
             self.data = self.dat_file.get_data(x_name, y_name, data_name)
@@ -633,7 +620,7 @@ class QTPlot(QtGui.QMainWindow):
             self.on_max_changed(100)
 
         self.canvas.set_data(self.data)
-        #self.canvas.draw_linecut(None, old_position=True)
+        # self.canvas.draw_linecut(None, old_position=True)
         self.canvas.update()
 
         if np.isnan(self.data.z).any():
@@ -672,12 +659,12 @@ class QTPlot(QtGui.QMainWindow):
         if self.dat_file is None:
             return
 
-        if (V_param in self.dat_file.ids and
-           I_param in self.dat_file.ids):
-            V = self.dat_file.get_column(V_param)
-            I = self.dat_file.get_column(I_param)
+        if (V_param in self.dat_file.ids and I_param in self.dat_file.ids):
+            voltages = self.dat_file.get_column(V_param)
+            currents = self.dat_file.get_column(I_param)
+            adjusted = voltages - currents * R
 
-            self.dat_file.set_column(V_param + ' - Sub series R', V - I * R)
+            self.dat_file.set_column(V_param + ' - Sub series R', adjusted)
 
     def on_sub_series_r(self, event=None):
         V_param = str(self.cb_v.currentText())
@@ -718,7 +705,8 @@ class QTPlot(QtGui.QMainWindow):
         if self.data is not None:
             zmin, zmax = np.nanmin(self.data.z), np.nanmax(self.data.z)
 
-            newmin, newmax = float(self.le_min.text()), float(self.le_max.text())
+            newmin = float(self.le_min.text())
+            newmax = float(self.le_max.text())
 
             # Convert the entered bounds into slider positions (0 - 100)
             self.s_min.setValue((newmin - zmin) / ((zmax - zmin) / 100))
@@ -770,10 +758,14 @@ class QTPlot(QtGui.QMainWindow):
     def on_save_matrix(self):
         save_directory = self.profile_settings['save_directory']
 
+        filters = ('QTLab data format (*.dat);;'
+                   'NumPy binary matrix format (*.npy);;'
+                   'MATLAB matrix format (*.mat)')
+
         filename = QtGui.QFileDialog.getSaveFileName(self,
                                                      caption='Save file',
                                                      directory=save_directory,
-                                                     filter='QTLab data format (*.dat);;NumPy binary matrix format (*.npy);;MATLAB matrix format (*.mat)')
+                                                     filter=filters)
         filename = str(filename)
 
         if filename != '' and self.dat_file is not None:
@@ -805,8 +797,8 @@ def main():
     app = QtGui.QApplication(sys.argv)
 
     if len(sys.argv) > 1:
-        main = QTPlot(filename=sys.argv[1])
+        QTPlot(filename=sys.argv[1])
     else:
-        main = QTPlot()
+        QTPlot()
 
     sys.exit(app.exec_())

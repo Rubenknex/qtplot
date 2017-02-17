@@ -2,7 +2,7 @@ import sys
 import os
 
 #from PyQt4 import QtGui, QtCore
-from qtpy import QtWidgets, QtCore
+#from qtpy import QtWidgets, QtCore
 #from qtplot.qtplot import QTPlot
 from qtplot import qtplot
 
