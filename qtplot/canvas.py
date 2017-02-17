@@ -120,7 +120,7 @@ class Canvas(scene.SceneCanvas):
         self.line_type = None
         # x for a vertical line, y for a horizontal line
         self.line_coord = None
-        # start and end points
+        # Start and end points for a linecut
         self.mouse_start = (0, 0)
         self.mouse_end = (0, 0)
 
@@ -241,79 +241,22 @@ class Canvas(scene.SceneCanvas):
                 # Set up the parameters and data for either a horizontal or
                 # vertical linecut
                 if event.button == 1:
-                    self.line_type = 'horizontal'
-                    self.line_coord = self.data.get_closest_y(y)
-                    self.mouse_start = (self.xmin, self.line_coord)
-                    self.mouse_end = (self.xmax, self.line_coord)
-
-                    # Get the data row
-                    x, y, index = self.data.get_row_at(y)
-                    z = np.nanmean(self.data.y[index, :])
-
-                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
-                                                       self.line_coord,
-                                                       self.parent.name,
-                                                       x_name, data_name,
-                                                       y_name)
+                    self.draw_horizontal_linecut(y)
                 elif event.button == 2:
-                    self.line_type = 'diagonal'
-
-                    mouse_pos = (event.pos[0], event.pos[1])
-
-                    if initial_press:
-                        # Store the initial location as start and end
-                        x, y = self.screen_to_data_coords(mouse_pos)
-                        self.mouse_start = (x, y)
-                        self.mouse_end = (x, y)
-                    else:
-                        x, y = self.screen_to_data_coords(mouse_pos)
-                        self.mouse_end = (x, y)
-
-                        # Create datapoints on the line to interpolate over
-                        x_start, y_start = self.mouse_start
-                        x_points = np.linspace(x_start, x, 500)
-                        y_points = np.linspace(y_start, y, 500)
-
-                        if self.data_changed:
-                            self.data.generate_triangulation()
-                            self.data_changed = False
-
-                        vals = self.data.interpolate(
-                            np.column_stack((x_points, y_points)))
-
-                        # Create data for the x-axis using hypotenuse
-                        dist = np.hypot(x_points - x_points[0],
-                                        y_points - y_points[0])
-
-                        self.parent.linecut.plot_linetrace(dist, vals, 0,
-                                                           self.line_type,
-                                                           self.line_coord,
-                                                           self.parent.name,
-                                                           'Distance (-)',
-                                                           data_name, x_name)
-
-                        # Display slope and inverse slope in status bar
-                        dx = x - x_start
-                        dy = y - y_start
-                        text = 'Slope: {:.3e}\tInv: {:.3e}'.format(dy / dx,
-                                                                   dx / dy)
-
-                        self.parent.l_slope.setText(text)
+                    self.draw_arbitrary_linecut(x, y, initial_press)
                 elif event.button == 3:
-                    self.line_type = 'vertical'
-                    self.line_coord = self.data.get_closest_x(x)
-                    self.mouse_start = (self.line_coord, self.ymin)
-                    self.mouse_end = (self.line_coord, self.ymax)
+                    self.draw_vertical_linecut(x)
 
-                    # Get the data column
-                    x, y, index = self.data.get_column_at(x)
-                    z = np.nanmean(self.data.x[:, index])
-
-                    self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
-                                                       self.line_coord,
-                                                       self.parent.name,
-                                                       y_name, data_name,
-                                                       x_name)
+                self.has_redrawn = False
+            elif old_position:
+                # Drawing the linecut at the old position
+                if self.line_type == 'horizontal':
+                    self.draw_horizontal_linecut(self.line_coord)
+                elif self.line_type == 'diagonal':
+                    self.draw_arbitrary_linecut(*self.mouse_end,
+                                                initial_press=False)
+                elif self.line_type == 'vertical':
+                    self.draw_vertical_linecut(self.line_coord)
 
                 self.has_redrawn = False
 
@@ -324,6 +267,82 @@ class Canvas(scene.SceneCanvas):
             self.update()
         else:
             self.update()
+
+    def draw_horizontal_linecut(self, y):
+        self.line_type = 'horizontal'
+        self.line_coord = self.data.get_closest_y(y)
+        self.mouse_start = (self.xmin, self.line_coord)
+        self.mouse_end = (self.xmax, self.line_coord)
+
+        # Get the data row
+        x, y, index = self.data.get_row_at(y)
+        z = np.nanmean(self.data.y[index, :])
+
+        x_name, y_name, data_name = self.parent.get_axis_names()
+
+        self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
+                                           self.line_coord,
+                                           self.parent.name,
+                                           x_name, data_name,
+                                           y_name)
+
+    def draw_vertical_linecut(self, x):
+        self.line_type = 'vertical'
+        self.line_coord = self.data.get_closest_x(x)
+        self.mouse_start = (self.line_coord, self.ymin)
+        self.mouse_end = (self.line_coord, self.ymax)
+
+        # Get the data column
+        x, y, index = self.data.get_column_at(x)
+        z = np.nanmean(self.data.x[:, index])
+
+        x_name, y_name, data_name = self.parent.get_axis_names()
+
+        self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
+                                           self.line_coord,
+                                           self.parent.name,
+                                           y_name, data_name,
+                                           x_name)
+
+    def draw_arbitrary_linecut(self, x, y, initial_press):
+        self.line_type = 'diagonal'
+
+        if initial_press:
+            # Store the initial location as start and end
+            self.mouse_start = (x, y)
+            self.mouse_end = (x, y)
+        else:
+            self.mouse_end = (x, y)
+
+            # Create datapoints on the line to interpolate over
+            x_start, y_start = self.mouse_start
+            x_points = np.linspace(x_start, x, 500)
+            y_points = np.linspace(y_start, y, 500)
+
+            if self.data_changed:
+                self.data.generate_triangulation()
+                self.data_changed = False
+
+            vals = self.data.interpolate(np.column_stack((x_points, y_points)))
+
+            # Create data for the x-axis using hypotenuse
+            dist = np.hypot(x_points - x_points[0], y_points - y_points[0])
+
+            x_name, y_name, data_name = self.parent.get_axis_names()
+
+            self.parent.linecut.plot_linetrace(dist, vals, 0,
+                                               self.line_type,
+                                               self.line_coord,
+                                               self.parent.name,
+                                               'Distance (-)',
+                                               data_name, x_name)
+
+            # Display slope and inverse slope in status bar
+            dx = x - x_start
+            dy = y - y_start
+            text = 'Slope: {:.3e}\tInv: {:.3e}'.format(dy / dx, dx / dy)
+
+            self.parent.l_slope.setText(text)
 
     def on_mouse_press(self, event):
         self.draw_linecut(event, initial_press=True)
@@ -343,7 +362,9 @@ class Canvas(scene.SceneCanvas):
                                              eng_format(y, 1))
                     self.parent.l_position.setText(text)
 
-                    self.draw_linecut(event)
+                    # If a mouse button was pressed, try to redraw linecut
+                    if len(event.buttons) > 0:
+                        self.draw_linecut(event)
 
     def on_resize(self, event):
         width, height = event.physical_size

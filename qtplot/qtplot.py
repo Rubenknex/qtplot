@@ -595,10 +595,10 @@ class QTPlot(QtGui.QMainWindow):
         if self.dat_file is None and self.data_set is None:
             return
 
+        # Get the selected axes from the interface
         x_name, y_name, data_name = self.get_axis_names()
 
-        # self.export_widget.set_info(self.name, x_name, y_name, data_name)
-
+        # Update the Data2D from either a qtlab or qcodes dataset
         if self.dat_file is not None:
             self.data = self.dat_file.get_data(x_name, y_name, data_name)
 
@@ -612,16 +612,18 @@ class QTPlot(QtGui.QMainWindow):
 
             self.data = Data2D(x, y, z)
 
+        # Apply the selected operations
         self.data = self.operations.apply_operations(self.data)
 
+        # If we want to reset the colormap for each data update, do so
         if self.cb_reset_cmap.checkState() == QtCore.Qt.Checked:
             self.on_min_changed(0)
             self.s_gamma.setValue(0)
             self.on_max_changed(100)
 
         self.canvas.set_data(self.data)
-        # self.canvas.draw_linecut(None, old_position=True)
-        self.canvas.update()
+        # Update the linecut
+        self.canvas.draw_linecut(None, old_position=True)
 
         if np.isnan(self.data.z).any():
             logger.warning('The data contains NaN values')

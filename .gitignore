@@ -8,6 +8,7 @@ test.png
 *.operations
 *.config
 *.ini
+*.dat
 
 # Distribution / packaging
 test.py

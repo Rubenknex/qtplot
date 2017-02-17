@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class DatFile:
     """ Class which contains the column based DataFrame of the data. """
+
     def __init__(self, filename):
         self.filename = filename
         self.timestamp = ''
