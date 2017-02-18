@@ -22,16 +22,18 @@ class Linetrace(plt.Line2D):
     position:   The x/y coordinate at which the linetrace was taken
     """
 
-    def __init__(self, x, y, type, position):
-        plt.Line2D.__init__(self, x, y, color='red', linewidth=0.5)
+    def __init__(self, x, y, type, position, **kwargs):
+        plt.Line2D.__init__(self, x, y, **kwargs)
 
         self.type = type
         self.position = position
 
 
 class Linecut(QtGui.QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, main=None):
         super(Linecut, self).__init__(None)
+
+        self.main = main
 
         self.fig, self.ax = plt.subplots()
         self.x, self.y = None, None
@@ -76,6 +78,7 @@ class Linecut(QtGui.QDialog):
         self.cb_include_z.setCheckState(QtCore.Qt.Checked)
         grid.addWidget(self.cb_include_z, 1, 5)
 
+        # Linecuts
         grid.addWidget(QtGui.QLabel('Linecuts'), 2, 1)
 
         self.cb_incremental = QtGui.QCheckBox('Incremental')
@@ -91,18 +94,25 @@ class Linecut(QtGui.QDialog):
         self.b_clear_lines.clicked.connect(self.on_clear_lines)
         grid.addWidget(self.b_clear_lines, 2, 5)
 
-        grid.addWidget(QtGui.QLabel('Points'), 3, 1)
-        self.cb_point = QtGui.QComboBox(self)
-        self.cb_point.addItems(['X,Y', 'X', 'Y'])
-        grid.addWidget(self.cb_point, 3, 2)
+        # Lines
+        grid.addWidget(QtGui.QLabel('Line style'), 3, 1)
+        self.cb_linestyle = QtGui.QComboBox(self)
+        self.cb_linestyle.addItems(['None', 'solid', 'dashed', 'dotted'])
+        grid.addWidget(self.cb_linestyle, 3, 2)
 
-        grid.addWidget(QtGui.QLabel('Significance'))
-        self.sb_significance = QtGui.QSpinBox(self)
-        grid.addWidget(self.sb_significance, 3, 4)
+        grid.addWidget(QtGui.QLabel('Linewidth'), 3, 3)
+        self.le_linewidth = QtGui.QLineEdit('0.5', self)
+        grid.addWidget(self.le_linewidth, 3, 4)
 
-        self.b_clear_points = QtGui.QPushButton('Clear', self)
-        self.b_clear_points.clicked.connect(self.on_clear_points)
-        grid.addWidget(self.b_clear_points, 3, 5)
+        # Markers
+        grid.addWidget(QtGui.QLabel('Marker style'), 4, 1)
+        self.cb_markerstyle = QtGui.QComboBox(self)
+        self.cb_markerstyle.addItems(['None', '.', 'o', 'x'])
+        grid.addWidget(self.cb_markerstyle, 4, 2)
+
+        grid.addWidget(QtGui.QLabel('Size'), 4, 3)
+        self.le_markersize = QtGui.QLineEdit('0.5', self)
+        grid.addWidget(self.le_markersize, 4, 4)
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
@@ -112,6 +122,25 @@ class Linecut(QtGui.QDialog):
 
         self.resize(500, 500)
         self.move(630, 100)
+
+    def populate_ui(self):
+        profile = self.main.profile_settings
+
+        idx = self.cb_linestyle.findText(profile['line_style'])
+        self.cb_linestyle.setCurrentIndex(idx)
+        self.le_linewidth.setText(profile['line_width'])
+
+        idx = self.cb_markerstyle.findText(profile['marker_style'])
+        self.cb_markerstyle.setCurrentIndex(idx)
+        self.le_markersize.setText(profile['marker_size'])
+
+    def get_line_kwargs(self):
+        return {
+            'linestyle': str(self.cb_linestyle.currentText()),
+            'linewidth': float(self.le_linewidth.text()),
+            'marker': str(self.cb_markerstyle.currentText()),
+            'markersize': float(self.le_markersize.text()),
+        }
 
     def on_reset(self):
         if self.x is not None and self.y is not None:
@@ -234,7 +263,7 @@ class Linecut(QtGui.QDialog):
 
             self.linetraces = []
 
-            line = Linetrace(x, y, type, position)
+            line = Linetrace(x, y, type, position, color='red', **self.get_line_kwargs())
             self.linetraces.append(line)
             self.ax.add_line(line)
 

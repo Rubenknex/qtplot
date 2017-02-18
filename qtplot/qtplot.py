@@ -51,6 +51,10 @@ profile_defaults = OrderedDict((
     ('triangulation', False),
     ('tripcolor', False),
     ('linecut', False),
+    ('line_style', 'solid'),
+    ('line_width', '0.5'),
+    ('marker_style', 'None'),
+    ('marker_size', '6'),
 ))
 
 
@@ -424,6 +428,14 @@ class QTPlot(QtGui.QMainWindow):
 
         # Set the colormap
         cmap = self.profile_settings['colormap']
+
+        # The path that is saved in the profile can use either / or \\
+        # as a path separator. Here we convert it to what the OS uses.
+        if os.path.sep == '/':
+            cmap = cmap.replace('\\', '/')
+        elif os.path.sep == '\\':
+            cmap = cmap.replace('/', '\\')
+
         index = self.cb_cmaps.findText(cmap)
 
         if index != -1:
@@ -503,6 +515,10 @@ class QTPlot(QtGui.QMainWindow):
             ('triangulation', self.export_widget.cb_triangulation.isChecked()),
             ('tripcolor', self.export_widget.cb_tripcolor.isChecked()),
             ('linecut', self.export_widget.cb_linecut.isChecked()),
+            ('line_style', str(self.linecut.cb_linestyle.currentText())),
+            ('line_width', str(self.linecut.le_linewidth.text())),
+            ('marker_style', str(self.linecut.cb_markerstyle.currentText())),
+            ('marker_size', str(self.linecut.le_markersize.text())),
         ))
 
         for option, value in state.items():
@@ -558,6 +574,7 @@ class QTPlot(QtGui.QMainWindow):
         self.on_cmap_change()
 
         self.export_widget.populate_ui()
+        self.linecut.populate_ui()
 
         # If we are viewing the export tab, update the plot
         if self.main_widget.currentWidget() == self.export_widget:
