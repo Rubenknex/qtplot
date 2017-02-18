@@ -126,6 +126,22 @@ class DatFile:
 
             self.data = np.hstack((self.data, values[:, np.newaxis]))
 
+    def find_row(self, columns_values):
+        found = []
+
+        # For every value, find it
+        for column, value in columns_values.items():
+            col_idx = self.ids.index(column)
+
+            idx = np.where(self.data[:,col_idx]==value)[0]
+            found.append(idx)
+
+        # Find the row that two arrays of indices have in common
+        row = np.intersect1d(found[0], found[1])[0]
+
+        # Return a dict of all parameter-value pairs in the row
+        return OrderedDict(zip(self.ids, self.data[row]))
+
     def get_data(self, x_name, y_name, z_name):
         """
         Procedure:

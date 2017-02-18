@@ -38,8 +38,7 @@ class Linecut(QtGui.QDialog):
         self.fig, self.ax = plt.subplots()
         self.x, self.y = None, None
         self.linetraces = []
-        self.points = []
-        self.markers = []
+        self.marker = None
         self.colors = cycle('bgrcmykw')
 
         self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
@@ -51,7 +50,7 @@ class Linecut(QtGui.QDialog):
         self.setWindowTitle("Linecut")
 
         self.canvas = FigureCanvasQTAgg(self.fig)
-        self.canvas.mpl_connect('button_press_event', self.on_click)
+        self.canvas.mpl_connect('pick_event', self.on_pick)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
         grid = QtGui.QGridLayout()
@@ -114,13 +113,22 @@ class Linecut(QtGui.QDialog):
         self.le_markersize = QtGui.QLineEdit('0.5', self)
         grid.addWidget(self.le_markersize, 4, 4)
 
+        self.row_tree = QtGui.QTreeWidget(self)
+        self.row_tree.setHeaderLabels(['Parameter', 'Value'])
+        self.row_tree.setColumnWidth(0, 100)
+        #grid.addWidget(self.row_tree, 4, 5)
+
+        hbox = QtGui.QHBoxLayout()
+        hbox.addWidget(self.canvas)
+        hbox.addWidget(self.row_tree)
+
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
-        layout.addWidget(self.canvas)
+        layout.addLayout(hbox)
         layout.addLayout(grid)
         self.setLayout(layout)
 
-        self.resize(500, 500)
+        self.resize(700, 500)
         self.move(630, 100)
 
     def populate_ui(self):
@@ -155,32 +163,34 @@ class Linecut(QtGui.QDialog):
 
             self.canvas.draw()
 
-    def on_click(self, event):
-        if event.inaxes and event.button == 2:
-            significance = self.sb_significance.value()
-            point_type = str(self.cb_point.currentText())
+    def on_pick(self, event):
+        line = self.linetraces[0]
 
-            if point_type == 'X':
-                coords = eng_format(event.xdata, significance)
-            elif point_type == 'Y':
-                coords = eng_format(event.ydata, significance)
-            elif point_type == 'X,Y':
-                coords = '%s, %s' % (eng_format(event.xdata, significance),
-                                     eng_format(event.ydata, significance))
-            else:
-                coords = ''
+        ind = event.ind[int(len(event.ind) / 2)]
+        x = line.get_xdata()[ind]
+        y = line.get_ydata()[ind]
 
-            marker = self.ax.plot(event.xdata, event.ydata, '+', c='k')[0]
-            self.markers.append(marker)
-            text = self.ax.annotate(coords,
-                                    xy=(event.xdata, event.ydata),
-                                    xycoords='data',
-                                    xytext=(3, 3),
-                                    textcoords='offset points')
+        # Find the other data in this datapoint's row
+        data = self.main.dat_file.find_row({self.xlabel: x, self.ylabel: y})
 
-            self.points.append(text)
+        # Fill the treeview with data
+        self.row_tree.clear()
+        widgets = []
+        for name, value in data.items():
+            val = '{:.3e}'.format(value)
+            val = eng_format(value, 1)
+            widgets.append(QtGui.QTreeWidgetItem(None, [name, val]))
 
-            self.fig.canvas.draw()
+        self.row_tree.insertTopLevelItems(0, widgets)
+
+        # Remove the previous datapoint marker
+        if self.marker is not None:
+            self.marker.remove()
+
+        # Plot a new datapoint marker
+        self.marker = self.ax.plot(x, y, '.', markersize=15, color='black')[0]
+
+        self.fig.canvas.draw()
 
     def on_clipboard(self):
         if self.x is None or self.y is None:
@@ -223,19 +233,6 @@ class Linecut(QtGui.QDialog):
 
         self.fig.canvas.draw()
 
-    def on_clear_points(self):
-        for point in self.points:
-            point.remove()
-
-        self.points = []
-
-        for marker in self.markers:
-            marker.remove()
-
-        self.markers = []
-
-        self.fig.canvas.draw()
-
     def plot_linetrace(self, x, y, z, type, position, title,
                        xlabel, ylabel, otherlabel):
         # Don't draw lines consisting of one point
@@ -263,7 +260,11 @@ class Linecut(QtGui.QDialog):
 
             self.linetraces = []
 
-            line = Linetrace(x, y, type, position, color='red', **self.get_line_kwargs())
+            line = Linetrace(x, y, type, position,
+                             color='red',
+                             picker=5,
+                             **self.get_line_kwargs())
+
             self.linetraces.append(line)
             self.ax.add_line(line)
 
@@ -277,7 +278,7 @@ class Linecut(QtGui.QDialog):
 
             offset = float(self.le_offset.text())
             line = Linetrace(x, y + index * offset, type, position)
-            line.set_color(self.colors.next())
+            line.set_color(next(self.colors))
 
             self.linetraces.append(line)
             self.ax.add_line(line)
