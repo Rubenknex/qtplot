@@ -264,9 +264,7 @@ class Canvas(scene.SceneCanvas):
             self.linecut_program['a_position'] = [self.mouse_start,
                                                   self.mouse_end]
 
-            self.update()
-        else:
-            self.update()
+        self.update()
 
     def draw_horizontal_linecut(self, y):
         self.line_type = 'horizontal'
@@ -275,12 +273,12 @@ class Canvas(scene.SceneCanvas):
         self.mouse_end = (self.xmax, self.line_coord)
 
         # Get the data row
-        x, y, index = self.data.get_row_at(y)
+        x, y, row_numbers, index = self.data.get_row_at(y)
         z = np.nanmean(self.data.y[index, :])
 
         x_name, y_name, data_name = self.parent.get_axis_names()
 
-        self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
+        self.parent.linecut.plot_linetrace(x, y, z, row_numbers, self.line_type,
                                            self.line_coord,
                                            self.parent.name,
                                            x_name, data_name,
@@ -293,12 +291,12 @@ class Canvas(scene.SceneCanvas):
         self.mouse_end = (self.line_coord, self.ymax)
 
         # Get the data column
-        x, y, index = self.data.get_column_at(x)
+        x, y, row_numbers, index = self.data.get_column_at(x)
         z = np.nanmean(self.data.x[:, index])
 
         x_name, y_name, data_name = self.parent.get_axis_names()
 
-        self.parent.linecut.plot_linetrace(x, y, z, self.line_type,
+        self.parent.linecut.plot_linetrace(x, y, z, row_numbers, self.line_type,
                                            self.line_coord,
                                            self.parent.name,
                                            y_name, data_name,

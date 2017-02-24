@@ -126,19 +126,7 @@ class DatFile:
 
             self.data = np.hstack((self.data, values[:, np.newaxis]))
 
-    def find_row(self, columns_values):
-        found = []
-
-        # For every value, find it
-        for column, value in columns_values.items():
-            col_idx = self.ids.index(column)
-
-            idx = np.where(self.data[:,col_idx]==value)[0]
-            found.append(idx)
-
-        # Find the row that two arrays of indices have in common
-        row = np.intersect1d(found[0], found[1])[0]
-
+    def get_row_info(self, row):
         # Return a dict of all parameter-value pairs in the row
         return OrderedDict(zip(self.ids, self.data[row]))
 
@@ -175,6 +163,9 @@ class DatFile:
         x_setpoints = self.get_column(setpoint_columns[0])
         y_setpoints = np.zeros(self.data.shape[0])
 
+        # The row numbers from the original .dat file
+        row_numbers = np.arange(self.data.shape[0])
+
         # Retrieve the x, y, and z data
         x_data = self.get_column(x_name)
         y_data = np.zeros(self.data.shape[0])
@@ -190,8 +181,9 @@ class DatFile:
         rows, row_ind = np.unique(y_setpoints, return_inverse=True)
 
         # Pivot all data into matrix using unique setpoint indices
-        pivot = np.zeros((len(rows), len(cols), 5)) * np.nan
-        data = np.vstack((x_setpoints, y_setpoints, x_data, y_data, z_data)).T
+        pivot = np.zeros((len(rows), len(cols), 6)) * np.nan
+        data = np.vstack((x_setpoints, y_setpoints,
+                          x_data, y_data, z_data, row_numbers)).T
         pivot[row_ind, col_ind] = data
 
         x_setpoints = pivot[:,:,0]
@@ -201,7 +193,9 @@ class DatFile:
         y = pivot[:,:,3]
         z = pivot[:,:,4]
 
-        return Data2D(x, y, z, x_setpoints, y_setpoints,
+        row_numbers = pivot[:,:,5]
+
+        return Data2D(x, y, z, x_setpoints, y_setpoints, row_numbers,
                       x_name, y_name, z_name, setpoint_columns[0],
                       setpoint_columns[1], self.filename, self.timestamp, self)
 
@@ -237,7 +231,7 @@ class Data2D:
     Class which represents 2d data as two matrices with x and y coordinates
     and one with values.
     """
-    def __init__(self, x, y, z, x_setpoints=[], y_setpoints=[],
+    def __init__(self, x, y, z, x_setpoints=[], y_setpoints=[], row_numbers=[],
                  x_name='', y_name='', z_name='', x_setpoints_name='',
                  y_setpoints_name='', filename='', timestamp='', dat_file=None,
                  equidistant=(False, False), varying=(False, False)):
@@ -265,8 +259,11 @@ class Data2D:
             y = y.T
             z = z.T
 
+            row_numbers = row_numbers.T
+
         self.x_setpoints, self.y_setpoints = x_setpoints, y_setpoints
         self.x, self.y, self.z = x, y, z
+        self.row_numbers = row_numbers
 
         self.equidistant = equidistant
         self.varying = varying
@@ -618,14 +615,14 @@ class Data2D:
 
         index = np.argmin(np.abs(self.x_means - x))
 
-        return self.y[:,index], self.z[:,index], index
+        return self.y[:,index], self.z[:,index], self.row_numbers[:,index], index
 
     def get_row_at(self, y):
         self.y_means = np.nanmean(self.y, axis=1)
 
         index = np.argmin(np.abs(self.y_means - y))
 
-        return self.x[index], self.z[index], index
+        return self.x[index], self.z[index], self.row_numbers[index], index
 
     def get_closest_x(self, x_coord):
         return min(self.x[0,:], key=lambda x:abs(x - x_coord))
@@ -635,10 +632,16 @@ class Data2D:
 
     def flip_axes(self, x_flip, y_flip):
         if x_flip:
-            self.set_data(np.fliplr(self.x), np.fliplr(self.y), np.fliplr(self.z))
+            self.x = np.fliplr(self.x)
+            self.y = np.fliplr(self.y)
+            self.z = np.fliplr(self.z)
+            self.row_numbers = np.fliplr(self.row_numbers)
 
         if y_flip:
-            self.set_data(np.flipud(self.x), np.fliplr(self.y), np.fliplr(self.z))
+            self.x = np.flipud(self.x)
+            self.y = np.flipud(self.y)
+            self.z = np.flipud(self.z)
+            self.row_numbers = np.flipud(self.row_numbers)
 
     def is_flipped(self):
         x_flip = self.x[0,0] > self.x[0,-1]
@@ -649,6 +652,7 @@ class Data2D:
     def copy(self):
         return Data2D(np.copy(self.x), np.copy(self.y), np.copy(self.z),
                       np.copy(self.x_setpoints), np.copy(self.y_setpoints),
+                      np.copy(self.row_numbers),
                       self.x_name, self.y_name, self.z_name,
                       self.x_setpoints_name, self.y_setpoints_name,
                       self.filename, self.timestamp, self.dat_file,
@@ -673,11 +677,12 @@ class Data2D:
         if (left < right and bottom < top and
             0 <= left <= self.z.shape[1] and 0 <= right <= self.z.shape[1] and
             0 <= bottom <= self.z.shape[0] and 0 <= top <= self.z.shape[0]):
-            self.set_data(self.x[bottom:top,left:right],
-                          self.y[bottom:top,left:right],
-                          self.z[bottom:top,left:right])
+            self.x = self.x[bottom:top,left:right]
+            self.y = self.y[bottom:top,left:right]
+            self.z = self.z[bottom:top,left:right]
+            self.row_numbers = self.row_numbers[bottom:top,left:right]
         else:
-            logger.error('Crop has invalid parameter values')
+            raise ValueError('Invalid crop parameters')
 
     def dderiv(self, theta=0.0, method='midpoint'):
         """Calculate the component of the gradient in a specific direction."""
@@ -721,6 +726,7 @@ class Data2D:
             indices = np.arange(1, self.z.shape[0], 2)
 
         self.set_data(self.x[indices], self.y[indices], self.z[indices])
+        self.row_numbers = self.row_numbers[indices]
 
     def flip(self, x_flip, y_flip):
         """Flip the X or Y axes."""
@@ -868,10 +874,10 @@ class Data2D:
     def sub_linecut(self, type, position):
         """Subtract a horizontal/vertical linecut from every row/column."""
         if type == 'horizontal':
-            x, y, index = self.get_row_at(position)
+            x, y, row_numbers, index = self.get_row_at(position)
             y = np.tile(self.z[index,:], (self.z.shape[0],1))
         elif type == 'vertical':
-            x, y, index = self.get_column_at(position)
+            x, y, row_numbers, index = self.get_column_at(position)
             y = np.tile(self.z[:,index][:,np.newaxis], (1, self.z.shape[1]))
 
         self.z -= y

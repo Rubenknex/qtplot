@@ -22,9 +22,10 @@ class Linetrace(plt.Line2D):
     position:   The x/y coordinate at which the linetrace was taken
     """
 
-    def __init__(self, x, y, type, position, **kwargs):
+    def __init__(self, x, y, row_numbers, type, position, **kwargs):
         plt.Line2D.__init__(self, x, y, **kwargs)
 
+        self.row_numbers = row_numbers
         self.type = type
         self.position = position
 
@@ -186,8 +187,8 @@ class Linecut(QtGui.QDialog):
             x = line.get_xdata()[ind]
             y = line.get_ydata()[ind]
 
-            # Find the other data in this datapoint's row
-            data = self.main.dat_file.find_row({self.xlabel: x, self.ylabel: y})
+            row = int(line.row_numbers[ind])
+            data = self.main.dat_file.get_row_info(row)
 
             # Also show the datapoint index
             data['N'] = ind
@@ -292,7 +293,7 @@ class Linecut(QtGui.QDialog):
 
         self.fig.canvas.draw()
 
-    def plot_linetrace(self, x, y, z, type, position, title,
+    def plot_linetrace(self, x, y, z, row_numbers, type, position, title,
                        xlabel, ylabel, otherlabel):
         # Don't draw lines consisting of one point
         if np.count_nonzero(~np.isnan(y)) < 2:
@@ -319,7 +320,7 @@ class Linecut(QtGui.QDialog):
 
             self.linetraces = []
 
-            line = Linetrace(x, y, type, position,
+            line = Linetrace(x, y, row_numbers, type, position,
                              color='red',
                              picker=5,
                              **self.get_line_kwargs())
@@ -336,7 +337,7 @@ class Linecut(QtGui.QDialog):
             index = len(self.linetraces) - 1
 
             offset = float(self.le_offset.text())
-            line = Linetrace(x, y + index * offset, type, position)
+            line = Linetrace(x, y + index * offset, row_numbers, type, position)
             line.set_color(next(self.colors))
 
             self.linetraces.append(line)
