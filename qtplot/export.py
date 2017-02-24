@@ -4,7 +4,6 @@ import textwrap
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from PyQt4 import QtGui, QtCore
-from scipy import spatial
 
 from .util import FixedOrderFormatter
 import os
@@ -66,6 +65,7 @@ class ExportWidget(QtGui.QWidget):
 
         grid = QtGui.QGridLayout()
 
+        # X-axis
         grid.addWidget(QtGui.QLabel('X Label'), 2, 1)
         self.le_x_label = QtGui.QLineEdit('test')
         grid.addWidget(self.le_x_label, 2, 2)
@@ -80,7 +80,7 @@ class ExportWidget(QtGui.QWidget):
         self.le_x_div.setMaximumWidth(50)
         grid.addWidget(self.le_x_div, 2, 6)
 
-
+        # Y-axis
         grid.addWidget(QtGui.QLabel('Y Label'), 3, 1)
         self.le_y_label = QtGui.QLineEdit('test')
         grid.addWidget(self.le_y_label, 3, 2)
@@ -95,7 +95,7 @@ class ExportWidget(QtGui.QWidget):
         self.le_y_div.setMaximumWidth(50)
         grid.addWidget(self.le_y_div, 3, 6)
 
-
+        # Z-axis
         grid.addWidget(QtGui.QLabel('Z Label'), 4, 1)
         self.le_z_label = QtGui.QLineEdit('test')
         grid.addWidget(self.le_z_label, 4, 2)
@@ -115,6 +115,7 @@ class ExportWidget(QtGui.QWidget):
 
         grid = QtGui.QGridLayout()
 
+        # Font
         grid.addWidget(QtGui.QLabel('Font'), 5, 1)
         self.le_font = QtGui.QLineEdit('Vera Sans')
         grid.addWidget(self.le_font, 5, 2)
@@ -123,7 +124,7 @@ class ExportWidget(QtGui.QWidget):
         self.le_font_size = QtGui.QLineEdit('12')
         grid.addWidget(self.le_font_size, 6, 2)
 
-
+        # Figure size
         grid.addWidget(QtGui.QLabel('Width'), 5, 3)
         self.le_width = QtGui.QLineEdit('3')
         grid.addWidget(self.le_width, 5, 4)
@@ -132,7 +133,7 @@ class ExportWidget(QtGui.QWidget):
         self.le_height = QtGui.QLineEdit('3')
         grid.addWidget(self.le_height, 6, 4)
 
-
+        # Colorbar
         grid.addWidget(QtGui.QLabel('CB Orient'), 5, 5)
         self.cb_cb_orient = QtGui.QComboBox()
         self.cb_cb_orient.addItems(['vertical', 'horizontal'])
@@ -145,6 +146,7 @@ class ExportWidget(QtGui.QWidget):
         groupbox_figure = QtGui.QGroupBox('Figure')
         groupbox_figure.setLayout(grid)
 
+        # Additional things to plot
         grid.addWidget(QtGui.QLabel('Triangulation'), 7, 1)
         self.cb_triangulation = QtGui.QCheckBox('')
         grid.addWidget(self.cb_triangulation, 7, 2)
@@ -222,23 +224,28 @@ class ExportWidget(QtGui.QWidget):
 
             mpl.rc('font', **font)
 
+            # Clear the plot
             self.ax.clear()
 
+            # Get the data and colormap
             x, y, z = self.main.data.get_pcolor()
-
             cmap = self.main.canvas.colormap.get_mpl_colormap()
 
-            need_tri = QtCore.Qt.Checked in [self.cb_tripcolor.checkState(),
-                                             self.cb_triangulation.checkState()]
+            tri_checkboxes = [self.cb_tripcolor.checkState(),
+                              self.cb_triangulation.checkState()]
 
-            if need_tri:
+            # If we are going to need to plot triangulation data, prepare
+            # the data so it can be plotted
+            if QtCore.Qt.Checked in tri_checkboxes:
                 if self.main.data.tri is None:
                     self.main.data.generate_triangulation()
 
                 xc, yc = self.main.data.get_triangulation_coordinates()
 
-                tri = mpl.tri.Triangulation(xc, yc, self.main.data.tri.simplices)
+                tri = mpl.tri.Triangulation(xc, yc,
+                                            self.main.data.tri.simplices)
 
+            # Plot the data using either pcolormesh or tripcolor
             if self.cb_tripcolor.checkState() != QtCore.Qt.Checked:
                 quadmesh = self.ax.pcolormesh(x, y, z,
                                               cmap=cmap,
@@ -252,6 +259,7 @@ class ExportWidget(QtGui.QWidget):
 
                 quadmesh.set_clim(self.main.canvas.colormap.get_limits())
 
+            # Plot the triangulation
             if self.cb_triangulation.checkState() == QtCore.Qt.Checked:
                 self.ax.triplot(tri, 'o-', color='black',
                                 linewidth=0.5, markersize=3)
@@ -259,11 +267,15 @@ class ExportWidget(QtGui.QWidget):
             self.ax.axis('tight')
 
             title = self.format_label(str(self.le_title.text()))
-            title = '\n'.join(textwrap.wrap(title, 40, replace_whitespace=False))
+            title = '\n'.join(textwrap.wrap(title, 40,
+                                            replace_whitespace=False))
+
+            # Set all the plot labels
             self.ax.set_title(title)
             self.ax.set_xlabel(self.format_label(self.le_x_label.text()))
             self.ax.set_ylabel(self.format_label(self.le_y_label.text()))
 
+            # Set the axis tick formatters
             self.ax.xaxis.set_major_formatter(FixedOrderFormatter(
                 str(self.le_x_format.text()), float(self.le_x_div.text())))
             self.ax.yaxis.set_major_formatter(FixedOrderFormatter(
@@ -272,8 +284,9 @@ class ExportWidget(QtGui.QWidget):
             if self.cb is not None:
                 self.cb.remove()
 
-            self.cb = self.fig.colorbar(quadmesh,
-                                        orientation=str(self.cb_cb_orient.currentText()))
+            # Colorbar layout
+            orientation = str(self.cb_cb_orient.currentText())
+            self.cb = self.fig.colorbar(quadmesh, orientation=orientation)
 
             self.cb.formatter = FixedOrderFormatter(
                 str(self.le_z_format.text()), float(self.le_z_div.text()))
@@ -283,6 +296,7 @@ class ExportWidget(QtGui.QWidget):
             self.cb.set_label(self.format_label(self.le_z_label.text()))
             self.cb.draw_all()
 
+            # Plot the current linecut if neccesary
             if self.cb_linecut.checkState() == QtCore.Qt.Checked:
                 for linetrace in self.main.linecut.linetraces:
                     if linetrace.type == 'horizontal':
@@ -295,6 +309,7 @@ class ExportWidget(QtGui.QWidget):
             self.canvas.draw()
 
     def on_copy(self):
+        """ Copy the current plot to the clipboard """
         path = os.path.dirname(os.path.realpath(__file__))
         path = os.path.join(path, 'test.png')
         self.fig.savefig(path)
@@ -303,9 +318,7 @@ class ExportWidget(QtGui.QWidget):
         QtGui.QApplication.clipboard().setImage(img)
 
     def on_to_ppt(self):
-        """
-        Some win32 COM magic to interact with powerpoint
-        """
+        """ Some win32 COM magic to interact with powerpoint """
         try:
             import win32com.client
         except ImportError:
@@ -317,18 +330,27 @@ class ExportWidget(QtGui.QWidget):
 
         app = win32com.client.Dispatch('PowerPoint.Application')
 
-        # Paste the plot on the active slide
+        # Get the current slide and paste the plot
         slide = app.ActiveWindow.View.Slide
-
         shape = slide.Shapes.Paste()
+
+        # Add a hyperlink to the data location to easily open the data again
         shape.ActionSettings[0].Hyperlink.Address = self.main.abs_filename
 
     def on_export(self):
+        """ Export the current plot to a file """
         path = os.path.dirname(os.path.realpath(__file__))
+
+        filters = ('Portable Network Graphics (*.png);;'
+                   'Portable Document Format (*.pdf);;'
+                   'Postscript (*.ps);;'
+                   'Encapsulated Postscript (*.eps);;'
+                   'Scalable Vector Graphics (*.svg)')
+
         filename = QtGui.QFileDialog.getSaveFileName(self,
-                                                     'Export figure',
-                                                     path,
-                                                     'Portable Network Graphics (*.png);;Portable Document Format (*.pdf);;Postscript (*.ps);;Encapsulated Postscript (*.eps);;Scalable Vector Graphics (*.svg)')
+                                                     caption='Export figure',
+                                                     directory=path,
+                                                     filter=filters)
         filename = str(filename)
 
         if filename != '':
