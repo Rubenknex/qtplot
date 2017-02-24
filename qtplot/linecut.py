@@ -53,79 +53,93 @@ class Linecut(QtGui.QDialog):
         self.canvas.mpl_connect('pick_event', self.on_pick)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
-        grid = QtGui.QGridLayout()
+        hbox_export = QtGui.QHBoxLayout()
 
         self.cb_reset_cmap = QtGui.QCheckBox('Reset on plot')
         self.cb_reset_cmap.setCheckState(QtCore.Qt.Checked)
-        grid.addWidget(self.cb_reset_cmap, 1, 1)
+        hbox_export.addWidget(self.cb_reset_cmap)
 
-        self.b_save = QtGui.QPushButton('Data to clipboard', self)
-        self.b_save.clicked.connect(self.on_clipboard)
-        grid.addWidget(self.b_save, 1, 2)
+        self.b_save = QtGui.QPushButton('Copy data', self)
+        self.b_save.clicked.connect(self.on_data_to_clipboard)
+        hbox_export.addWidget(self.b_save)
+
+        self.b_copy = QtGui.QPushButton('Copy figure', self)
+        self.b_copy.clicked.connect(self.on_figure_to_clipboard)
+        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"),
+                        self, self.on_figure_to_clipboard)
+        hbox_export.addWidget(self.b_copy)
+
+        self.b_to_ppt = QtGui.QPushButton('To PPT (Win)', self)
+        self.b_to_ppt.clicked.connect(self.on_to_ppt)
+        hbox_export.addWidget(self.b_to_ppt)
 
         self.b_save_dat = QtGui.QPushButton('Save data...', self)
         self.b_save_dat.clicked.connect(self.on_save)
-        grid.addWidget(self.b_save_dat, 1, 3)
+        hbox_export.addWidget(self.b_save_dat)
 
-        self.b_copy = QtGui.QPushButton('Figure to clipboard', self)
-        self.b_copy.clicked.connect(self.on_copy_figure)
-        QtGui.QShortcut(QtGui.QKeySequence("Ctrl+C"),
-                        self, self.on_copy_figure)
-        grid.addWidget(self.b_copy, 1, 4)
-
-        self.cb_include_z = QtGui.QCheckBox('Include Z')
-        self.cb_include_z.setCheckState(QtCore.Qt.Checked)
-        grid.addWidget(self.cb_include_z, 1, 5)
+        self.b_toggle_info = QtGui.QPushButton('Toggle info')
+        self.b_toggle_info.clicked.connect(self.on_toggle_datapoint_info)
+        hbox_export.addWidget(self.b_toggle_info)
 
         # Linecuts
-        grid.addWidget(QtGui.QLabel('Linecuts'), 2, 1)
+        hbox_linecuts = QtGui.QHBoxLayout()
+
+        hbox_linecuts.addWidget(QtGui.QLabel('Linecuts'))
 
         self.cb_incremental = QtGui.QCheckBox('Incremental')
         self.cb_incremental.setCheckState(QtCore.Qt.Unchecked)
-        grid.addWidget(self.cb_incremental, 2, 2)
+        hbox_linecuts.addWidget(self.cb_incremental)
 
-        grid.addWidget(QtGui.QLabel('Offset:'), 2, 3)
+        hbox_linecuts.addWidget(QtGui.QLabel('Offset:'))
 
         self.le_offset = QtGui.QLineEdit('0', self)
-        grid.addWidget(self.le_offset, 2, 4)
+        hbox_linecuts.addWidget(self.le_offset)
 
         self.b_clear_lines = QtGui.QPushButton('Clear', self)
         self.b_clear_lines.clicked.connect(self.on_clear_lines)
-        grid.addWidget(self.b_clear_lines, 2, 5)
+        hbox_linecuts.addWidget(self.b_clear_lines)
 
         # Lines
-        grid.addWidget(QtGui.QLabel('Line style'), 3, 1)
+        hbox_style = QtGui.QHBoxLayout()
+
+        hbox_style.addWidget(QtGui.QLabel('Line style'))
         self.cb_linestyle = QtGui.QComboBox(self)
         self.cb_linestyle.addItems(['None', 'solid', 'dashed', 'dotted'])
-        grid.addWidget(self.cb_linestyle, 3, 2)
+        hbox_style.addWidget(self.cb_linestyle)
 
-        grid.addWidget(QtGui.QLabel('Linewidth'), 3, 3)
+        hbox_style.addWidget(QtGui.QLabel('Linewidth'))
         self.le_linewidth = QtGui.QLineEdit('0.5', self)
-        grid.addWidget(self.le_linewidth, 3, 4)
+        hbox_style.addWidget(self.le_linewidth)
 
         # Markers
-        grid.addWidget(QtGui.QLabel('Marker style'), 4, 1)
+        hbox_style.addWidget(QtGui.QLabel('Marker style'))
         self.cb_markerstyle = QtGui.QComboBox(self)
         self.cb_markerstyle.addItems(['None', '.', 'o', 'x'])
-        grid.addWidget(self.cb_markerstyle, 4, 2)
+        hbox_style.addWidget(self.cb_markerstyle)
 
-        grid.addWidget(QtGui.QLabel('Size'), 4, 3)
+        hbox_style.addWidget(QtGui.QLabel('Size'))
         self.le_markersize = QtGui.QLineEdit('0.5', self)
-        grid.addWidget(self.le_markersize, 4, 4)
+        hbox_style.addWidget(self.le_markersize)
+
+        self.cb_include_z = QtGui.QCheckBox('Include Z')
+        self.cb_include_z.setCheckState(QtCore.Qt.Checked)
+        hbox_style.addWidget(self.cb_include_z)
 
         self.row_tree = QtGui.QTreeWidget(self)
         self.row_tree.setHeaderLabels(['Parameter', 'Value'])
         self.row_tree.setColumnWidth(0, 100)
-        #grid.addWidget(self.row_tree, 4, 5)
+        self.row_tree.setHidden(True)
 
-        hbox = QtGui.QHBoxLayout()
-        hbox.addWidget(self.canvas)
-        hbox.addWidget(self.row_tree)
+        hbox_plot = QtGui.QHBoxLayout()
+        hbox_plot.addWidget(self.canvas)
+        hbox_plot.addWidget(self.row_tree)
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
-        layout.addLayout(hbox)
-        layout.addLayout(grid)
+        layout.addLayout(hbox_plot)
+        layout.addLayout(hbox_export)
+        layout.addLayout(hbox_linecuts)
+        layout.addLayout(hbox_style)
         self.setLayout(layout)
 
         self.resize(700, 500)
@@ -173,12 +187,18 @@ class Linecut(QtGui.QDialog):
         # Find the other data in this datapoint's row
         data = self.main.dat_file.find_row({self.xlabel: x, self.ylabel: y})
 
+        # Also show the datapoint index
+        data['N'] = ind
+
         # Fill the treeview with data
         self.row_tree.clear()
         widgets = []
         for name, value in data.items():
-            val = '{:.3e}'.format(value)
-            val = eng_format(value, 1)
+            if name == 'N':
+                val = str(value)
+            else:
+                val = eng_format(value, 1)
+
             widgets.append(QtGui.QTreeWidgetItem(None, [name, val]))
 
         self.row_tree.insertTopLevelItems(0, widgets)
@@ -192,7 +212,10 @@ class Linecut(QtGui.QDialog):
 
         self.fig.canvas.draw()
 
-    def on_clipboard(self):
+    def on_toggle_datapoint_info(self):
+        self.row_tree.setHidden(not self.row_tree.isHidden())
+
+    def on_data_to_clipboard(self):
         if self.x is None or self.y is None:
             return
 
@@ -200,6 +223,35 @@ class Linecut(QtGui.QDialog):
                             columns=[self.xlabel, self.ylabel])
 
         data.to_clipboard(index=False)
+
+    def on_figure_to_clipboard(self):
+        path = os.path.dirname(os.path.realpath(__file__))
+        path = os.path.join(path, 'test.png')
+        self.fig.savefig(path, bbox_inches='tight')
+
+        img = QtGui.QImage(path)
+        QtGui.QApplication.clipboard().setImage(img)
+
+    def on_to_ppt(self):
+        """ Some win32 COM magic to interact with powerpoint """
+        try:
+            import win32com.client
+        except ImportError:
+            print('ERROR: The win32com library needs to be installed')
+            return
+
+        # First, copy to the clipboard
+        self.on_figure_to_clipboard()
+
+        # Connect to an open PowerPoint application
+        app = win32com.client.Dispatch('PowerPoint.Application')
+
+        # Get the current slide and paste the plot
+        slide = app.ActiveWindow.View.Slide
+        shape = slide.Shapes.Paste()
+
+        # Add a hyperlink to the data location to easily open the data again
+        shape.ActionSettings[0].Hyperlink.Address = self.main.abs_filename
 
     def on_save(self):
         if self.x is None or self.y is None:
@@ -216,14 +268,6 @@ class Linecut(QtGui.QDialog):
                                 columns=[self.xlabel, self.ylabel])
 
             data.to_csv(filename, sep='\t', index=False)
-
-    def on_copy_figure(self):
-        path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(path, 'test.png')
-        self.fig.savefig(path, bbox_inches='tight')
-
-        img = QtGui.QImage(path)
-        QtGui.QApplication.clipboard().setImage(img)
 
     def on_clear_lines(self):
         for line in self.linetraces:

@@ -216,6 +216,7 @@ class ExportWidget(QtGui.QWidget):
         return s
 
     def on_update(self):
+        """ Draw the entire plot """
         if self.main.data is not None:
             font = {
                 'family': str(self.le_font.text()),
@@ -328,6 +329,7 @@ class ExportWidget(QtGui.QWidget):
         # First, copy to the clipboard
         self.on_copy()
 
+        # Connect to an open PowerPoint application
         app = win32com.client.Dispatch('PowerPoint.Application')
 
         # Get the current slide and paste the plot
