@@ -51,6 +51,7 @@ class Linecut(QtGui.QDialog):
 
         self.canvas = FigureCanvasQTAgg(self.fig)
         self.canvas.mpl_connect('pick_event', self.on_pick)
+        self.canvas.mpl_connect('button_press_event', self.on_press)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
         hbox_export = QtGui.QHBoxLayout()
@@ -178,39 +179,53 @@ class Linecut(QtGui.QDialog):
             self.canvas.draw()
 
     def on_pick(self, event):
-        line = self.linetraces[0]
+        if event.mouseevent.button == 1:
+            line = self.linetraces[0]
 
-        ind = event.ind[int(len(event.ind) / 2)]
-        x = line.get_xdata()[ind]
-        y = line.get_ydata()[ind]
+            ind = event.ind[int(len(event.ind) / 2)]
+            x = line.get_xdata()[ind]
+            y = line.get_ydata()[ind]
 
-        # Find the other data in this datapoint's row
-        data = self.main.dat_file.find_row({self.xlabel: x, self.ylabel: y})
+            # Find the other data in this datapoint's row
+            data = self.main.dat_file.find_row({self.xlabel: x, self.ylabel: y})
 
-        # Also show the datapoint index
-        data['N'] = ind
+            # Also show the datapoint index
+            data['N'] = ind
 
-        # Fill the treeview with data
-        self.row_tree.clear()
-        widgets = []
-        for name, value in data.items():
-            if name == 'N':
-                val = str(value)
-            else:
-                val = eng_format(value, 1)
+            # Fill the treeview with data
+            self.row_tree.clear()
+            widgets = []
+            for name, value in data.items():
+                if name == 'N':
+                    val = str(value)
+                else:
+                    val = eng_format(value, 1)
 
-            widgets.append(QtGui.QTreeWidgetItem(None, [name, val]))
+                widgets.append(QtGui.QTreeWidgetItem(None, [name, val]))
 
-        self.row_tree.insertTopLevelItems(0, widgets)
+            self.row_tree.insertTopLevelItems(0, widgets)
 
-        # Remove the previous datapoint marker
-        if self.marker is not None:
-            self.marker.remove()
+            # Remove the previous datapoint marker
+            if self.marker is not None:
+                self.marker.remove()
+                self.marker = None
 
-        # Plot a new datapoint marker
-        self.marker = self.ax.plot(x, y, '.', markersize=15, color='black')[0]
+            # Plot a new datapoint marker
+            self.marker = self.ax.plot(x, y, '.',
+                                       markersize=15,
+                                       color='black')[0]
 
         self.fig.canvas.draw()
+
+    def on_press(self, event):
+        if event.button == 3:
+            self.row_tree.clear()
+
+            if self.marker is not None:
+                self.marker.remove()
+                self.marker = None
+
+            self.fig.canvas.draw()
 
     def on_toggle_datapoint_info(self):
         self.row_tree.setHidden(not self.row_tree.isHidden())
