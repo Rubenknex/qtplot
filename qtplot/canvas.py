@@ -241,7 +241,9 @@ class Canvas(scene.SceneCanvas):
                 # Set up the parameters and data for either a horizontal or
                 # vertical linecut
                 if event.button == 1:
-                    self.draw_horizontal_linecut(y)
+                    self.line_coord = self.data.get_closest_y(y)
+                    index = self.data.get_row_index(y)
+                    self.draw_horizontal_linecut(index)
                 elif event.button == 2:
                     self.draw_arbitrary_linecut(x, y, initial_press)
                 elif event.button == 3:
@@ -264,25 +266,34 @@ class Canvas(scene.SceneCanvas):
             self.linecut_program['a_position'] = [self.mouse_start,
                                                   self.mouse_end]
 
-        self.update()
-
-    def draw_horizontal_linecut(self, y):
+    def draw_horizontal_linecut(self, row_index):
         self.line_type = 'horizontal'
-        self.line_coord = self.data.get_closest_y(y)
+        self.line_index = row_index
+        #self.line_coord = self.data.get_closest_y(y)
         self.mouse_start = (self.xmin, self.line_coord)
         self.mouse_end = (self.xmax, self.line_coord)
 
         # Get the data row
-        x, y, row_numbers, index = self.data.get_row_at(y)
-        z = np.nanmean(self.data.y[index, :])
+        # x, y, row_numbers, index = self.data.get_row_at(y)
+        x = self.data.x[row_index, :]
+        y = self.data.z[row_index, :]
+        row_numbers = self.data.row_numbers[row_index, :]
+        z = np.nanmean(self.data.y[row_index, :])
 
         x_name, y_name, data_name = self.parent.get_axis_names()
 
-        self.parent.linecut.plot_linetrace(x, y, z, row_numbers, self.line_type,
+        self.parent.linecut.plot_linetrace(x, y, z, row_numbers,
+                                           self.line_type,
                                            self.line_coord,
                                            self.parent.name,
                                            x_name, data_name,
                                            y_name)
+
+        # Set the line endpoints in the shader program
+        self.linecut_program['a_position'] = [self.mouse_start,
+                                              self.mouse_end]
+
+        self.update()
 
     def draw_vertical_linecut(self, x):
         self.line_type = 'vertical'
@@ -296,7 +307,8 @@ class Canvas(scene.SceneCanvas):
 
         x_name, y_name, data_name = self.parent.get_axis_names()
 
-        self.parent.linecut.plot_linetrace(x, y, z, row_numbers, self.line_type,
+        self.parent.linecut.plot_linetrace(x, y, z, row_numbers,
+                                           self.line_type,
                                            self.line_coord,
                                            self.parent.name,
                                            y_name, data_name,

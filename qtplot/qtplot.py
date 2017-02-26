@@ -19,6 +19,17 @@ from .canvas import Canvas
 
 logger = logging.getLogger(__name__)
 
+shortcuts_defaults = OrderedDict((
+    ('on_refresh', 'Space'),
+    ('on_colormap_reset', 'r'),
+    ('on_swap_axes', 'x'),
+    ('on_linecut_left', 'Left'),
+    ('on_linecut_right', 'Right'),
+    ('on_linecut_up', 'Up'),
+    ('on_linecut_down', 'Down'),
+    ('close', 'Ctrl+Q'),
+))
+
 profile_defaults = OrderedDict((
     ('operations', ''),
     ('sub_series_V', ''),
@@ -87,6 +98,18 @@ class QTPlot(QtGui.QMainWindow):
         self.init_ui()
         self.init_settings()
         self.init_logging()
+
+        # Load and set keyboard shortcuts
+        for action, keys in shortcuts_defaults.items():
+            try:
+                function = getattr(self, action)
+            except AttributeError:
+                print('shortcut function not found: ', action)
+                continue
+
+            # The shortcut has to be set separately for every open window
+            for window in [self, self.linecut, self.operations, self.settings]:
+                QtGui.QShortcut(QtGui.QKeySequence(keys), window, function)
 
         self.settings.populate_ui()
 
@@ -331,7 +354,7 @@ class QTPlot(QtGui.QMainWindow):
         hbox_gamma2.addWidget(self.le_max)
 
         self.b_reset = QtGui.QPushButton('Reset')
-        self.b_reset.clicked.connect(self.on_cm_reset)
+        self.b_reset.clicked.connect(self.on_colormap_reset)
         hbox_gamma1.addWidget(self.b_reset)
 
         groupbox_gamma = QtGui.QGroupBox('Colormap')
@@ -461,9 +484,6 @@ class QTPlot(QtGui.QMainWindow):
             # self.update_ui()
 
         # self.on_data_change()
-
-    def update_parameters(self):
-        pass
 
     def save_default_profile(self, file):
         self.qtplot_ini.set('DEFAULT', 'default_profile', file)
@@ -661,13 +681,13 @@ class QTPlot(QtGui.QMainWindow):
         if filename != "":
             self.load_dat_file(filename)
 
-    def on_refresh(self, event):
+    def on_refresh(self, event=None):
         if self.filename:
             self.load_dat_file(self.filename)
 
             self.on_data_change()
 
-    def on_swap_axes(self, event):
+    def on_swap_axes(self, event=None):
         x, y = self.cb_x.currentIndex(), self.cb_y.currentIndex()
         self.cb_x.setCurrentIndex(y)
         self.cb_y.setCurrentIndex(x)
@@ -766,13 +786,17 @@ class QTPlot(QtGui.QMainWindow):
             self.canvas.colormap.max = newmax
             self.canvas.update()
 
-    def on_cm_reset(self):
+    def on_colormap_reset(self):
         if self.data is not None:
             self.s_min.setValue(0)
             self.on_min_changed(0)
             self.s_gamma.setValue(0)
             self.s_max.setValue(100)
             self.on_max_changed(100)
+
+    def on_linecut_up(self):
+        new_index = self.canvas.line_index + 1
+        self.canvas.draw_horizontal_linecut(new_index)
 
     def on_save_matrix(self):
         save_directory = self.profile_settings['save_directory']

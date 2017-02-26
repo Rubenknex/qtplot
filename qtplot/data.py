@@ -13,6 +13,16 @@ from .util import FixedOrderFormatter, eng_format
 logger = logging.getLogger(__name__)
 
 
+class QtlabFile:
+    def __init__(self, filename):
+        pass
+
+
+class QcodesFile:
+    def __init__(self, filename):
+        pass
+
+
 class DatFile:
     """ Class which contains the column based DataFrame of the data. """
 
@@ -623,6 +633,13 @@ class Data2D:
         index = np.argmin(np.abs(self.y_means - y))
 
         return self.x[index], self.z[index], self.row_numbers[index], index
+
+    def get_row_index(self, y):
+        self.y_means = np.nanmean(self.y, axis=1)
+
+        index = np.argmin(np.abs(self.y_means - y))
+
+        return index
 
     def get_closest_x(self, x_coord):
         return min(self.x[0,:], key=lambda x:abs(x - x_coord))

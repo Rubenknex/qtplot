@@ -5,10 +5,12 @@ import os
 #from qtpy imbport QtWidgets, QtCore
 #from qtplot.qtplot import QTPlot
 from qtplot import qtplot
+from qtplot import controller
 
 if __name__ == '__main__':
-	qtplot.main()
-	"""
+    #qtplot.main()
+    controller.main()
+    """
     app = QtGui.QApplication(sys.argv)
 
     print(os.path.dirname(os.path.realpath(__file__)))
