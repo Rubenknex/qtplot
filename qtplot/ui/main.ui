@@ -139,6 +139,9 @@
                <property name="text">
                 <string>Reset on plot</string>
                </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
               </widget>
              </item>
              <item>
@@ -152,7 +155,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="b_reset_colormap">
+              <widget class="QPushButton" name="b_reset_cmap">
                <property name="text">
                 <string>Reset</string>
                </property>
@@ -163,31 +166,66 @@
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_9">
              <item>
-              <widget class="QLineEdit" name="le_colormap_min"/>
+              <widget class="QLineEdit" name="le_cmap_min">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>80</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+              </widget>
              </item>
              <item>
-              <widget class="QSlider" name="s_colormap_min">
+              <widget class="QSlider" name="s_cmap_min">
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QSlider" name="s_colormap_gamma">
+              <widget class="QSlider" name="s_cmap_gamma">
+               <property name="minimum">
+                <number>-100</number>
+               </property>
+               <property name="maximum">
+                <number>100</number>
+               </property>
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QSlider" name="s_colormap_max">
+              <widget class="QSlider" name="s_cmap_max">
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="le_colormap_max"/>
+              <widget class="QLineEdit" name="le_cmap_max">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>80</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>

@@ -8,7 +8,7 @@ class Colormap:
     def __init__(self, filename):
         """ Construct from a spyview colormap. """
         dir = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(dir, filename)
+        path = os.path.join(dir, 'colormaps', filename)
 
         self.colors = np.loadtxt(path)
         self.gamma = 1
@@ -16,8 +16,13 @@ class Colormap:
 
         self.length = self.colors.shape[0]
 
-    def get_limits(self):
-        return self.min, self.max
+    def get_settings(self):
+        return self.min, self.max, self.gamma
+
+    def set_settings(self, min, max, gamma):
+        self.min = min
+        self.max = max
+        self.gamma = gamma
 
     def get_colors(self):
         """

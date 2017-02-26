@@ -356,20 +356,17 @@ class Data2D:
     def set_data(self, x, y, z):
         self.x, self.y, self.z = x, y, z
 
+    def get_x_limits(self):
+        return np.nanmin(self.x), np.nanmax(self.x)
+
+    def get_y_limits(self):
+        return np.nanmin(self.y), np.nanmax(self.y)
+
+    def get_z_limits(self):
+        return np.nanmin(self.z), np.nanmax(self.z)
+
     def get_limits(self):
-        xmin, xmax = np.nanmin(self.x), np.nanmax(self.x)
-        ymin, ymax = np.nanmin(self.y), np.nanmax(self.y)
-        zmin, zmax = np.nanmin(self.z), np.nanmax(self.z)
-
-        # Thickness for 1d scans, should we do this here or
-        # in the drawing code?
-        if xmin == xmax:
-            xmin, xmax = -1, 1
-
-        if ymin == ymax:
-            ymin, ymax = -1, 1
-
-        return xmin, xmax, ymin, ymax, zmin, zmax
+        return self.get_x_limits(), self.get_y_limits(), self.get_z_limits()
 
     def get_triangulation_coordinates(self):
         if self.tri is None:

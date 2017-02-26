@@ -108,13 +108,16 @@ class Canvas(scene.SceneCanvas):
 
         self.data = None
         self.data_changed = False
-        self.data_program = gloo.Program(data_vert, data_frag)
 
-        path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(path, 'colormaps/transform/Seismic.npy')
-        self.colormap = Colormap(path)
+        self.view = translate((0, 0, 0))
+
+        self.data_program = gloo.Program(data_vert, data_frag)
+        self.data_program['u_view'] = self.view
+
+        self.colormap = None
 
         self.colorbar_program = gloo.Program(colormap_vert, colormap_frag)
+        self.colorbar_program['u_view'] = self.view
 
         #  horizontal / vertical / diagonal
         self.line_type = None
@@ -125,6 +128,7 @@ class Canvas(scene.SceneCanvas):
         self.mouse_end = (0, 0)
 
         self.linecut_program = gloo.Program(linecut_vert, linecut_frag)
+        self.linecut_program['u_view'] = self.view
         self.linecut_program['a_position'] = [self.mouse_start, self.mouse_end]
 
         gloo.set_clear_color((1, 1, 1, 1))
@@ -149,25 +153,16 @@ class Canvas(scene.SceneCanvas):
         # Determines the width of the colorbar
         self.cm_dx = (self.xmax - self.xmin) * 0.1
 
-        self.view = translate((0, 0, 0))
-
         # Orthogonal projection matrix
         self.projection = ortho(self.xmin, self.xmax + self.cm_dx,
                                 self.ymin, self.ymax, -1, 1)
 
-        self.data_program['u_view'] = self.view
+        # Upload the projection matrix
         self.data_program['u_projection'] = self.projection
-
-        cmap_texture = gloo.Texture1D(self.colormap.get_colors(),
-                                      interpolation='linear')
-        self.data_program['u_colormap'] = cmap_texture
-
-        self.colorbar_program['u_view'] = self.view
         self.colorbar_program['u_projection'] = self.projection
-
-        self.linecut_program['u_view'] = self.view
         self.linecut_program['u_projection'] = self.projection
 
+        # Bind the VBO
         self.vbo = gloo.VertexBuffer(vertices)
         self.data_program.bind(self.vbo)
 
@@ -352,7 +347,7 @@ class Canvas(scene.SceneCanvas):
             dy = y - y_start
             text = 'Slope: {:.3e}\tInv: {:.3e}'.format(dy / dx, dx / dy)
 
-            self.parent.l_slope.setText(text)
+            #self.parent.l_slope.setText(text)
 
     def on_mouse_press(self, event):
         self.draw_linecut(event, initial_press=True)
@@ -370,7 +365,7 @@ class Canvas(scene.SceneCanvas):
                     # Show the coordinates in the statusbar
                     text = 'X: %s\tY: %s' % (eng_format(x, 1),
                                              eng_format(y, 1))
-                    self.parent.l_position.setText(text)
+                    #self.parent.l_position.setText(text)
 
                     # If a mouse button was pressed, try to redraw linecut
                     if len(event.buttons) > 0:

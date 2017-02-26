@@ -1,5 +1,6 @@
 import json
 
+from .colormap import Colormap
 from .data import DatFile, Data2D
 
 
@@ -47,12 +48,14 @@ class Model:
         self.x, self.y, self.z = None, None, None
         self.data2d = None
 
+        self.colormap = Colormap('transform/Seismic.npy')
+
         self.operations = []
 
         # Define signals that can be listened to
         self.data_file_changed = Signal()
         self.data2d_changed = Signal()
-        self.colormap_changed = Signal()
+        self.cmap_changed = Signal()
         self.linetrace_changed = Signal()
 
     def load_data_file(self, filename):
@@ -80,6 +83,18 @@ class Model:
         self.data2d = self.data_file.get_data(x, y, z)
 
         self.data2d_changed.fire()
+
+    def set_colormap(self, name):
+        settings = self.colormap.get_settings()
+        self.colormap = Colormap(name)
+        self.colormap.set_settings(**settings)
+
+        self.cmap_changed.fire()
+
+    def set_colormap_settings(self, min, max, gamma):
+        self.colormap.set_settings(min, max, gamma)
+
+        self.cmap_changed.fire()
 
     def load_operations(self, filename):
         with open(filename) as f:
