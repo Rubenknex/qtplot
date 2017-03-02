@@ -33,6 +33,14 @@ class Controller:
         from the view.
         """
         self.main_view.b_load.clicked.connect(self.on_load)
+        self.main_view.b_save_data.clicked.connect(self.on_save)
+        self.main_view.b_refresh.clicked.connect(self.model.refresh)
+        self.main_view.b_swap_axes.clicked.connect(self.model.swap_axes)
+
+        # Raising hidden windows
+        self.main_view.b_linetrace.clicked.connect(self.line_view.show_window)
+        self.main_view.b_operations.clicked.connect(self.op_view.show_window)
+        self.main_view.b_settings.clicked.connect(self.set_view.show_window)
 
         for cb in self.main_view.cb_parameters:
             cb.activated.connect(self.on_parameters_changed)
@@ -85,6 +93,24 @@ class Controller:
 
         if filename != '':
             self.model.load_data_file(filename)
+
+    def on_save(self):
+        #save_directory = self.profile_settings['save_directory']
+
+        filters = ('QTLab data format (*.dat);;'
+                   'NumPy binary matrix format (*.npy);;'
+                   'MATLAB matrix format (*.mat)')
+
+        filename = QtGui.QFileDialog.getSaveFileName(caption='Save file',
+                                                     #directory=save_directory,
+                                                     filter=filters)
+        filename = str(filename)
+
+        if filename != '' and self.model.data2d is not None:
+            base = os.path.basename(filename)
+            name, ext = os.path.splitext(base)
+
+            self.data.save(filename)
 
     def on_parameters_changed(self):
         """ One of the parameters to plot has changed """
@@ -148,6 +174,12 @@ class Controller:
             min, max = self.model.data2d.get_z_limits()
 
             self.model.set_colormap_settings(min, max, 1.0)
+
+        # Update the UI if necessary
+        idx = self.main_view.cb_x.findText(self.model.x)
+        self.main_view.cb_x.setCurrentIndex(idx)
+        idx = self.main_view.cb_y.findText(self.model.y)
+        self.main_view.cb_y.setCurrentIndex(idx)
 
         self.main_view.canvas.set_data(self.model.data2d)
 

@@ -23,6 +23,9 @@
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
+      <property name="acceptDrops">
+       <bool>true</bool>
+      </property>
       <property name="currentIndex">
        <number>0</number>
       </property>
@@ -62,9 +65,9 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="b_linecut">
+           <widget class="QPushButton" name="b_linetrace">
             <property name="text">
-             <string>Linecut</string>
+             <string>Linetrace</string>
             </property>
            </widget>
           </item>

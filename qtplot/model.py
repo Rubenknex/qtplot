@@ -75,6 +75,9 @@ class Model:
 
         self.select_parameters(self.x, self.y, self.z)
 
+    def swap_axes(self):
+        self.select_parameters(self.y, self.x, self.z)
+
     def select_parameters(self, x, y, z):
         if self.data_file is None:
             raise DataException('No data file has been loaded yet')
@@ -82,10 +85,12 @@ class Model:
         if None in [x, z]:
             raise ValueError('The x/z parameters cannot be None')
 
-        self.x, self.y, self.z = x, y, z
-        self.data2d = self.data_file.get_data(x, y, z)
+        # If something changed
+        if self.x != x or self.y != y or self.z != z:
+            self.x, self.y, self.z = x, y, z
+            self.data2d = self.data_file.get_data(x, y, z)
 
-        self.data2d_changed.fire()
+            self.data2d_changed.fire()
 
     def set_colormap(self, name):
         settings = self.colormap.get_settings()

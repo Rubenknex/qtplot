@@ -60,6 +60,14 @@ class LineView(QtGui.QDialog):
 
         self.show()
 
+    def show_window(self):
+        self.show()
+        self.raise_()
+
+    def closeEvent(self, event):
+        self.hide()
+        event.ignore()
+
 class OperationsView(QtGui.QDialog):
     def __init__(self, parent):
         super(OperationsView, self).__init__(parent)
@@ -73,6 +81,14 @@ class OperationsView(QtGui.QDialog):
 
         self.show()
 
+    def show_window(self):
+        self.show()
+        self.raise_()
+
+    def closeEvent(self, event):
+        self.hide()
+        event.ignore()
+
 
 class SettingsView(QtGui.QDialog):
     def __init__(self, parent):
@@ -81,3 +97,11 @@ class SettingsView(QtGui.QDialog):
         directory = os.path.dirname(os.path.realpath(__file__))
         path = os.path.join(directory, 'ui/settings.ui')
         uic.loadUi(path, self)
+
+    def show_window(self):
+        self.show()
+        self.raise_()
+
+    def closeEvent(self, event):
+        self.hide()
+        event.ignore()
