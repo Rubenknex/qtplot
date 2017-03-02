@@ -5,10 +5,12 @@ from .data import DatFile, Data2D
 
 
 class DataException(Exception):
+    """ Exception for errors that relate to the data itself """
     pass
 
 
 class Signal:
+    """ A signal that can be fired and is then handled by subscribers """
     def __init__(self):
         self._handlers = []
 
@@ -21,6 +23,7 @@ class Signal:
 
 
 class Operation:
+    """ A data operation that can be performed on the Data2D class """
     def __init__(self, name, enabled=True, parameters={}):
         self.name = name
         self.enabled = enabled
@@ -35,7 +38,7 @@ class Operation:
 class Model:
     """
     This class should be able to do all data manipulation as in the
-    final application, but contain NO GUI code.
+    final application, but contain no GUI code.
 
     DatFile:
         Separate into QTLabFile and QcodesFile? These would implement some
@@ -87,7 +90,7 @@ class Model:
     def set_colormap(self, name):
         settings = self.colormap.get_settings()
         self.colormap = Colormap(name)
-        self.colormap.set_settings(**settings)
+        self.colormap.set_settings(*settings)
 
         self.cmap_changed.fire()
 

@@ -29,6 +29,28 @@ class MainView(QtGui.QMainWindow):
         return str(self.cb_colormap.currentText())
 
 
-class LinecutView:
+class LineView(QtGui.QDialog):
     def __init__(self):
-        pass
+        super(LineView, self).__init__()
+
+        directory = os.path.dirname(os.path.realpath(__file__))
+        path = os.path.join(directory, 'ui/linetrace.ui')
+        uic.loadUi(path, self)
+
+
+class OperationsView(QtGui.QDialog):
+    def __init__(self):
+        super(OperationsView, self).__init__()
+
+        directory = os.path.dirname(os.path.realpath(__file__))
+        path = os.path.join(directory, 'ui/operations.ui')
+        uic.loadUi(path, self)
+
+
+class SettingsView(QtGui.QDialog):
+    def __init__(self):
+        super(SettingsView, self).__init__()
+
+        directory = os.path.dirname(os.path.realpath(__file__))
+        path = os.path.join(directory, 'ui/settings.ui')
+        uic.loadUi(path, self)

@@ -5,7 +5,7 @@ import numpy as np
 from PyQt4 import QtGui
 
 from .model import Model
-from .view import MainView
+from .view import MainView, LineView, OperationsView, SettingsView
 
 
 class Controller:
@@ -13,6 +13,9 @@ class Controller:
         self.model = Model()
 
         self.main_view = MainView()
+        self.line_view = LineView()
+        self.op_view = OperationsView()
+        self.set_view = SettingsView()
         # LinecutView etc
 
         self.load_colormaps()
@@ -78,20 +81,27 @@ class Controller:
 
         filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
 
-        self.model.load_data_file(filename)
+        if filename != '':
+            self.model.load_data_file(filename)
 
     def on_parameters_changed(self):
+        """ One of the parameters to plot has changed """
         self.model.select_parameters(*self.main_view.get_parameters())
 
     def on_cmap_chosen(self):
+        """ A new colormap has been selected """
         self.model.set_colormap(self.main_view.get_cmap_name())
 
     def on_cmap_reset(self):
+        """ The colormap settings are reset """
         min, max = self.model.data2d.get_z_limits()
 
         self.model.set_colormap_settings(min, max, 1.0)
 
     def on_cmap_edit_changed(self):
+        """
+        One of the min/max colormap text fields changed, so update colormap.
+        """
         new_min = float(self.main_view.le_cmap_min.text())
         new_max = float(self.main_view.le_cmap_max.text())
 
@@ -99,17 +109,23 @@ class Controller:
         self.model.set_colormap_settings(new_min, new_max, gamma)
 
     def on_cmap_slider_changed(self, value):
-        min, max = self.model.data2d.get_z_limits()
+        """
+        One of the colormap sliders moved, so update the colormap settings.
+        """
+        zmin, zmax = self.model.data2d.get_z_limits()
 
-        min_val = self.main_view.s_cmap_min.value()
-        new_min = min + (max - min) * (min_val / 99.0)
+        min, max, gamma = self.model.colormap.get_settings()
 
-        gamma = 10.0**(self.main_view.s_cmap_gamma.value() / 100.0)
+        if self.main_view.s_cmap_min.isSliderDown():
+            min = zmin + (zmax - zmin) * (value / 99.0)
 
-        max_val = self.main_view.s_cmap_max.value()
-        new_max = min + (max - min) * (max_val / 99.0)
+        if self.main_view.s_cmap_gamma.isSliderDown():
+            gamma = 10.0**(value / 100.0)
 
-        self.model.set_colormap_settings(new_min, new_max, gamma)
+        if self.main_view.s_cmap_max.isSliderDown():
+            max = zmin + (zmax - zmin) * (value / 99.0)
+
+        self.model.set_colormap_settings(min, max, gamma)
 
     def on_data_file_changed(self):
         for cb in [self.main_view.cb_x,
@@ -125,7 +141,7 @@ class Controller:
         self.main_view.cb_z.setCurrentIndex(4)
 
     def on_data2d_changed(self):
-        # Reset the colormap is required
+        # Reset the colormap if required
         if self.main_view.get_reset_colormap():
             min, max = self.model.data2d.get_z_limits()
 
@@ -134,7 +150,10 @@ class Controller:
         self.main_view.canvas.set_data(self.model.data2d)
 
     def on_cmap_changed(self):
-        """ Update colormap UI widgets """
+        """ The colormap settings changed, so update the UI """
+        if self.model.data2d is None:
+            return
+
         min, max, gamma = self.model.colormap.get_settings()
 
         zmin, zmax = self.model.data2d.get_z_limits()
@@ -146,7 +165,7 @@ class Controller:
             self.main_view.s_cmap_min.setValue(new_val)
 
         if not self.main_view.s_cmap_gamma.isSliderDown():
-            new_val = np.log10(gamma * 100.0)
+            new_val = np.log10(gamma) * 100.0
             self.main_view.s_cmap_gamma.setValue(new_val)
 
         if not self.main_view.s_cmap_max.isSliderDown():
@@ -162,6 +181,7 @@ class Controller:
 
 
 def main():
+    """ Entry point for qtplot """
     app = QtGui.QApplication(sys.argv)
 
     if len(sys.argv) > 1:
