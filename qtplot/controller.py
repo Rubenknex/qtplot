@@ -9,21 +9,23 @@ from .view import MainView, LineView, OperationsView, SettingsView
 
 
 class Controller:
+    """
+    This class contains all the logic behind the user interface and
+    serves as the connection between the views (user interface) and
+    the model (data).
+    """
     def __init__(self):
         self.model = Model()
 
         self.main_view = MainView()
-        self.line_view = LineView()
-        self.op_view = OperationsView()
-        self.set_view = SettingsView()
-        # LinecutView etc
+        self.line_view = LineView(self.main_view)
+        self.op_view = OperationsView(self.main_view)
+        self.set_view = SettingsView(self.main_view)
 
         self.load_colormaps()
 
         self.setup_view_to_controller()
         self.setup_model_to_controller()
-
-        self.main_view.show()
 
     def setup_view_to_controller(self):
         """

@@ -1,5 +1,7 @@
 import os
 
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from PyQt4 import QtCore, QtGui, uic
 
 from .canvas import Canvas
@@ -19,6 +21,11 @@ class MainView(QtGui.QMainWindow):
         self.canvas = Canvas()
         self.canvas_layout.addWidget(self.canvas.native)
 
+        center = QtGui.QApplication.desktop().screen().rect().center()
+        self.move(center.x() - 550, center.y() - 400)
+
+        self.show()
+
     def get_parameters(self):
         return [str(cb.currentText()) for cb in self.cb_parameters]
 
@@ -30,26 +37,46 @@ class MainView(QtGui.QMainWindow):
 
 
 class LineView(QtGui.QDialog):
-    def __init__(self):
-        super(LineView, self).__init__()
+    def __init__(self, parent):
+        super(LineView, self).__init__(parent)
 
         directory = os.path.dirname(os.path.realpath(__file__))
         path = os.path.join(directory, 'ui/linetrace.ui')
         uic.loadUi(path, self)
 
+        self.fig, self.ax = plt.subplots()
+
+        self.canvas = FigureCanvasQTAgg(self.fig)
+        #self.canvas.mpl_connect('pick_event', self.on_pick)
+        #self.canvas.mpl_connect('button_press_event', self.on_press)
+
+        self.toolbar = NavigationToolbar2QT(self.canvas, self)
+
+        self.layout().insertWidget(0, self.canvas)
+        self.layout().insertWidget(0, self.toolbar)
+
+        pos = parent.mapToGlobal(parent.rect().topRight())
+        self.move(pos.x() + 3, pos.y()  - 25)
+
+        self.show()
 
 class OperationsView(QtGui.QDialog):
-    def __init__(self):
-        super(OperationsView, self).__init__()
+    def __init__(self, parent):
+        super(OperationsView, self).__init__(parent)
 
         directory = os.path.dirname(os.path.realpath(__file__))
         path = os.path.join(directory, 'ui/operations.ui')
         uic.loadUi(path, self)
 
+        pos = parent.mapToGlobal(parent.rect().topRight())
+        self.move(pos.x() + 3, pos.y() + 450)
+
+        self.show()
+
 
 class SettingsView(QtGui.QDialog):
-    def __init__(self):
-        super(SettingsView, self).__init__()
+    def __init__(self, parent):
+        super(SettingsView, self).__init__(parent)
 
         directory = os.path.dirname(os.path.realpath(__file__))
         path = os.path.join(directory, 'ui/settings.ui')
