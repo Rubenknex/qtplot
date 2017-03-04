@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 
@@ -23,6 +24,7 @@ class Controller:
         self.set_view = SettingsView(self.main_view)
 
         self.load_colormaps()
+        self.load_operations()
 
         self.setup_view_to_controller()
         self.setup_model_to_controller()
@@ -88,6 +90,16 @@ class Controller:
         self.main_view.cb_colormap.setMaxVisibleItems(25)
 
         self.main_view.canvas.colormap = self.model.colormap
+
+    def load_operations(self):
+        directory = os.path.dirname(os.path.realpath(__file__))
+
+        path = os.path.join(directory, 'operation_defaults.json')
+        with open(path) as f:
+            data = json.load(f)
+
+        #for name in sorted(data.keys()):
+        self.op_view.lw_operations.addItems(sorted(data.keys()))
 
     def on_load(self):
         #open_directory = self.profile_settings['open_directory']

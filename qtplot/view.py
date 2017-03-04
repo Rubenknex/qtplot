@@ -1,3 +1,4 @@
+import json
 import os
 
 import matplotlib.pyplot as plt
@@ -5,6 +6,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationTool
 from PyQt4 import QtCore, QtGui, uic
 
 from .canvas import Canvas
+from .data import Data2D
 
 
 class MainView(QtGui.QMainWindow):
