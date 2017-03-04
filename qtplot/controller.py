@@ -54,6 +54,10 @@ class Controller:
         for s in self.main_view.sliders:
             s.sliderMoved.connect(self.on_cmap_slider_changed)
 
+        # Canvas events
+        self.main_view.canvas.events.mouse_press.connect(self.on_canvas_press)
+        self.main_view.canvas.events.mouse_move.connect(self.on_canvas_move)
+
     def setup_model_to_controller(self):
         """
         Set up the connections listening for changes fired by the model.
@@ -61,6 +65,7 @@ class Controller:
         self.model.data_file_changed.connect(self.on_data_file_changed)
         self.model.data2d_changed.connect(self.on_data2d_changed)
         self.model.cmap_changed.connect(self.on_cmap_changed)
+        self.model.linetrace_changed.connect(self.on_linetrace_changed)
 
     def load_colormaps(self):
         directory = os.path.dirname(os.path.realpath(__file__))
@@ -155,6 +160,18 @@ class Controller:
 
         self.model.set_colormap_settings(min, max, gamma)
 
+    def on_canvas_press(self, event):
+        x, y = self.main_view.canvas.screen_to_data_coords(tuple(event.pos))
+
+        type = {1: 'horizontal', 2: 'arbitrary', 3: 'vertical'}[event.button]
+
+        self.model.take_linetrace(x, y, type)
+
+    def on_canvas_move(self, event):
+        if len(event.buttons) > 0:
+            self.on_canvas_press(event)
+
+        # From here on handlers of changes in the model
     def on_data_file_changed(self):
         for cb in [self.main_view.cb_x,
                    self.main_view.cb_y,
@@ -212,6 +229,17 @@ class Controller:
         # Update the colormap and plot
         self.main_view.canvas.colormap = self.model.colormap
         self.main_view.canvas.update()
+
+    def on_linetrace_changed(self):
+        # Use set_data
+        self.line_view.ax.clear()
+
+        self.line_view.ax.plot(*self.model.linetrace.get_matplotlib())
+
+        self.line_view.ax.set_aspect('auto')
+        self.line_view.fig.tight_layout()
+
+        self.line_view.fig.canvas.draw()
 
 
 def main():

@@ -644,6 +644,15 @@ class Data2D:
     def get_closest_y(self, y_coord):
         return min(self.y[:,0], key=lambda y:abs(y - y_coord))
 
+    def get_closest_point(self, x, y):
+        distances = np.sqrt((self.x.ravel() - x)**2 + (self.y.ravel() - y)**2)
+
+        index = np.argmin(distances)
+
+        row, column = np.unravel_index(index, self.z.shape)
+
+        return row, column
+
     def flip_axes(self, x_flip, y_flip):
         if x_flip:
             self.x = np.fliplr(self.x)

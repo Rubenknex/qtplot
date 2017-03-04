@@ -106,10 +106,10 @@ class Canvas(scene.SceneCanvas):
         self.parent = parent
         self.has_redrawn = True
 
-        self.data = None
-        self.data_changed = False
-
         self.view = translate((0, 0, 0))
+
+        # The vertex buffer object containing data vertices
+        self.vbo = None
 
         self.data_program = gloo.Program(data_vert, data_frag)
         self.data_program['u_view'] = self.view
@@ -134,9 +134,6 @@ class Canvas(scene.SceneCanvas):
         gloo.set_clear_color((1, 1, 1, 1))
 
     def set_data(self, data):
-        self.data = data
-        self.data_changed = True
-
         vertices = self.generate_vertices(data)
 
         self.xmin = np.nanmin(vertices['a_position'][:, 0])
@@ -145,10 +142,8 @@ class Canvas(scene.SceneCanvas):
         self.ymax = np.nanmax(vertices['a_position'][:, 1])
 
         if self.xmin == self.xmax or self.ymin == self.ymax:
-            logger.error(('Cannot plot because min and max values of'
-                          ' vertices are identical'))
-
-            return
+            raise ValueError('Cannot plot because min and max values of'
+                             ' vertices are identical')
 
         # Determines the width of the colorbar
         self.cm_dx = (self.xmax - self.xmin) * 0.1
@@ -208,6 +203,9 @@ class Canvas(scene.SceneCanvas):
 
     def screen_to_data_coords(self, pos):
         """ Convert mouse position in the plot to data coordinates """
+        if self.vbo is None:
+            raise ValueError('No data has been plotted yet')
+
         screen_w, screen_h = self.size
         screen_x, screen_y = pos
 
@@ -221,138 +219,14 @@ class Canvas(scene.SceneCanvas):
 
         return dx, dy
 
-    def draw_linecut(self, event, old_position=False, initial_press=False):
-        """ Draw the linecut depending on which mouse button was used """
-        # We need to check whether the canvas has had time to redraw itself
-        # because continuous mouse movement events are too fast and
-        # surpress the redrawing.
-        if self.data is not None and self.has_redrawn:
-            x_name, y_name, data_name = self.parent.get_axis_names()
-
-            # If we need to draw the linecut at a new position
-            if not old_position and event.button in [1, 2, 3]:
-                x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
-
-                # Set up the parameters and data for either a horizontal or
-                # vertical linecut
-                if event.button == 1:
-                    self.line_coord = self.data.get_closest_y(y)
-                    index = self.data.get_row_index(y)
-                    self.draw_horizontal_linecut(index)
-                elif event.button == 2:
-                    self.draw_arbitrary_linecut(x, y, initial_press)
-                elif event.button == 3:
-                    self.draw_vertical_linecut(x)
-
-                self.has_redrawn = False
-            elif old_position:
-                # Drawing the linecut at the old position
-                if self.line_type == 'horizontal':
-                    self.draw_horizontal_linecut(self.line_coord)
-                elif self.line_type == 'diagonal':
-                    self.draw_arbitrary_linecut(*self.mouse_end,
-                                                initial_press=False)
-                elif self.line_type == 'vertical':
-                    self.draw_vertical_linecut(self.line_coord)
-
-                self.has_redrawn = False
-
-            # Set the line endpoints in the shader program
-            self.linecut_program['a_position'] = [self.mouse_start,
-                                                  self.mouse_end]
-
-    def draw_horizontal_linecut(self, row_index):
-        self.line_type = 'horizontal'
-        self.line_index = row_index
-        #self.line_coord = self.data.get_closest_y(y)
-        self.mouse_start = (self.xmin, self.line_coord)
-        self.mouse_end = (self.xmax, self.line_coord)
-
-        # Get the data row
-        # x, y, row_numbers, index = self.data.get_row_at(y)
-        x = self.data.x[row_index, :]
-        y = self.data.z[row_index, :]
-        row_numbers = self.data.row_numbers[row_index, :]
-        z = np.nanmean(self.data.y[row_index, :])
-
-        x_name, y_name, data_name = self.parent.get_axis_names()
-
-        self.parent.linecut.plot_linetrace(x, y, z, row_numbers,
-                                           self.line_type,
-                                           self.line_coord,
-                                           self.parent.name,
-                                           x_name, data_name,
-                                           y_name)
-
-        # Set the line endpoints in the shader program
-        self.linecut_program['a_position'] = [self.mouse_start,
-                                              self.mouse_end]
-
-        self.update()
-
-    def draw_vertical_linecut(self, x):
-        self.line_type = 'vertical'
-        self.line_coord = self.data.get_closest_x(x)
-        self.mouse_start = (self.line_coord, self.ymin)
-        self.mouse_end = (self.line_coord, self.ymax)
-
-        # Get the data column
-        x, y, row_numbers, index = self.data.get_column_at(x)
-        z = np.nanmean(self.data.x[:, index])
-
-        x_name, y_name, data_name = self.parent.get_axis_names()
-
-        self.parent.linecut.plot_linetrace(x, y, z, row_numbers,
-                                           self.line_type,
-                                           self.line_coord,
-                                           self.parent.name,
-                                           y_name, data_name,
-                                           x_name)
-
-    def draw_arbitrary_linecut(self, x, y, initial_press):
-        self.line_type = 'diagonal'
-
-        if initial_press:
-            # Store the initial location as start and end
-            self.mouse_start = (x, y)
-            self.mouse_end = (x, y)
-        else:
-            self.mouse_end = (x, y)
-
-            # Create datapoints on the line to interpolate over
-            x_start, y_start = self.mouse_start
-            x_points = np.linspace(x_start, x, 500)
-            y_points = np.linspace(y_start, y, 500)
-
-            if self.data_changed:
-                self.data.generate_triangulation()
-                self.data_changed = False
-
-            vals = self.data.interpolate(np.column_stack((x_points, y_points)))
-
-            # Create data for the x-axis using hypotenuse
-            dist = np.hypot(x_points - x_points[0], y_points - y_points[0])
-
-            x_name, y_name, data_name = self.parent.get_axis_names()
-
-            self.parent.linecut.plot_linetrace(dist, vals, 0,
-                                               self.line_type,
-                                               self.line_coord,
-                                               self.parent.name,
-                                               'Distance (-)',
-                                               data_name, x_name)
-
-            # Display slope and inverse slope in status bar
-            dx = x - x_start
-            dy = y - y_start
-            text = 'Slope: {:.3e}\tInv: {:.3e}'.format(dy / dx, dx / dy)
-
-            #self.parent.l_slope.setText(text)
-
     def on_mouse_press(self, event):
-        self.draw_linecut(event, initial_press=True)
+        #self.draw_linecut(event, initial_press=True)
+
+        # Notify controller
+        pass
 
     def on_mouse_move(self, event):
+        """
         if self.data is not None:
             sw, sh = self.size
             sx, sy = event.pos
@@ -370,6 +244,9 @@ class Canvas(scene.SceneCanvas):
                     # If a mouse button was pressed, try to redraw linecut
                     if len(event.buttons) > 0:
                         self.draw_linecut(event)
+        """
+        # Notify controller
+        pass
 
     def on_resize(self, event):
         width, height = event.physical_size
@@ -378,28 +255,29 @@ class Canvas(scene.SceneCanvas):
     def on_draw(self, event):
         gloo.clear()
 
-        if self.data is not None:
+        if self.vbo is not None:
             # Draw first the data, then colormap, and then linecut
             cmap_texture = gloo.Texture1D(self.colormap.get_colors(),
                                           interpolation='linear')
 
-            # Drawing of the plot
+            # Draw the data
             self.data_program['u_colormap'] = cmap_texture
             self.data_program['z_min'] = self.colormap.min
             self.data_program['z_max'] = self.colormap.max
             self.data_program.draw('triangles')
 
-            # Drawing of the colormap bar
+            # Draw the colormap bar
             self.colorbar_program['u_colormap'] = cmap_texture
             colorbar_vertices = [(self.xmax + self.cm_dx * .2, self.ymax),
                                  (self.xmax + self.cm_dx * .2, self.ymin),
                                  (self.xmax + self.cm_dx, self.ymax),
                                  (self.xmax + self.cm_dx, self.ymin)]
+
             self.colorbar_program['a_position'] = colorbar_vertices
             self.colorbar_program['a_texcoord'] = [[1], [0], [1], [0]]
             self.colorbar_program.draw('triangle_strip')
 
-            # Drawing of the linecut
+            # Draw the linecut
             self.linecut_program.draw('lines')
 
         self.has_redrawn = True

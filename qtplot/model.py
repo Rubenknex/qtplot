@@ -35,6 +35,17 @@ class Operation:
             func(data2d, **self.kwargs)
 
 
+class Linetrace:
+    """ This class represents a linetrace in 2D data """
+    def __init__(self, x, y, type):
+        self.x, self.y = x, y
+        self.type = type
+
+    def get_matplotlib(self):
+        return self.x, self.y
+        return {'x': self.x, 'y': self.y}
+
+
 class Model:
     """
     This class should be able to do all data manipulation as in the
@@ -54,6 +65,8 @@ class Model:
         self.colormap = Colormap('transform/Seismic.npy')
 
         self.operations = []
+
+        self.linetrace = None
 
         # Define signals that can be listened to
         self.data_file_changed = Signal()
@@ -125,10 +138,29 @@ class Model:
             f.write(json.dumps(data, indent=4))
 
     def apply_operations(self):
-        if self.z is None:
+        if self.data2d is None:
             raise DataException('No parameters have been selected yet')
 
         self.select_parameters(self.x, self.y, self.z)
 
         for operation in self.operations:
             operation.apply(self.data2d)
+
+    def take_linetrace(self, x, y, type):
+        if self.data2d is None:
+            raise DataException('No parameters have been selected yet')
+
+        row, column = self.data2d.get_closest_point(x, y)
+
+        if type == 'horizontal':
+            x = self.data2d.x[row]
+            y = self.data2d.z[row]
+        elif type == 'vertical':
+            x = self.data2d.y[:,column]
+            y = self.data2d.z[:,column]
+        elif type == 'arbitrary':
+            pass
+
+        self.linetrace = Linetrace(x, y, type)
+
+        self.linetrace_changed.fire()
