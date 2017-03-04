@@ -75,15 +75,15 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
-        <widget class="QListView" name="listView_2"/>
+        <widget class="QListWidget" name="lw_queue"/>
        </item>
        <item>
         <widget class="QStackedWidget" name="stack">
-         <property name="currentIndex">
-          <number>0</number>
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
          </property>
-         <widget class="QWidget" name="page"/>
-         <widget class="QWidget" name="page_2"/>
+         <widget class="QWidget" name=""/>
+         <widget class="QWidget" name="page_4"/>
         </widget>
        </item>
       </layout>

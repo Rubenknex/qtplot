@@ -3,10 +3,10 @@ import os
 import sys
 
 import numpy as np
-from PyQt4 import QtGui
+from PyQt4 import QtCore, QtGui
 
 from .model import Model
-from .view import MainView, LineView, OperationsView, SettingsView
+from .view import MainView, LineView, OperationWidget, OperationsView, SettingsView
 
 
 class Controller:
@@ -60,6 +60,10 @@ class Controller:
         self.main_view.canvas.events.mouse_press.connect(self.on_canvas_press)
         self.main_view.canvas.events.mouse_move.connect(self.on_canvas_move)
 
+        # Operations
+        self.op_view.b_add.clicked.connect(self.on_add_operation)
+        self.op_view.lw_queue.currentRowChanged.connect(self.op_view.stack.setCurrentIndex)
+
     def setup_model_to_controller(self):
         """
         Set up the connections listening for changes fired by the model.
@@ -67,6 +71,7 @@ class Controller:
         self.model.data_file_changed.connect(self.on_data_file_changed)
         self.model.data2d_changed.connect(self.on_data2d_changed)
         self.model.cmap_changed.connect(self.on_cmap_changed)
+        self.model.operations_changed.connect(self.on_operations_changed)
         self.model.linetrace_changed.connect(self.on_linetrace_changed)
 
     def load_colormaps(self):
@@ -96,10 +101,9 @@ class Controller:
 
         path = os.path.join(directory, 'operation_defaults.json')
         with open(path) as f:
-            data = json.load(f)
+            self.operation_defaults = json.load(f)
 
-        #for name in sorted(data.keys()):
-        self.op_view.lw_operations.addItems(sorted(data.keys()))
+        self.op_view.lw_operations.addItems(sorted(self.operation_defaults.keys()))
 
     def on_load(self):
         #open_directory = self.profile_settings['open_directory']
@@ -183,6 +187,11 @@ class Controller:
         if len(event.buttons) > 0:
             self.on_canvas_press(event)
 
+    def on_add_operation(self):
+        name = self.op_view.get_operation()
+
+        self.model.add_operation(name, **self.operation_defaults[name])
+
         # From here on handlers of changes in the model
     def on_data_file_changed(self):
         for cb in [self.main_view.cb_x,
@@ -241,6 +250,21 @@ class Controller:
         # Update the colormap and plot
         self.main_view.canvas.colormap = self.model.colormap
         self.main_view.canvas.update()
+
+    def on_operations_changed(self, event, operation):
+        if event == 'add':
+            item = QtGui.QListWidgetItem(operation.name)
+
+            if operation.enabled:
+                item.setCheckState(QtCore.Qt.Checked)
+            else:
+                item.setCheckState(QtCore.Qt.Unchecked)
+
+            widget = OperationWidget(operation.parameters)
+            self.op_view.stack.addWidget(widget)
+
+            self.op_view.lw_queue.addItem(item)
+            self.op_view.lw_queue.setCurrentItem(item)
 
     def on_linetrace_changed(self):
         # Use set_data

@@ -24,7 +24,7 @@ class Signal:
 
 class Operation:
     """ A data operation that can be performed on the Data2D class """
-    def __init__(self, name, enabled=True, parameters={}):
+    def __init__(self, name, enabled=True, **parameters):
         self.name = name
         self.enabled = enabled
         self.parameters = parameters
@@ -32,7 +32,7 @@ class Operation:
     def apply(self, data2d):
         if self.enabled:
             func = getattr(Data2D, self.name)
-            func(data2d, **self.kwargs)
+            func(data2d, **self.parameters)
 
 
 class Linetrace:
@@ -72,6 +72,7 @@ class Model:
         self.data_file_changed = Signal()
         self.data2d_changed = Signal()
         self.cmap_changed = Signal()
+        self.operations_changed = Signal()
         self.linetrace_changed = Signal()
 
     def load_data_file(self, filename):
@@ -128,6 +129,8 @@ class Model:
 
             self.operations.append(operation)
 
+        self.operations_changed.fire()
+
     def save_operations(self, filename):
         data = {}
 
@@ -146,6 +149,12 @@ class Model:
         for operation in self.operations:
             operation.apply(self.data2d)
 
+    def add_operation(self, name, **parameters):
+        operation = Operation(name, **parameters)
+        self.operations.append(operation)
+
+        self.operations_changed.fire('add', operation)
+
     def take_linetrace(self, x, y, type):
         if self.data2d is None:
             raise DataException('No parameters have been selected yet')
@@ -159,6 +168,7 @@ class Model:
             x = self.data2d.y[:,column]
             y = self.data2d.z[:,column]
         elif type == 'arbitrary':
+            # calculate points
             pass
 
         self.linetrace = Linetrace(x, y, type)
