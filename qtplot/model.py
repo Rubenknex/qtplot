@@ -149,6 +149,13 @@ class Model:
         for operation in self.operations:
             operation.apply(self.data2d)
 
+        self.data2d_changed.fire()
+
+    def set_operation_parameters(self, index, parameters):
+        self.operations[index].parameters = parameters
+
+        self.operations_changed.fire('values')
+
     def add_operation(self, name, **parameters):
         operation = Operation(name, **parameters)
         self.operations.append(operation)

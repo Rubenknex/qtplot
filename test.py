@@ -1,4 +1,4 @@
-from qtplot import controller
+from qtplot import qtplot
 
 if __name__ == '__main__':
-    controller.main()
+    qtplot.main()
