@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 
@@ -196,9 +195,7 @@ class QTPlot(QtGui.QMainWindow):
 
         # From here on handlers of changes in the model
     def on_data_file_changed(self):
-        for cb in [self.cb_x,
-                   self.cb_y,
-                   self.cb_z]:
+        for cb in self.cb_parameters:
             cb.clear()
             cb.addItems([''] + self.model.data_file.ids)
             # set index
@@ -209,6 +206,7 @@ class QTPlot(QtGui.QMainWindow):
         self.cb_z.setCurrentIndex(4)
 
     def on_data2d_changed(self):
+        #print('data2d_changed')
         # Reset the colormap if required
         if self.get_reset_colormap():
             min, max = self.model.data2d.get_z_limits()

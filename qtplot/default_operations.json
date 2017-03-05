@@ -32,14 +32,14 @@
 		"max": 0.0,
 		"bins": 0
 	},
-	"interp grid": {
+	"interp_grid": {
 		"width": 100,
 		"height": 100
 	},
-	"interp x": {
+	"interp_x": {
 		"points": 100
 	},
-	"interp y": {
+	"interp_y": {
 		"points": 100
 	},
 	"log": {
@@ -52,8 +52,8 @@
 		"method": ["gaussian", "lorentzian", "exponential", "thermal"]
 	},
 	"negate": {},
-	"norm x": {},
-	"norm y": {},
+	"norm_x": {},
+	"norm_y": {},
 	"offset": {
 		"offset": 0.0
 	},

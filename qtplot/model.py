@@ -99,12 +99,10 @@ class Model:
         if None in [x, z]:
             raise ValueError('The x/z parameters cannot be None')
 
-        # If something changed
-        if self.x != x or self.y != y or self.z != z:
-            self.x, self.y, self.z = x, y, z
-            self.data2d = self.data_file.get_data(x, y, z)
+        self.x, self.y, self.z = x, y, z
+        self.data2d = self.data_file.get_data(x, y, z)
 
-            self.data2d_changed.fire()
+        self.data2d_changed.fire()
 
     def set_colormap(self, name):
         settings = self.colormap.get_settings()
@@ -124,27 +122,25 @@ class Model:
 
         self.operations = []
 
-        for i, info in sorted(data.items()):
-            operation = Operation(**info)
-
-            self.operations.append(operation)
-
-        self.operations_changed.fire()
+        for info in data['operations']:
+            self.add_operation(**info)
 
     def save_operations(self, filename):
-        data = {}
+        data = []
 
         for i, operation in enumerate(self.operations):
-            data[i] = operation.__dict__
+            print(operation.__dict__)
+            data.append(operation.__dict__)
 
         with open(filename, 'w') as f:
-            f.write(json.dumps(data, indent=4))
+            f.write(json.dumps({'operations': data}, indent=4))
 
     def apply_operations(self):
         if self.data2d is None:
             raise DataException('No parameters have been selected yet')
 
-        self.select_parameters(self.x, self.y, self.z)
+        # Get a fresh copy of the data
+        self.data2d = self.data_file.get_data(self.x, self.y, self.z)
 
         for operation in self.operations:
             operation.apply(self.data2d)
@@ -156,11 +152,28 @@ class Model:
 
         self.operations_changed.fire('values')
 
-    def add_operation(self, name, **parameters):
+    def add_operation(self, name, enabled=True, **parameters):
         operation = Operation(name, **parameters)
         self.operations.append(operation)
 
         self.operations_changed.fire('add', operation)
+
+    def swap_operations(self, index):
+        tmp = self.operations[index]
+        self.operations[index] = self.operations[index + 1]
+        self.operations[index + 1] = tmp
+
+        self.operations_changed.fire('swap', index)
+
+    def remove_operation(self, index):
+        del self.operations[index]
+
+        self.operations_changed.fire('remove', index)
+
+    def clear_operations(self):
+        self.operations = []
+
+        self.operations_changed.fire('clear')
 
     def take_linetrace(self, x, y, type):
         if self.data2d is None:
@@ -180,4 +193,4 @@ class Model:
 
         self.linetrace = Linetrace(x, y, type)
 
-        self.linetrace_changed.fire()
+        self.linetrace_changed.fire

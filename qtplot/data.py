@@ -858,14 +858,14 @@ class Data2D:
         """Negate every datapoint."""
         self.z *= -1
 
-    def norm_columns(self):
+    def norm_x(self):
         """Transform the values of every column so that they use the full colormap."""
         def func(x):
             return (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x))
 
         self.z = np.apply_along_axis(func, 0, self.z)
 
-    def norm_rows(self):
+    def norm_y(self):
         """Transform the values of every row so that they use the full colormap."""
         def func(x):
             return (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x))
