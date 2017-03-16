@@ -187,14 +187,14 @@ class QTPlot(QtGui.QMainWindow):
 
         type = {1: 'horizontal', 2: 'arbitrary', 3: 'vertical'}[event.button]
 
-        self.model.take_linetrace(x, y, type)
+        self.model.add_linetrace(x, y, type)
 
     def on_canvas_move(self, event):
         if len(event.buttons) > 0:
             self.on_canvas_press(event)
 
         # From here on handlers of changes in the model
-    def on_data_file_changed(self):
+    def on_data_file_changed(self, different_file):
         for cb in self.cb_parameters:
             cb.clear()
             cb.addItems([''] + self.model.data_file.ids)
@@ -206,7 +206,6 @@ class QTPlot(QtGui.QMainWindow):
         self.cb_z.setCurrentIndex(4)
 
     def on_data2d_changed(self):
-        #print('data2d_changed')
         # Reset the colormap if required
         if self.get_reset_colormap():
             min, max = self.model.data2d.get_z_limits()

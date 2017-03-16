@@ -12,7 +12,7 @@
 		"method": ["midpoint", "2nd order central diff"]
 	},
 	"equalize": {},
-	"even odd": {
+	"even_odd": {
 		"even": true
 	},
 	"flip": {

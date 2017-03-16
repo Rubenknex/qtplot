@@ -65,8 +65,7 @@ class Model:
         self.colormap = Colormap('transform/Seismic.npy')
 
         self.operations = []
-
-        self.linetrace = None
+        self.linetraces = []
 
         # Define signals that can be listened to
         self.data_file_changed = Signal()
@@ -76,10 +75,12 @@ class Model:
         self.linetrace_changed = Signal()
 
     def load_data_file(self, filename):
+        different_file = self.filename != filename
+
         self.filename = filename
         self.data_file = DatFile(filename)
 
-        self.data_file_changed.fire()
+        self.data_file_changed.fire(different_file)
 
     def refresh(self):
         if self.filename is None:
@@ -129,7 +130,6 @@ class Model:
         data = []
 
         for i, operation in enumerate(self.operations):
-            print(operation.__dict__)
             data.append(operation.__dict__)
 
         with open(filename, 'w') as f:
@@ -158,6 +158,11 @@ class Model:
 
         self.operations_changed.fire('add', operation)
 
+    def set_operation_enabled(self, index, enabled):
+        self.operations[index].enabled = enabled
+
+        self.operations_changed.fire()
+
     def swap_operations(self, index):
         tmp = self.operations[index]
         self.operations[index] = self.operations[index + 1]
@@ -175,7 +180,7 @@ class Model:
 
         self.operations_changed.fire('clear')
 
-    def take_linetrace(self, x, y, type):
+    def add_linetrace(self, x, y, type):
         if self.data2d is None:
             raise DataException('No parameters have been selected yet')
 
@@ -191,6 +196,7 @@ class Model:
             # calculate points
             pass
 
-        self.linetrace = Linetrace(x, y, type)
+        line = Linetrace(x, y, type)
+        self.linetraces.append(line)
 
-        self.linetrace_changed.fire
+        self.linetrace_changed.fire('add', line)

@@ -3,6 +3,8 @@ import os
 
 from PyQt4 import QtCore, QtGui, uic
 
+from .data import Data2D
+
 
 class OperationWidget(QtGui.QWidget):
     def __init__(self, parameters, callback):
@@ -111,11 +113,12 @@ class Operations(QtGui.QDialog):
         self.b_down.clicked.connect(self.on_down)
         self.b_remove.clicked.connect(self.on_remove)
         self.b_clear.clicked.connect(self.on_clear)
-        #self.b_update.clicked.connect(self.on_update)
         self.b_load.clicked.connect(self.on_load)
         self.b_save.clicked.connect(self.on_save)
 
+        self.lw_operations.currentItemChanged.connect(self.on_select_operation)
         self.lw_queue.currentRowChanged.connect(self.stack.setCurrentIndex)
+        self.lw_queue.itemClicked.connect(self.on_item_clicked)
 
         self.model.operations_changed.connect(self.on_operations_changed)
 
@@ -186,7 +189,22 @@ class Operations(QtGui.QDialog):
         if filename != '':
             self.model.save_operations(filename)
 
-    def on_operations_changed(self, event, value=None):
+    def on_select_operation(self, current, previous):
+        if current:
+            description = getattr(Data2D, str(current.text())).__doc__
+            self.le_description.setText(description)
+
+    def on_item_clicked(self, item):
+        index = self.lw_queue.row(item)
+        enabled = item.checkState() == QtCore.Qt.Checked
+
+        self.model.set_operation_enabled(index, enabled)
+
+    def on_operations_changed(self, event=None, value=None):
+        """
+        Handle when something in the operation list has changed
+        This is mostly to update the UI
+        """
         if event == 'add':
             item = QtGui.QListWidgetItem(value.name)
 
@@ -222,6 +240,10 @@ class Operations(QtGui.QDialog):
                 self.stack.removeWidget(self.stack.widget(0))
 
         self.model.apply_operations()
+
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Return:
+            self.on_operation_changed()
 
     def show_window(self):
         self.show()
