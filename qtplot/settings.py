@@ -8,8 +8,7 @@ class Settings(QtGui.QDialog):
 
         self.model = model
 
-        directory = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(directory, 'ui/settings.ui')
+        path = os.path.join(self.model.dir, 'ui/settings.ui')
         uic.loadUi(path, self)
 
     def show_window(self):

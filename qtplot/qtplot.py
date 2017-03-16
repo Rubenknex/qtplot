@@ -20,14 +20,13 @@ class QTPlot(QtGui.QMainWindow):
     def __init__(self):
         super(QTPlot, self).__init__()
 
-        directory = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(directory, 'ui/main.ui')
+        self.model = Model()
+
+        path = os.path.join(self.model.dir, 'ui/main.ui')
         uic.loadUi(path, self)
 
         self.canvas = Canvas()
         self.canvas_layout.addWidget(self.canvas.native)
-
-        self.model = Model()
 
         self.load_colormaps()
 
@@ -44,6 +43,8 @@ class QTPlot(QtGui.QMainWindow):
         self.sliders = [self.s_cmap_min, self.s_cmap_gamma, self.s_cmap_max]
 
         self.bind()
+
+        self.model.init_settings()
 
     def bind(self):
         """
@@ -76,6 +77,7 @@ class QTPlot(QtGui.QMainWindow):
         self.canvas.events.mouse_press.connect(self.on_canvas_press)
         self.canvas.events.mouse_move.connect(self.on_canvas_move)
 
+        self.model.profile_changed.connect(self.on_profile_changed)
         self.model.data_file_changed.connect(self.on_data_file_changed)
         self.model.data2d_changed.connect(self.on_data2d_changed)
         self.model.cmap_changed.connect(self.on_cmap_changed)
@@ -194,6 +196,9 @@ class QTPlot(QtGui.QMainWindow):
             self.on_canvas_press(event)
 
         # From here on handlers of changes in the model
+    def on_profile_changed(self, profile):
+        print('profile changed')
+
     def on_data_file_changed(self, different_file):
         for cb in self.cb_parameters:
             cb.clear()

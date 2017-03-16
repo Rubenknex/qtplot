@@ -14,8 +14,7 @@ class Linetrace(QtGui.QDialog):
 
         self.model = model
 
-        directory = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(directory, 'ui/linetrace.ui')
+        path = os.path.join(self.model.dir, 'ui/linetrace.ui')
         uic.loadUi(path, self)
 
         self.fig, self.ax = plt.subplots()

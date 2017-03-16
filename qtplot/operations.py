@@ -89,8 +89,7 @@ class Operations(QtGui.QDialog):
 
         self.model = model
 
-        directory = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(directory, 'ui/operations.ui')
+        path = os.path.join(self.model.dir, 'ui/operations.ui')
         uic.loadUi(path, self)
 
         self.load_operations()

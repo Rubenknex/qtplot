@@ -1,4 +1,7 @@
 import json
+import os
+
+from collections import OrderedDict
 
 from .colormap import Colormap
 from .data import DatFile, Data2D
@@ -56,6 +59,10 @@ class Model:
         general methods like get_data(x, y, z)
     """
     def __init__(self):
+        self.dir = os.path.dirname(os.path.realpath(__file__))
+
+        self.profile = None
+
         self.filename = None
         self.data_file = None
 
@@ -68,11 +75,58 @@ class Model:
         self.linetraces = []
 
         # Define signals that can be listened to
+        self.profile_changed = Signal()
         self.data_file_changed = Signal()
         self.data2d_changed = Signal()
         self.cmap_changed = Signal()
         self.operations_changed = Signal()
         self.linetrace_changed = Signal()
+
+    def init_settings(self):
+        # /home/name on Linux, C:/Users/Name on Windows
+        self.home_dir = os.path.expanduser('~')
+
+        # Create the required directories paths
+        self.settings_dir = os.path.join(self.home_dir, '.qtplot')
+        self.profiles_dir = os.path.join(self.settings_dir, 'profiles')
+        self.operations_dir = os.path.join(self.settings_dir, 'operations')
+
+        # Create the directories if they don't exist yet
+        for dir in [self.settings_dir, self.profiles_dir, self.operations_dir]:
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+
+        self.settings_file = os.path.join(self.settings_dir, 'qtplot.json')
+
+        # Save the default settings if no file exists yet
+        if not os.path.exists(self.settings_file):
+            self.save_json({'default_profile': 'default.json'},
+                           self.settings_file)
+
+        # Load the settings
+        self.settings = self.load_json(self.settings_file)
+
+        profile_file = os.path.join(self.profiles_dir,
+                                    self.settings['default_profile'])
+
+        # Use the default profile if the specified profile is not found
+        if not os.path.isfile(profile_file):
+            profile_file = os.path.join(self.dir, 'default_profile.json')
+
+        # Load the profile
+        self.profile = self.load_json(profile_file)
+
+        self.profile_changed.fire(self.profile)
+
+    def load_json(self, filename):
+        with open(filename, 'r') as f:
+            profile = json.load(f, object_pairs_hook=OrderedDict)
+
+        return profile
+
+    def save_json(self, profile, filename):
+        with open(filename, 'w') as f:
+            json.dump(profile, f, indent=4)
 
     def load_data_file(self, filename):
         different_file = self.filename != filename
@@ -133,7 +187,7 @@ class Model:
             data.append(operation.__dict__)
 
         with open(filename, 'w') as f:
-            f.write(json.dumps({'operations': data}, indent=4))
+            json.dump({'operations': data}, f, indent=4)
 
     def apply_operations(self):
         if self.data2d is None:
