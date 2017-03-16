@@ -46,6 +46,8 @@ class QTPlot(QtGui.QMainWindow):
 
         self.model.init_settings()
 
+        self.settings.initialize()
+
     def bind(self):
         """
         Set up the connections listening for user interface events
@@ -81,6 +83,45 @@ class QTPlot(QtGui.QMainWindow):
         self.model.data_file_changed.connect(self.on_data_file_changed)
         self.model.data2d_changed.connect(self.on_data2d_changed)
         self.model.cmap_changed.connect(self.on_cmap_changed)
+
+    def get_state(self):
+        state = {
+            'x': str(self.cb_x.currentText()),
+            'y': str(self.cb_y.currentText()),
+            'z': str(self.cb_z.currentText()),
+            'colormap': str(self.cb_colormap.currentText()),
+        }
+
+        return state
+
+    def set_state(self, profile):
+        cmap = profile['colormap']
+
+        # The path that is saved in the profile can use either / or \\
+        # as a path separator. Here we convert it to what the OS uses.
+        if os.path.sep == '/':
+            cmap = cmap.replace('\\', '/')
+        elif os.path.sep == '\\':
+            cmap = cmap.replace('/', '\\')
+
+        index = self.cb_colormap.findText(cmap)
+
+        if index != -1:
+            self.cb_colormap.setCurrentIndex(index)
+
+        if self.model.data_file is not None:
+            names = ['x', 'y', 'z']
+            default_indices = [1, 2, 4]
+
+            for i, cb in enumerate(self.cb_parameters):
+                idx = cb.findText(profile[names[i]])
+
+                if idx <= 0:
+                    idx = default_indices[i]
+
+                cb.setCurrentIndex(idx)
+
+            self.on_parameters_changed()
 
     def get_parameters(self):
         return [str(cb.currentText()) for cb in self.cb_parameters]
@@ -143,7 +184,8 @@ class QTPlot(QtGui.QMainWindow):
 
     def on_parameters_changed(self):
         """ One of the parameters to plot has changed """
-        self.model.select_parameters(*self.get_parameters())
+        if self.model.data_file is not None:
+            self.model.select_parameters(*self.get_parameters())
 
     def on_cmap_chosen(self):
         """ A new colormap has been selected """
@@ -197,18 +239,14 @@ class QTPlot(QtGui.QMainWindow):
 
         # From here on handlers of changes in the model
     def on_profile_changed(self, profile):
-        print('profile changed')
+        self.set_state(profile)
 
     def on_data_file_changed(self, different_file):
         for cb in self.cb_parameters:
             cb.clear()
             cb.addItems([''] + self.model.data_file.ids)
-            # set index
 
-        # Temporary
-        self.cb_x.setCurrentIndex(1)
-        self.cb_y.setCurrentIndex(2)
-        self.cb_z.setCurrentIndex(4)
+        self.set_state(self.model.profile)
 
     def on_data2d_changed(self):
         # Reset the colormap if required

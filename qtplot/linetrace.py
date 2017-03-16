@@ -50,13 +50,22 @@ class Linetrace(QtGui.QDialog):
 
         self.model.linetrace_changed.connect(self.on_linetrace_changed)
 
-    def get_line_kwargs(self):
+    def get_state(self):
         return {
             'linestyle': str(self.cb_linestyle.currentText()),
             'linewidth': float(self.le_linewidth.text()),
             'marker': str(self.cb_markerstyle.currentText()),
             'markersize': float(self.le_markersize.text()),
         }
+
+    def set_state(self, profile):
+        idx = self.cb_linestyle.findText(profile['linestyle'])
+        self.cb_linestyle.setCurrentIndex(idx)
+        self.le_linewidth.setText(profile['linewidth'])
+
+        idx = self.cb_markerstyle.findText(profile['markerstyle'])
+        self.cb_markerstyle.setCurrentIndex(idx)
+        self.le_markersize.setText(profile['markersize'])
 
     def get_plot_limits(self):
         if self.model.linetraces:
@@ -146,7 +155,7 @@ class Linetrace(QtGui.QDialog):
             offset = float(self.le_offset.text()) * len(self.ax.lines)
 
             line = plt.Line2D(linetrace.x, linetrace.y + offset,
-                              color='red', **self.get_line_kwargs())
+                              color='red', **self.get_state())
 
             self.ax.add_line(line)
 

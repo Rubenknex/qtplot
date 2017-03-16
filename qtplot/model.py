@@ -7,6 +7,18 @@ from .colormap import Colormap
 from .data import DatFile, Data2D
 
 
+def load_json(filename):
+    with open(filename, 'r') as f:
+        profile = json.load(f, object_pairs_hook=OrderedDict)
+
+    return profile
+
+
+def save_json(profile, filename):
+    with open(filename, 'w') as f:
+        json.dump(profile, f, indent=4)
+
+
 class DataException(Exception):
     """ Exception for errors that relate to the data itself """
     pass
@@ -100,11 +112,11 @@ class Model:
 
         # Save the default settings if no file exists yet
         if not os.path.exists(self.settings_file):
-            self.save_json({'default_profile': 'default.json'},
-                           self.settings_file)
+            save_json({'default_profile': 'default.json'},
+                      self.settings_file)
 
         # Load the settings
-        self.settings = self.load_json(self.settings_file)
+        self.settings = load_json(self.settings_file)
 
         profile_file = os.path.join(self.profiles_dir,
                                     self.settings['default_profile'])
@@ -114,19 +126,9 @@ class Model:
             profile_file = os.path.join(self.dir, 'default_profile.json')
 
         # Load the profile
-        self.profile = self.load_json(profile_file)
+        self.profile = load_json(profile_file)
 
         self.profile_changed.fire(self.profile)
-
-    def load_json(self, filename):
-        with open(filename, 'r') as f:
-            profile = json.load(f, object_pairs_hook=OrderedDict)
-
-        return profile
-
-    def save_json(self, profile, filename):
-        with open(filename, 'w') as f:
-            json.dump(profile, f, indent=4)
 
     def load_data_file(self, filename):
         different_file = self.filename != filename
