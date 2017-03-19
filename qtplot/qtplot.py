@@ -84,7 +84,7 @@ class QTPlot(QtGui.QMainWindow):
         self.model.data2d_changed.connect(self.on_data2d_changed)
         self.model.cmap_changed.connect(self.on_cmap_changed)
 
-    def get_state(self):
+    def get_profile(self):
         state = {
             'x': str(self.cb_x.currentText()),
             'y': str(self.cb_y.currentText()),
@@ -92,9 +92,16 @@ class QTPlot(QtGui.QMainWindow):
             'colormap': str(self.cb_colormap.currentText()),
         }
 
-        return state
+        linetrace_state = self.linetrace.get_state()
 
-    def set_state(self, profile):
+        profile = {}
+
+        for d in [state, linetrace_state]:
+            profile.update(d)
+
+        return profile
+
+    def set_profile(self, profile):
         cmap = profile['colormap']
 
         # The path that is saved in the profile can use either / or \\
@@ -239,14 +246,14 @@ class QTPlot(QtGui.QMainWindow):
 
         # From here on handlers of changes in the model
     def on_profile_changed(self, profile):
-        self.set_state(profile)
+        self.set_profile(profile)
 
     def on_data_file_changed(self, different_file):
         for cb in self.cb_parameters:
             cb.clear()
             cb.addItems([''] + self.model.data_file.ids)
 
-        self.set_state(self.model.profile)
+        self.set_profile(self.model.profile)
 
     def on_data2d_changed(self):
         # Reset the colormap if required

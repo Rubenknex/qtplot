@@ -127,8 +127,30 @@ class Model:
 
         # Load the profile
         self.profile = load_json(profile_file)
+        self.default_profile = self.profile.copy()
 
         self.profile_changed.fire(self.profile)
+
+    def load_profile(self, filename):
+        profile_path = os.path.join(self.profiles_dir, filename)
+
+        self.profile = load_json(profile_path)
+
+        self.profile_changed.fire(self.profile)
+
+    def save_profile(self, profile, filename):
+        operations_path = os.path.join(self.operations_dir, filename)
+
+        self.save_operations(operations_path)
+
+        profile_path = os.path.join(self.profiles_dir, filename)
+
+        # Set non-existing values to the default value
+        for key, value in self.default_profile.items():
+            if key not in profile:
+                profile[key] = value
+
+        save_json(profile, profile_path)
 
     def load_data_file(self, filename):
         different_file = self.filename != filename
