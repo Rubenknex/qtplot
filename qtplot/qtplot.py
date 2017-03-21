@@ -66,7 +66,7 @@ class QTPlot(QtGui.QMainWindow):
         for cb in self.cb_parameters:
             cb.activated.connect(self.on_parameters_changed)
 
-        self.cb_colormap.activated.connect(self.on_cmap_chosen)
+        self.cb_colormap.currentIndexChanged.connect(self.on_cmap_chosen)
         self.b_reset_cmap.clicked.connect(self.on_cmap_reset)
 
         self.le_cmap_min.returnPressed.connect(self.on_cmap_edit_changed)
@@ -162,24 +162,22 @@ class QTPlot(QtGui.QMainWindow):
         self.canvas.colormap = self.model.colormap
 
     def on_load(self):
-        #open_directory = self.profile_settings['open_directory']
-        #filename = str(QtGui.QFileDialog.getOpenFileName(directory=open_directory,
-        #                                                 filter='*.dat'))
-
-        filename = str(QtGui.QFileDialog.getOpenFileName(filter='*.dat'))
+        open_directory = self.model.profile['open_directory']
+        filename = str(QtGui.QFileDialog.getOpenFileName(directory=open_directory,
+                                                         filter='*.dat'))
 
         if filename != '':
             self.model.load_data_file(filename)
 
     def on_save(self):
-        #save_directory = self.profile_settings['save_directory']
+        save_directory = self.model.profile['save_directory']
 
         filters = ('QTLab data format (*.dat);;'
                    'NumPy binary matrix format (*.npy);;'
                    'MATLAB matrix format (*.mat)')
 
         filename = QtGui.QFileDialog.getSaveFileName(caption='Save file',
-                                                     #directory=save_directory,
+                                                     directory=save_directory,
                                                      filter=filters)
         filename = str(filename)
 
@@ -249,6 +247,8 @@ class QTPlot(QtGui.QMainWindow):
         self.set_profile(profile)
 
     def on_data_file_changed(self, different_file):
+        self.setWindowTitle(os.path.split(self.model.filename)[1])
+
         for cb in self.cb_parameters:
             cb.clear()
             cb.addItems([''] + self.model.data_file.ids)

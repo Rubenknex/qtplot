@@ -7,6 +7,10 @@ from .data import Data2D
 
 
 class OperationWidget(QtGui.QWidget):
+    """
+    This widget has a grid layout of all the GUI elements needed to adjust
+    the settings of an operation. It is used in a QStackedWidget.
+    """
     def __init__(self, parameters, callback):
         super(OperationWidget, self).__init__(None)
 
@@ -47,7 +51,7 @@ class OperationWidget(QtGui.QWidget):
             height += 1
 
     def get_parameter(self, name):
-        """ Return the casted value of a property. """
+        """ Return the casted value of a parameter. """
         if name in self.widgets:
             widget = self.widgets[name]
             cast = self.types[name]
@@ -84,6 +88,10 @@ class OperationWidget(QtGui.QWidget):
 
 
 class Operations(QtGui.QDialog):
+    """
+    This window contains a list of operations to choose from, and a list of
+    the current active operations.
+    """
     def __init__(self, parent, model):
         super(Operations, self).__init__(parent)
 
@@ -241,6 +249,9 @@ class Operations(QtGui.QDialog):
         self.model.apply_operations()
 
     def keyPressEvent(self, event):
+        # Listening to the Return pressed event in a LineEdit does not work
+        # properly so we say the operations have changed when Return is
+        # pressed anywhere in this window
         if event.key() == QtCore.Qt.Key_Return:
             self.on_operation_changed()
 

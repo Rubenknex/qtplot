@@ -8,6 +8,7 @@ from .data import DatFile, Data2D
 
 
 def load_json(filename):
+    """ Load a JSON file into an OrderedDict """
     with open(filename, 'r') as f:
         profile = json.load(f, object_pairs_hook=OrderedDict)
 
@@ -15,6 +16,7 @@ def load_json(filename):
 
 
 def save_json(profile, filename):
+    """ Save a dict to a JSON file """
     with open(filename, 'w') as f:
         json.dump(profile, f, indent=4)
 
@@ -131,8 +133,14 @@ class Model:
 
         self.profile_changed.fire(self.profile)
 
+    def save_settings(self):
+        save_json(self.settings, self.settings_file)
+
     def load_profile(self, filename):
         profile_path = os.path.join(self.profiles_dir, filename)
+        operations_path = os.path.join(self.operations_dir, filename)
+
+        self.load_operations(operations_path)
 
         self.profile = load_json(profile_path)
 
@@ -143,14 +151,18 @@ class Model:
 
         self.save_operations(operations_path)
 
-        profile_path = os.path.join(self.profiles_dir, filename)
+        new_profile = self.profile.copy()
+        new_profile['operations'] = filename
 
         # Set non-existing values to the default value
         for key, value in self.default_profile.items():
-            if key not in profile:
-                profile[key] = value
+            if key in profile:
+                new_profile[key] = profile[key]
+            elif key not in new_profile:
+                new_profile[key] = self.default_profile[key]
 
-        save_json(profile, profile_path)
+        profile_path = os.path.join(self.profiles_dir, filename)
+        save_json(new_profile, profile_path)
 
     def load_data_file(self, filename):
         different_file = self.filename != filename
@@ -199,7 +211,7 @@ class Model:
         with open(filename) as f:
             data = json.load(f)
 
-        self.operations = []
+        self.clear_operations()
 
         for info in data['operations']:
             self.add_operation(**info)
@@ -215,6 +227,7 @@ class Model:
 
     def apply_operations(self):
         if self.data2d is None:
+            return
             raise DataException('No parameters have been selected yet')
 
         # Get a fresh copy of the data

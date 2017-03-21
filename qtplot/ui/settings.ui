@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>396</width>
+    <width>464</width>
     <height>528</height>
    </rect>
   </property>
@@ -88,10 +88,14 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="le_open_dir"/>
+         <widget class="QLineEdit" name="le_open_dir">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="b_browse">
+         <widget class="QPushButton" name="b_browse_open">
           <property name="text">
            <string>Browse...</string>
           </property>
@@ -109,7 +113,11 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="le_save_dir"/>
+         <widget class="QLineEdit" name="le_save_dir">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
         </item>
         <item>
          <widget class="QPushButton" name="b_browse_save">
