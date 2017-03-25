@@ -16,6 +16,9 @@ class Colormap:
 
         self.length = self.colors.shape[0]
 
+    def get_limits(self):
+        return self.min, self.max
+
     def get_settings(self):
         return self.min, self.max, self.gamma
 

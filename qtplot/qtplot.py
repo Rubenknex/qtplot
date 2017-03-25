@@ -5,6 +5,7 @@ import numpy as np
 from PyQt4 import QtCore, QtGui, uic
 
 from .canvas import Canvas
+from .export import Export
 from .model import Model
 from .linetrace import Linetrace
 from .operations import Operations
@@ -16,6 +17,12 @@ class QTPlot(QtGui.QMainWindow):
     This class contains all the logic behind the user interface and
     serves as the connection between the views (user interface) and
     the model (data).
+
+    TODO:
+    - Arbitrary linetrace
+    - Keyboard shortcuts
+    - Export widget
+    - Proper linetrace speed
     """
     def __init__(self):
         super(QTPlot, self).__init__()
@@ -38,6 +45,9 @@ class QTPlot(QtGui.QMainWindow):
         self.linetrace = Linetrace(self, self.model)
         self.operations = Operations(self, self.model)
         self.settings = Settings(self, self.model)
+        self.export = Export(self, self.model)
+
+        self.tabs.addTab(self.export, 'Export')
 
         self.cb_parameters = [self.cb_x, self.cb_y, self.cb_z]
         self.sliders = [self.s_cmap_min, self.s_cmap_gamma, self.s_cmap_max]
@@ -80,7 +90,7 @@ class QTPlot(QtGui.QMainWindow):
         self.canvas.events.mouse_move.connect(self.on_canvas_move)
 
         # Model events
-        self.model.profile_changed.connect(self.on_profile_changed)
+        self.model.profile_changed.connect(self.set_profile)
         self.model.data_file_changed.connect(self.on_data_file_changed)
         self.model.data2d_changed.connect(self.on_data2d_changed)
         self.model.cmap_changed.connect(self.on_cmap_changed)
@@ -95,10 +105,11 @@ class QTPlot(QtGui.QMainWindow):
         }
 
         linetrace_state = self.linetrace.get_state()
+        export_state = self.export.get_state()
 
         profile = {}
 
-        for d in [state, linetrace_state]:
+        for d in [state, linetrace_state, export_state]:
             profile.update(d)
 
         return profile
@@ -245,9 +256,6 @@ class QTPlot(QtGui.QMainWindow):
             self.on_canvas_press(event)
 
         # From here on handlers of changes in the model
-    def on_profile_changed(self, profile):
-        self.set_profile(profile)
-
     def on_data_file_changed(self, different_file):
         self.setWindowTitle(os.path.split(self.model.filename)[1])
 
@@ -270,7 +278,8 @@ class QTPlot(QtGui.QMainWindow):
         idx = self.cb_y.findText(self.model.y)
         self.cb_y.setCurrentIndex(idx)
 
-        self.canvas.set_data(self.model.data2d)
+        xq, yq = self.model.data2d.get_quadrilaterals()
+        self.canvas.set_data(xq, yq, self.model.data2d.z)
 
     def on_cmap_changed(self):
         """ The colormap settings changed, so update the UI """

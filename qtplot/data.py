@@ -375,7 +375,9 @@ class Data2D:
         x = self.tri.points[:,0]
         y = self.tri.points[:,1]
 
-        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
+        xmin, xmax = self.get_x_limits()
+        ymin, ymax = self.get_y_limits()
+
         x = x * (xmax - xmin) + xmin
         y = y * (ymax - ymin) + ymin
 
@@ -395,7 +397,9 @@ class Data2D:
         # Normalize the coordinates. This improves the triangulation results
         # in cases where the data ranges on both axes are very different
         # in magnitude
-        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
+        xmin, xmax = self.get_x_limits()
+        ymin, ymax = self.get_y_limits()
+
         xc = (xc - xmin) / (xmax - xmin)
         yc = (yc - ymin) / (ymax - ymin)
 
@@ -410,7 +414,9 @@ class Data2D:
         if self.tri is None:
             self.generate_triangulation()
 
-        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
+        xmin, xmax = self.get_x_limits()
+        ymin, ymax = self.get_y_limits()
+
         points[:,0] = (points[:,0] - xmin) / (xmax - xmin)
         points[:,1] = (points[:,1] - ymin) / (ymax - ymin)
 
@@ -450,7 +456,7 @@ class Data2D:
 
         return x, y, z
 
-    def get_quadrilaterals(self, xc, yc):
+    def get_quadrilaterals(self):
         """
         In order to generate quads for every datapoint we do the following
         for the x and y coordinates:
@@ -460,6 +466,7 @@ class Data2D:
         -   Add a row/column at the end to satisfy the 1 larger
             requirements of pcolor
         """
+        xc, yc = self.x, self.y
 
         # If we are dealing with data that is 2-dimensional
         # -2 rows: both coords need non-nan values
@@ -474,15 +481,15 @@ class Data2D:
             if xc.shape[1] > 2:
                 l2 = xc[:,[2]]
                 nans = np.isnan(l0)
-                l0[nans] = 2*l1[nans] - l2[nans]
+                l0[nans] = 2 * l1[nans] - l2[nans]
                 xc[:,[0]] = l0
 
                 r2 = xc[:,[-3]]
                 nans = np.isnan(r0)
-                r0[nans] = 2*r1[nans] - r2[nans]
+                r0[nans] = 2 * r1[nans] - r2[nans]
                 xc[:,[-1]] = r0
 
-            xc = np.hstack((2*l0 - l1, xc, 2*r0 - r1))
+            xc = np.hstack((2 * l0 - l1, xc, 2 * r0 - r1))
             # Create center points by adding the differences divided by 2 to the original coordinates
             x = xc[:,:-1] + np.diff(xc, axis=1) / 2.0
             # Add a row to the bottom so that the x coords have the same dimension as the y coords
@@ -503,15 +510,15 @@ class Data2D:
             if yc.shape[0] > 2:
                 t2 = yc[2]
                 nans = np.isnan(t0)
-                t0[nans] = 2*t1[nans] - t2[nans]
+                t0[nans] = 2 * t1[nans] - t2[nans]
                 #yc[0] = t0
 
                 b2 = yc[-3]
                 nans = np.isnan(b0)
-                b0[nans] = 2*b1[nans] - b2[nans]
+                b0[nans] = 2 * b1[nans] - b2[nans]
                 #yc[-1] = b0
 
-            yc = np.vstack([2*t0 - t1, yc, 2*b0 - b1])
+            yc = np.vstack([2 * t0 - t1, yc, 2 * b0 - b1])
             y = yc[:-1,:] + np.diff(yc, axis=0) / 2.0
 
             if np.isnan(y[:,[0]]).any():
@@ -533,7 +540,7 @@ class Data2D:
 
         Can be plotted using matplotlib's pcolor/pcolormesh(*data.get_pcolor())
         """
-        x, y = self.get_quadrilaterals(self.x, self.y)
+        x, y = self.get_quadrilaterals()
 
         return tuple(map(np.ma.masked_invalid, [x, y, self.z]))
 

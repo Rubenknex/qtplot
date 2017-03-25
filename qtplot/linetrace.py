@@ -49,6 +49,7 @@ class Linetrace(QtGui.QDialog):
                         self, self.on_figure_to_clipboard)
 
         self.model.linetrace_changed.connect(self.on_linetrace_changed)
+        self.model.profile_changed.connect(self.set_profile)
 
     def get_state(self):
         return {
@@ -58,14 +59,14 @@ class Linetrace(QtGui.QDialog):
             'markersize': float(self.le_markersize.text()),
         }
 
-    def set_state(self, profile):
+    def set_profile(self, profile):
         idx = self.cb_linestyle.findText(profile['linestyle'])
         self.cb_linestyle.setCurrentIndex(idx)
-        self.le_linewidth.setText(profile['linewidth'])
+        self.le_linewidth.setText(str(profile['linewidth']))
 
         idx = self.cb_markerstyle.findText(profile['markerstyle'])
         self.cb_markerstyle.setCurrentIndex(idx)
-        self.le_markersize.setText(profile['markersize'])
+        self.le_markersize.setText(str(profile['markersize']))
 
     def get_plot_limits(self):
         if self.model.linetraces:
