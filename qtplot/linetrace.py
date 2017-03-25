@@ -70,11 +70,14 @@ class Linetrace(QtGui.QDialog):
     def get_plot_limits(self):
         if self.model.linetraces:
             # use matplotlib data instead of model
+
             x = np.concatenate(tuple(line.x for line in self.model.linetraces))
             y = np.concatenate(tuple(line.y for line in self.model.linetraces))
         else:
             x = [0, 1]
             y = [0, 1]
+
+        x, y = self.model.linetraces[-1].get_data()
 
         return np.nanmin(x), np.nanmax(x), np.nanmin(y), np.nanmax(y)
 
@@ -147,15 +150,19 @@ class Linetrace(QtGui.QDialog):
         if event == 'add':
             if self.cb_incremental.checkState() == QtCore.Qt.Unchecked:
                 # Delete all existing lines
+                """
                 while len(self.ax.lines) > 0:
                     self.ax.lines.pop(0)
 
                 del self.model.linetraces[:-1]
+                """
+                for line in self.ax.lines:
+                    line.remove()
 
             offset = float(self.le_offset.text()) * len(self.ax.lines)
 
-            line = plt.Line2D(linetrace.x, linetrace.y + offset,
-                              color='red', **self.get_state())
+            x, y = linetrace.get_data()
+            line = plt.Line2D(x, y + offset, color='red', **self.get_state())
 
             self.ax.add_line(line)
 

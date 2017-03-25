@@ -54,13 +54,22 @@ class Operation:
 
 class Linetrace:
     """ This class represents a linetrace in 2D data """
-    def __init__(self, x, y, type):
-        self.x, self.y = x, y
+    def __init__(self, x, y, z, type):
+        self.x, self.y, self.z = x, y, z
         self.type = type
 
-    def get_matplotlib(self):
+    def get_positions(self):
+        """ Return datapoint positions on the 2D plot """
         return self.x, self.y
-        return {'x': self.x, 'y': self.y}
+
+    def get_data(self):
+        """ Return the data to plot based on the linetrace type """
+        if self.type == 'horizontal':
+            return self.x, self.z
+        elif self.type == 'vertical':
+            return self.y, self.z
+        else:
+            raise ValueError('No proper linetrace type')
 
 
 class Model:
@@ -271,7 +280,7 @@ class Model:
 
         self.operations_changed.fire('clear')
 
-    def add_linetrace(self, x, y, type):
+    def add_linetrace(self, x, y, type, incremental=False):
         if self.data2d is None:
             raise DataException('No parameters have been selected yet')
 
@@ -279,15 +288,20 @@ class Model:
 
         if type == 'horizontal':
             x = self.data2d.x[row]
-            y = self.data2d.z[row]
+            y = self.data2d.y[row]
+            z = self.data2d.z[row]
         elif type == 'vertical':
-            x = self.data2d.y[:,column]
-            y = self.data2d.z[:,column]
+            x = self.data2d.x[:,column]
+            y = self.data2d.y[:,column]
+            z = self.data2d.z[:,column]
         elif type == 'arbitrary':
             # calculate points
             pass
+        # TODO: how to properly handle incremental linetraces
+        if not incremental:
+            self.linetraces = []
 
-        line = Linetrace(x, y, type)
+        line = Linetrace(x, y, z, type)
         self.linetraces.append(line)
 
         self.linetrace_changed.fire('add', line)

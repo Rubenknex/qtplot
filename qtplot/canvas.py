@@ -1,12 +1,8 @@
 import numpy as np
-import os
 import logging
 
 from vispy import gloo, scene
 from vispy.util.transforms import ortho, translate
-
-from .colormap import Colormap
-from .util import eng_format
 
 logger = logging.getLogger(__name__)
 
@@ -106,35 +102,33 @@ class Canvas(scene.SceneCanvas):
         self.parent = parent
         self.has_redrawn = True
 
-        self.view = translate((0, 0, 0))
+        view = translate((0, 0, 0))
 
         # The vertex buffer object containing data vertices
         self.vbo = None
+        self.vbo_line = None
 
         self.data_program = gloo.Program(data_vert, data_frag)
-        self.data_program['u_view'] = self.view
+        self.data_program['u_view'] = view
 
         self.colormap = None
 
         self.colorbar_program = gloo.Program(colormap_vert, colormap_frag)
-        self.colorbar_program['u_view'] = self.view
+        self.colorbar_program['u_view'] = view
 
         #  horizontal / vertical / diagonal
         self.line_type = None
         # x for a vertical line, y for a horizontal line
         self.line_coord = None
-        # Start and end points for a linecut
-        self.mouse_start = (0, 0)
-        self.mouse_end = (0, 0)
 
         self.linecut_program = gloo.Program(linecut_vert, linecut_frag)
-        self.linecut_program['u_view'] = self.view
-        self.linecut_program['a_position'] = [self.mouse_start, self.mouse_end]
+        self.linecut_program['u_view'] = view
+        self.linecut_program['a_position'] = [(0, 0), (0, 0)]
 
         gloo.set_clear_color((1, 1, 1, 1))
 
-    def set_data(self, data):
-        vertices = self.generate_vertices(data)
+    def set_data(self, xq, yq, z):
+        vertices = self.generate_vertices(xq, yq, z)
 
         self.xmin = np.nanmin(vertices['a_position'][:, 0])
         self.xmax = np.nanmax(vertices['a_position'][:, 0])
@@ -163,10 +157,18 @@ class Canvas(scene.SceneCanvas):
 
         self.update()
 
-    def generate_vertices(self, data):
-        """ Generate vertices for the dataset quadrilaterals """
-        xq, yq = data.get_quadrilaterals(data.x, data.y)
+    def set_linetrace_data(self, x, y):
+        data = np.zeros(len(x), dtype=[('a_position', np.float32, 2)])
+        data['a_position'][:,0] = x
+        data['a_position'][:,1] = y
 
+        self.vbo_line = gloo.VertexBuffer(data)
+        self.linecut_program.bind(self.vbo_line)
+
+        self.update()
+
+    def generate_vertices(self, xq, yq, z):
+        """ Generate vertices for the dataset quadrilaterals """
         # Top left
         x1 = xq[0:-1, 0:-1].ravel()
         y1 = yq[0:-1, 0:-1].ravel()
@@ -197,7 +199,7 @@ class Canvas(scene.SceneCanvas):
 
         # Repeat the values six times for every six vertices required
         # by the two datapoint triangles
-        vertex_data['a_value'] = np.repeat(data.z.ravel(), 6, axis=0)
+        vertex_data['a_value'] = np.repeat(z.ravel(), 6, axis=0)
 
         return vertex_data
 
@@ -218,12 +220,6 @@ class Canvas(scene.SceneCanvas):
         dy = self.ymin + (rely) * (self.ymax - self.ymin)
 
         return dx, dy
-
-    def on_mouse_press(self, event):
-        #self.draw_linecut(event, initial_press=True)
-
-        # Notify controller
-        pass
 
     def on_mouse_move(self, event):
         """
@@ -278,6 +274,6 @@ class Canvas(scene.SceneCanvas):
             self.colorbar_program.draw('triangle_strip')
 
             # Draw the linecut
-            self.linecut_program.draw('lines')
+            self.linecut_program.draw('line_strip')
 
         self.has_redrawn = True

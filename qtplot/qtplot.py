@@ -79,10 +79,12 @@ class QTPlot(QtGui.QMainWindow):
         self.canvas.events.mouse_press.connect(self.on_canvas_press)
         self.canvas.events.mouse_move.connect(self.on_canvas_move)
 
+        # Model events
         self.model.profile_changed.connect(self.on_profile_changed)
         self.model.data_file_changed.connect(self.on_data_file_changed)
         self.model.data2d_changed.connect(self.on_data2d_changed)
         self.model.cmap_changed.connect(self.on_cmap_changed)
+        self.model.linetrace_changed.connect(self.on_linetrace_changed)
 
     def get_profile(self):
         state = {
@@ -299,6 +301,9 @@ class QTPlot(QtGui.QMainWindow):
         # Update the colormap and plot
         self.canvas.colormap = self.model.colormap
         self.canvas.update()
+
+    def on_linetrace_changed(self, event, linetrace=None):
+        self.canvas.set_linetrace_data(*linetrace.get_positions())
 
 
 def main():
