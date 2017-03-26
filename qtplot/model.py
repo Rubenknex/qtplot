@@ -1,6 +1,8 @@
 import json
 import os
 
+import numpy as np
+
 from collections import OrderedDict
 
 from .colormap import Colormap
@@ -68,6 +70,9 @@ class Linetrace:
             return self.x, self.z
         elif self.type == 'vertical':
             return self.y, self.z
+        elif self.type == 'arbitrary':
+            # Calculate the distance along the line
+            return np.hypot(self.x - self.x[0], self.y - self.y[0]), self.z
         else:
             raise ValueError('No proper linetrace type')
 
@@ -96,6 +101,7 @@ class Model:
 
         self.operations = []
         self.linetraces = []
+        self.linetrace_start = (0, 0)
 
         # Define signals that can be listened to
         self.profile_changed = Signal()
@@ -280,28 +286,59 @@ class Model:
 
         self.operations_changed.fire('clear')
 
-    def add_linetrace(self, x, y, type, incremental=False):
+    def take_linetrace(self, x, y, type, initial_press=True):
+        """
+        Take a linetrace
+
+        Args:
+            x, y: Mouse position in data coordinates
+
+            type: Linetrace type (horizontal/vertical/arbitrary)
+
+            initial_press: Whether this is the initial mouse press
+                or a movement. Needed for arbitrary linetraces.
+        """
         if self.data2d is None:
             raise DataException('No parameters have been selected yet')
 
         row, column = self.data2d.get_closest_point(x, y)
 
-        if type == 'horizontal':
-            x = self.data2d.x[row]
-            y = self.data2d.y[row]
-            z = self.data2d.z[row]
-        elif type == 'vertical':
-            x = self.data2d.x[:,column]
-            y = self.data2d.y[:,column]
-            z = self.data2d.z[:,column]
+        if type in ['horizontal', 'vertical']:
+            if type == 'horizontal':
+                x = self.data2d.x[row]
+                y = self.data2d.y[row]
+                z = self.data2d.z[row]
+            elif type == 'vertical':
+                x = self.data2d.x[:, column]
+                y = self.data2d.y[:, column]
+                z = self.data2d.z[:, column]
+
+            line = Linetrace(x, y, z, type)
+            self.linetraces.append(line)
+
+            self.linetrace_changed.fire('add', line)
         elif type == 'arbitrary':
-            # calculate points
-            pass
-        # TODO: how to properly handle incremental linetraces
-        if not incremental:
-            self.linetraces = []
+            if initial_press:
+                # Store the starting location
+                self.linetrace_start = (x, y)
+                self.linetraces = []
 
-        line = Linetrace(x, y, z, type)
-        self.linetraces.append(line)
+                self.linetrace_changed.fire('clear')
+            else:
+                # Calculate the interpolated points along the linetrace
+                x0, y0 = self.linetrace_start
+                x_points = np.linspace(x0, x, 500)
+                y_points = np.linspace(y0, y, 500)
 
-        self.linetrace_changed.fire('add', line)
+                points = np.column_stack((x_points, y_points))
+                values = self.data2d.interpolate(points)
+
+                line = Linetrace(x_points, y_points, values, type)
+
+                # Add it to the list
+                if len(self.linetraces) == 0:
+                    self.linetraces.append(line)
+                    self.linetrace_changed.fire('add', line)
+                else:
+                    self.linetraces[0] = line
+                    self.linetrace_changed.fire('update', line)

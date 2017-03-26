@@ -2,7 +2,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import textwrap
 
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, NavigationToolbar2QT
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, \
+    NavigationToolbar2QT
 from PyQt4 import QtGui, QtCore, uic
 
 from .util import FixedOrderFormatter

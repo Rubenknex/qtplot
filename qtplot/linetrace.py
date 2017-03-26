@@ -69,18 +69,12 @@ class Linetrace(QtGui.QDialog):
         self.le_markersize.setText(str(profile['markersize']))
 
     def get_plot_limits(self):
-        if self.model.linetraces:
-            # use matplotlib data instead of model
+        if len(self.model.linetraces) > 0:
+            x, y = self.model.linetraces[-1].get_data()
 
-            x = np.concatenate(tuple(line.x for line in self.model.linetraces))
-            y = np.concatenate(tuple(line.y for line in self.model.linetraces))
+            return np.nanmin(x), np.nanmax(x), np.nanmin(y), np.nanmax(y)
         else:
-            x = [0, 1]
-            y = [0, 1]
-
-        x, y = self.model.linetraces[-1].get_data()
-
-        return np.nanmin(x), np.nanmax(x), np.nanmin(y), np.nanmax(y)
+            return 0, 1, 0, 1
 
     def on_data_to_clipboard(self):
         if self.x is None or self.y is None:
@@ -151,12 +145,6 @@ class Linetrace(QtGui.QDialog):
         if event == 'add':
             if self.cb_incremental.checkState() == QtCore.Qt.Unchecked:
                 # Delete all existing lines
-                """
-                while len(self.ax.lines) > 0:
-                    self.ax.lines.pop(0)
-
-                del self.model.linetraces[:-1]
-                """
                 for line in self.ax.lines:
                     line.remove()
 
@@ -166,6 +154,11 @@ class Linetrace(QtGui.QDialog):
             line = plt.Line2D(x, y + offset, color='red', **self.get_state())
 
             self.ax.add_line(line)
+        elif event == 'update':
+            self.ax.lines[0].set_data(*linetrace.get_data())
+        elif event == 'clear':
+            for line in self.ax.lines:
+                line.remove()
 
         # Add some extra space to the plot limits
         if self.cb_reset_on_plot.checkState() == QtCore.Qt.Checked:

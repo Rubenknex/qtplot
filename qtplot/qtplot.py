@@ -21,7 +21,6 @@ class QTPlot(QtGui.QMainWindow):
     TODO:
     - Arbitrary linetrace
     - Keyboard shortcuts
-    - Export widget
     - Proper linetrace speed
     """
     def __init__(self):
@@ -244,16 +243,16 @@ class QTPlot(QtGui.QMainWindow):
 
         self.model.set_colormap_settings(min, max, gamma)
 
-    def on_canvas_press(self, event):
+    def on_canvas_press(self, event, initial_press=True):
         x, y = self.canvas.screen_to_data_coords(tuple(event.pos))
 
         type = {1: 'horizontal', 2: 'arbitrary', 3: 'vertical'}[event.button]
 
-        self.model.add_linetrace(x, y, type)
+        self.model.take_linetrace(x, y, type, initial_press)
 
     def on_canvas_move(self, event):
         if len(event.buttons) > 0:
-            self.on_canvas_press(event)
+            self.on_canvas_press(event, initial_press=False)
 
         # From here on handlers of changes in the model
     def on_data_file_changed(self, different_file):
@@ -311,8 +310,9 @@ class QTPlot(QtGui.QMainWindow):
         self.canvas.colormap = self.model.colormap
         self.canvas.update()
 
-    def on_linetrace_changed(self, event, linetrace=None):
-        self.canvas.set_linetrace_data(*linetrace.get_positions())
+    def on_linetrace_changed(self, event, line=None):
+        if line is not None:
+            self.canvas.set_linetrace_data(*line.get_positions())
 
 
 def main():
