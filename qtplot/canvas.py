@@ -328,7 +328,7 @@ class Canvas(scene.SceneCanvas):
 
             x_name, y_name, data_name = self.parent.get_axis_names()
 
-            self.parent.linecut.plot_linetrace(dist, vals, 0,
+            self.parent.linecut.plot_linetrace(dist, vals, 0, None,
                                                self.line_type,
                                                self.line_coord,
                                                self.parent.name,
