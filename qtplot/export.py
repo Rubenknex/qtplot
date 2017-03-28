@@ -73,10 +73,31 @@ class Export(QtGui.QWidget):
 
         self.cb_triangulation.setChecked(bool(profile['triangulation']))
         self.cb_tripcolor.setChecked(bool(profile['tripcolor']))
-        self.cb_linetrace.setChecked(bool(profile['linecut']))
+        self.cb_linetrace.setChecked(bool(profile['linetrace']))
 
     def get_state(self):
-        pass
+        state = {
+            'title': str(self.le_title.text()),
+            'rasterize': bool(self.cb_rasterize.isChecked()),
+            'x_label': str(self.le_x_label.text()),
+            'y_label': str(self.le_y_label.text()),
+            'z_label': str(self.le_z_label.text()),
+            'x_format': str(self.le_x_format.text()),
+            'y_format': str(self.le_y_format.text()),
+            'z_format': str(self.le_z_format.text()),
+            'x_div': str(self.le_x_div.text()),
+            'y_div': str(self.le_y_div.text()),
+            'z_div': str(self.le_z_div.text()),
+            'font': str(self.le_font.text()),
+            'font_size': int(self.le_font_size.text()),
+            'width': float(self.le_width.text()),
+            'height': float(self.le_height.text()),
+            'triangulation': bool(self.cb_triangulation.isChecked()),
+            'tripcolor': bool(self.cb_tripcolor.isChecked()),
+            'linetrace': bool(self.cb_linetrace.isChecked()),
+        }
+
+        return state
 
     def keyPressEvent(self, e):
         if e.key() == QtCore.Qt.Key_Return:

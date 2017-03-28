@@ -29,7 +29,7 @@
 	"cb_pos": "0 0 1 1",
 	"triangulation": false,
 	"tripcolor": false,
-	"linecut": false,
+	"linetrace": false,
 	"linestyle": "solid",
 	"linewidth": 0.5,
 	"markerstyle": "None",

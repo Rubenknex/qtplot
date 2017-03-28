@@ -19,7 +19,8 @@ class QTPlot(QtGui.QMainWindow):
     the model (data).
 
     TODO:
-    - Arbitrary linetrace
+    - Datapoint selection
+    - Qtlab settings
     - Keyboard shortcuts
     - Proper linetrace speed
     """
@@ -109,6 +110,7 @@ class QTPlot(QtGui.QMainWindow):
         profile = {}
 
         for d in [state, linetrace_state, export_state]:
+            print(d)
             profile.update(d)
 
         return profile
