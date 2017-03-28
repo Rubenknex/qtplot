@@ -19,6 +19,7 @@ class QTPlot(QtGui.QMainWindow):
     the model (data).
 
     TODO:
+    - Arbitrary linetrace: update triangulation
     - Datapoint selection
     - Qtlab settings
     - Keyboard shortcuts
@@ -59,10 +60,7 @@ class QTPlot(QtGui.QMainWindow):
         self.settings.initialize()
 
     def bind(self):
-        """
-        Set up the connections listening for user interface events
-        from the view.
-        """
+        """ Set up connections for GUI and model events """
         self.b_load.clicked.connect(self.on_load)
         self.b_save_data.clicked.connect(self.on_save)
         self.b_refresh.clicked.connect(self.model.refresh)
@@ -76,9 +74,9 @@ class QTPlot(QtGui.QMainWindow):
         for cb in self.cb_parameters:
             cb.activated.connect(self.on_parameters_changed)
 
+        # Colormap settings
         self.cb_colormap.currentIndexChanged.connect(self.on_cmap_chosen)
         self.b_reset_cmap.clicked.connect(self.on_cmap_reset)
-
         self.le_cmap_min.returnPressed.connect(self.on_cmap_edit_changed)
         self.le_cmap_max.returnPressed.connect(self.on_cmap_edit_changed)
 
@@ -97,6 +95,7 @@ class QTPlot(QtGui.QMainWindow):
         self.model.linetrace_changed.connect(self.on_linetrace_changed)
 
     def get_profile(self):
+        """ Create the dict that holds the current qtplot settings """
         state = {
             'x': str(self.cb_x.currentText()),
             'y': str(self.cb_y.currentText()),
@@ -110,12 +109,12 @@ class QTPlot(QtGui.QMainWindow):
         profile = {}
 
         for d in [state, linetrace_state, export_state]:
-            print(d)
             profile.update(d)
 
         return profile
 
     def set_profile(self, profile):
+        """ Set the qtplot settings from a profile dict """
         cmap = profile['colormap']
 
         # The path that is saved in the profile can use either / or \\
@@ -134,9 +133,11 @@ class QTPlot(QtGui.QMainWindow):
             names = ['x', 'y', 'z']
             default_indices = [1, 2, 4]
 
+            # Try to find the parameter that is in the profile in the data
             for i, cb in enumerate(self.cb_parameters):
                 idx = cb.findText(profile[names[i]])
 
+                # If it's not there, use a default index
                 if idx <= 0:
                     idx = default_indices[i]
 
@@ -144,16 +145,8 @@ class QTPlot(QtGui.QMainWindow):
 
             self.on_parameters_changed()
 
-    def get_parameters(self):
-        return [str(cb.currentText()) for cb in self.cb_parameters]
-
-    def get_reset_colormap(self):
-        return self.cb_reset_on_plot.checkState() == QtCore.Qt.Checked
-
-    def get_cmap_name(self):
-        return str(self.cb_colormap.currentText())
-
     def load_colormaps(self):
+        """ Populate the colormap combobox with all filenames """
         directory = os.path.dirname(os.path.realpath(__file__))
 
         directory = os.path.join(directory, 'colormaps')
@@ -176,14 +169,16 @@ class QTPlot(QtGui.QMainWindow):
         self.canvas.colormap = self.model.colormap
 
     def on_load(self):
-        open_directory = self.model.profile['open_directory']
-        filename = str(QtGui.QFileDialog.getOpenFileName(directory=open_directory,
+        """ Load a datafile """
+        open_dir = self.model.profile['open_directory']
+        filename = str(QtGui.QFileDialog.getOpenFileName(directory=open_dir,
                                                          filter='*.dat'))
 
         if filename != '':
             self.model.load_data_file(filename)
 
     def on_save(self):
+        """ Save the current data """
         save_directory = self.model.profile['save_directory']
 
         filters = ('QTLab data format (*.dat);;'
@@ -199,16 +194,18 @@ class QTPlot(QtGui.QMainWindow):
             base = os.path.basename(filename)
             name, ext = os.path.splitext(base)
 
-            self.data.save(filename)
+            self.data2d.save(filename)
 
     def on_parameters_changed(self):
         """ One of the parameters to plot has changed """
         if self.model.data_file is not None:
-            self.model.select_parameters(*self.get_parameters())
+            params = [str(cb.currentText()) for cb in self.cb_parameters]
+            self.model.select_parameters(*params)
 
     def on_cmap_chosen(self):
         """ A new colormap has been selected """
-        self.model.set_colormap(self.get_cmap_name())
+        cmap_name = str(self.cb_colormap.currentText())
+        self.model.set_colormap(cmap_name)
 
     def on_cmap_reset(self):
         """ The colormap settings are reset """
@@ -217,9 +214,7 @@ class QTPlot(QtGui.QMainWindow):
         self.model.set_colormap_settings(min, max, 1.0)
 
     def on_cmap_edit_changed(self):
-        """
-        One of the min/max colormap text fields changed, so update colormap.
-        """
+        """ Update the colormap from the new min/max settings """
         new_min = float(self.le_cmap_min.text())
         new_max = float(self.le_cmap_max.text())
 
@@ -227,9 +222,7 @@ class QTPlot(QtGui.QMainWindow):
         self.model.set_colormap_settings(new_min, new_max, gamma)
 
     def on_cmap_slider_changed(self, value):
-        """
-        One of the colormap sliders moved, so update the colormap settings.
-        """
+        """ Update the colormap from the new slider positions """
         zmin, zmax = self.model.data2d.get_z_limits()
 
         min, max, gamma = self.model.colormap.get_settings()
@@ -246,6 +239,7 @@ class QTPlot(QtGui.QMainWindow):
         self.model.set_colormap_settings(min, max, gamma)
 
     def on_canvas_press(self, event, initial_press=True):
+        """ React to a mouse button press on the canvas """
         x, y = self.canvas.screen_to_data_coords(tuple(event.pos))
 
         type = {1: 'horizontal', 2: 'arbitrary', 3: 'vertical'}[event.button]
@@ -253,6 +247,7 @@ class QTPlot(QtGui.QMainWindow):
         self.model.take_linetrace(x, y, type, initial_press)
 
     def on_canvas_move(self, event):
+        """ React to a mouse move on the canvas """
         if len(event.buttons) > 0:
             self.on_canvas_press(event, initial_press=False)
 
@@ -268,7 +263,9 @@ class QTPlot(QtGui.QMainWindow):
 
     def on_data2d_changed(self):
         # Reset the colormap if required
-        if self.get_reset_colormap():
+        reset_cmap = self.cb_reset_on_plot.checkState() == QtCore.Qt.Checked
+
+        if reset_cmap:
             min, max = self.model.data2d.get_z_limits()
 
             self.model.set_colormap_settings(min, max, 1.0)
@@ -281,6 +278,9 @@ class QTPlot(QtGui.QMainWindow):
 
         xq, yq = self.model.data2d.get_quadrilaterals()
         self.canvas.set_data(xq, yq, self.model.data2d.z)
+
+        # Update the current linetrace
+        self.model.update_linetrace()
 
     def on_cmap_changed(self):
         """ The colormap settings changed, so update the UI """

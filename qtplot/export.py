@@ -39,6 +39,7 @@ class Export(QtGui.QWidget):
         """
 
     def bind(self):
+        """ Set up connections for GUI and model events """
         self.b_update.clicked.connect(self.on_update)
         self.b_copy.clicked.connect(self.on_copy)
         self.b_to_ppt.clicked.connect(self.on_to_ppt)
@@ -47,6 +48,7 @@ class Export(QtGui.QWidget):
         self.model.profile_changed.connect(self.set_profile)
 
     def set_profile(self, profile):
+        """ Update the interface with the profile settings """
         self.le_title.setText(profile['title'])
         #self.le_dpi.setText(str(profile['dpi']))
         self.cb_rasterize.setChecked(bool(profile['rasterize']))
@@ -76,6 +78,7 @@ class Export(QtGui.QWidget):
         self.cb_linetrace.setChecked(bool(profile['linetrace']))
 
     def get_state(self):
+        """ Return all properties that are to be saved in a profile """
         state = {
             'title': str(self.le_title.text()),
             'rasterize': bool(self.cb_rasterize.isChecked()),
@@ -100,10 +103,12 @@ class Export(QtGui.QWidget):
         return state
 
     def keyPressEvent(self, e):
+        """ When return is pressed inside the window, update the plot """
         if e.key() == QtCore.Qt.Key_Return:
             self.on_update()
 
     def format_label(self, s):
+        """ Some preset macros are replaced by properties of the data """
         conversions = {
             '<filename>': self.model.data2d.filename,
             '<x>': self.model.data2d.x_name,
@@ -217,8 +222,7 @@ class Export(QtGui.QWidget):
 
     def on_copy(self):
         """ Copy the current plot to the clipboard """
-        path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(path, 'test.png')
+        path = os.path.join(self.model.dir, 'test.png')
         self.fig.savefig(path)
 
         img = QtGui.QImage(path)
@@ -247,8 +251,6 @@ class Export(QtGui.QWidget):
 
     def on_export(self):
         """ Export the current plot to a file """
-        path = os.path.dirname(os.path.realpath(__file__))
-
         filters = ('Portable Network Graphics (*.png);;'
                    'Portable Document Format (*.pdf);;'
                    'Postscript (*.ps);;'
@@ -257,7 +259,7 @@ class Export(QtGui.QWidget):
 
         filename = QtGui.QFileDialog.getSaveFileName(self,
                                                      caption='Export figure',
-                                                     directory=path,
+                                                     directory=self.model.dir,
                                                      filter=filters)
         filename = str(filename)
 
@@ -266,9 +268,9 @@ class Export(QtGui.QWidget):
             self.fig.set_size_inches(float(self.le_width.text()),
                                      float(self.le_height.text()))
 
-            dpi = int(self.le_dpi.text())
+            #dpi = int(self.le_dpi.text())
 
-            self.fig.savefig(filename, dpi=dpi, bbox_inches='tight')
+            self.fig.savefig(filename, bbox_inches='tight')
             self.fig.set_size_inches(previous_size)
 
             self.canvas.draw()

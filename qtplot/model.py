@@ -56,7 +56,8 @@ class Operation:
 
 class Linetrace:
     """ This class represents a linetrace in 2D data """
-    def __init__(self, x, y, z, type):
+    def __init__(self, x_pos, y_pos, x, y, z, type):
+        self.x_pos, self.y_pos = x_pos, y_pos
         self.x, self.y, self.z = x, y, z
         self.type = type
 
@@ -82,6 +83,11 @@ class Model:
     This class should be able to do all data manipulation as in the
     final application, but contain no GUI code.
 
+    The structure is as follows: GUI logic will call the model to update
+    it's state, after which the model will fire certain events that represent
+    changes in the state. GUI code will listen for these events and update
+    themselves appropriately.
+
     DatFile:
         Separate into QTLabFile and QcodesFile? These would implement some
         general methods like get_data(x, y, z)
@@ -97,6 +103,7 @@ class Model:
         self.x, self.y, self.z = None, None, None
         self.data2d = None
 
+        # Load a default colormap
         self.colormap = Colormap('transform/Seismic.npy')
 
         self.operations = []
@@ -112,6 +119,17 @@ class Model:
         self.linetrace_changed = Signal()
 
     def init_settings(self):
+        """
+        Initialize the qtplot settings and profiles
+
+        Structure:
+
+        .qtplot
+            profiles
+                test.json
+                another.json
+            qtplot.json
+        """
         # /home/name on Linux, C:/Users/Name on Windows
         self.home_dir = os.path.expanduser('~')
 
@@ -286,12 +304,12 @@ class Model:
 
         self.operations_changed.fire('clear')
 
-    def take_linetrace(self, x, y, type, initial_press=True):
+    def take_linetrace(self, x_pos, y_pos, type, initial_press=True):
         """
         Take a linetrace
 
         Args:
-            x, y: Mouse position in data coordinates
+            x_pos, y_pos: Mouse position in data coordinates
 
             type: Linetrace type (horizontal/vertical/arbitrary)
 
@@ -301,8 +319,9 @@ class Model:
         if self.data2d is None:
             raise DataException('No parameters have been selected yet')
 
-        row, column = self.data2d.get_closest_point(x, y)
+        row, column = self.data2d.get_closest_point(x_pos, y_pos)
 
+        # For horizontal and vertical linetraces the logic is simple
         if type in ['horizontal', 'vertical']:
             if type == 'horizontal':
                 x = self.data2d.x[row]
@@ -313,27 +332,31 @@ class Model:
                 y = self.data2d.y[:, column]
                 z = self.data2d.z[:, column]
 
-            line = Linetrace(x, y, z, type)
+            line = Linetrace(x_pos, y_pos, x, y, z, type)
             self.linetraces.append(line)
 
             self.linetrace_changed.fire('add', line)
         elif type == 'arbitrary':
+            # For arbitrary linetraces we track the mouse start and end point
             if initial_press:
                 # Store the starting location
-                self.linetrace_start = (x, y)
+                self.linetrace_start = (x_pos, y_pos)
                 self.linetraces = []
 
                 self.linetrace_changed.fire('clear')
             else:
                 # Calculate the interpolated points along the linetrace
                 x0, y0 = self.linetrace_start
-                x_points = np.linspace(x0, x, 500)
-                y_points = np.linspace(y0, y, 500)
+                x_points = np.linspace(x0, x_pos, 500)
+                y_points = np.linspace(y0, y_pos, 500)
 
                 points = np.column_stack((x_points, y_points))
+
+                # Here we get the actual interpolated data
                 values = self.data2d.interpolate(points)
 
-                line = Linetrace(x_points, y_points, values, type)
+                line = Linetrace(x_pos, y_pos,
+                                 x_points, y_points, values, type)
 
                 # Add it to the list
                 if len(self.linetraces) == 0:
@@ -342,3 +365,10 @@ class Model:
                 else:
                     self.linetraces[0] = line
                     self.linetrace_changed.fire('update', line)
+
+    def update_linetrace(self):
+        if len(self.linetraces) > 0:
+            line = self.linetraces[-1]
+
+            if line.type in ['horizontal', 'vertical']:
+                self.take_linetrace(line.x_pos, line.y_pos, line.type)
