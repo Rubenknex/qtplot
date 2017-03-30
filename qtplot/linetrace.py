@@ -81,11 +81,12 @@ class Linetrace(QtGui.QDialog):
             return 0, 1, 0, 1
 
     def on_pick(self, event):
-        """ TODO: make this work """
+        """ When a datapoint is selected, display corresponding info """
         if event.mouseevent.button == 1:
             # If more than one datapoint was found, use the middle one
             ind = event.ind[int(len(event.ind) / 2)]
 
+            # This logic might be better placed inside the Model
             line = self.model.linetraces[-1]
             x, y = line.get_data()
             x = x[ind]
@@ -104,7 +105,6 @@ class Linetrace(QtGui.QDialog):
                 if name == 'N':
                     val = str(value)
                 else:
-                    pass
                     val = eng_format(value, 1)
 
                 widgets.append(QtGui.QTreeWidgetItem(None, [name, val]))
@@ -124,6 +124,8 @@ class Linetrace(QtGui.QDialog):
         self.fig.canvas.draw()
 
     def on_press(self, event):
+        # If the right mouse button is pressed in the plot, delete the
+        # datapoint selection marker and clear the treewidget
         if event.button == 3:
             self.tw_data.clear()
 
@@ -231,6 +233,10 @@ class Linetrace(QtGui.QDialog):
         self.ax.set_aspect('auto')
         self.fig.tight_layout()
 
+        #self.fig.canvas.draw()
+        self.redraw_test()
+
+    def redraw_test(self):
         self.fig.canvas.draw()
 
     def show_window(self):

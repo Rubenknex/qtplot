@@ -9,6 +9,7 @@ test.png
 *.config
 *.ini
 *.dat
+*.log
 
 # Distribution / packaging
 test.py

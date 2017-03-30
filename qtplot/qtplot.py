@@ -19,8 +19,10 @@ class QTPlot(QtGui.QMainWindow):
     the model (data).
 
     TODO:
+    - Subtract series resistance
+    - Clear linetrace if could not be updated
+    - Linetrace formatters label
     - Arbitrary linetrace: update triangulation
-    - Datapoint selection
     - Qtlab settings
     - Keyboard shortcuts
     - Proper linetrace speed

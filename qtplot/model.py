@@ -316,7 +316,12 @@ class Model:
 
         self.operations_changed.fire('clear')
 
-    def take_linetrace(self, x_pos, y_pos, type, initial_press=True):
+    def clear_linetraces(self):
+        self.linetraces = []
+        self.linetrace_changed.fire('clear')
+
+    def take_linetrace(self, x_pos, y_pos, type, incremental=False,
+                       initial_press=True):
         """
         Take a linetrace
 
@@ -332,6 +337,9 @@ class Model:
             raise DataException('No parameters have been selected yet')
 
         row, column = self.data2d.get_closest_point(x_pos, y_pos)
+
+        if not incremental:
+            self.clear_linetraces()
 
         # For horizontal and vertical linetraces the logic is simple
         if type in ['horizontal', 'vertical']:
@@ -355,9 +363,7 @@ class Model:
             if initial_press:
                 # Store the starting location
                 self.linetrace_start = (x_pos, y_pos)
-                self.linetraces = []
-
-                self.linetrace_changed.fire('clear')
+                self.clear_linetraces()
             else:
                 # Calculate the interpolated points along the linetrace
                 x0, y0 = self.linetrace_start

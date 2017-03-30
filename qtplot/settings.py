@@ -39,6 +39,7 @@ class Settings(QtGui.QDialog):
         self.b_browse_open.clicked.connect(self.on_browse_open)
         self.b_browse_save.clicked.connect(self.on_browse_save)
 
+        self.model.data_file_changed.connect(self.populate_settings_tree)
         self.model.profile_changed.connect(self.on_profile_changed)
 
     def get_profile(self):
@@ -127,6 +128,27 @@ class Settings(QtGui.QDialog):
         """ Connection to Model.profile_changed event """
         self.le_open_dir.setText(profile['open_directory'])
         self.le_save_dir.setText(profile['save_directory'])
+
+    def populate_settings_tree(self, filename=None):
+        if self.model.data_file is not None:
+            settings = self.model.data_file.qtlab_settings
+            widgets = []
+
+            for key, item in settings.items():
+                if isinstance(item, dict):
+                    parent = QtGui.QTreeWidgetItem(None, [key, ''])
+
+                    for key, item in item.items():
+                        child = QtGui.QTreeWidgetItem(parent, [key, item])
+                        child.setCheckState(0, QtCore.Qt.Unchecked)
+                else:
+                    parent = QtGui.QTreeWidgetItem(None, [key, item])
+
+                parent.setCheckState(0, QtCore.Qt.Unchecked)
+                widgets.append(parent)
+
+            self.tw_settings.clear()
+            self.tw_settings.insertTopLevelItems(0, widgets)
 
     def show_window(self):
         self.show()
