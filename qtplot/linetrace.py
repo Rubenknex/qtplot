@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 from PyQt4 import QtCore, QtGui, uic
 
+from .util import eng_format
+
 
 class Linetrace(QtGui.QDialog):
     def __init__(self, parent, model):
@@ -20,13 +22,15 @@ class Linetrace(QtGui.QDialog):
         self.fig, self.ax = plt.subplots()
 
         self.canvas = FigureCanvasQTAgg(self.fig)
-        #self.canvas.mpl_connect('pick_event', self.on_pick)
-        #self.canvas.mpl_connect('button_press_event', self.on_press)
+        self.canvas.mpl_connect('pick_event', self.on_pick)
+        self.canvas.mpl_connect('button_press_event', self.on_press)
 
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
 
         self.plot_layout.addWidget(self.toolbar)
         self.plot_layout.addWidget(self.canvas)
+
+        self.marker = None
 
         self.tw_data.setHidden(True)
 
@@ -75,6 +79,59 @@ class Linetrace(QtGui.QDialog):
             return np.nanmin(x), np.nanmax(x), np.nanmin(y), np.nanmax(y)
         else:
             return 0, 1, 0, 1
+
+    def on_pick(self, event):
+        """ TODO: make this work """
+        if event.mouseevent.button == 1:
+            # If more than one datapoint was found, use the middle one
+            ind = event.ind[int(len(event.ind) / 2)]
+
+            line = self.model.linetraces[-1]
+            x, y = line.get_data()
+            x = x[ind]
+            y = y[ind]
+
+            row = int(line.row_numbers[ind])
+            data = self.model.data_file.get_row_info(row)
+
+            # Also show the datapoint index
+            data['N'] = ind
+
+            # Fill the treeview with data
+            self.tw_data.clear()
+            widgets = []
+            for name, value in data.items():
+                if name == 'N':
+                    val = str(value)
+                else:
+                    pass
+                    val = eng_format(value, 1)
+
+                widgets.append(QtGui.QTreeWidgetItem(None, [name, val]))
+
+            self.tw_data.insertTopLevelItems(0, widgets)
+
+            # Remove the previous datapoint marker
+            if self.marker is not None:
+                self.marker.remove()
+                self.marker = None
+
+            # Plot a new datapoint marker
+            self.marker = self.ax.plot(x, y, '.',
+                                       markersize=15,
+                                       color='black')[0]
+
+        self.fig.canvas.draw()
+
+    def on_press(self, event):
+        if event.button == 3:
+            self.tw_data.clear()
+
+            if self.marker is not None:
+                self.marker.remove()
+                self.marker = None
+
+            self.fig.canvas.draw()
 
     def on_data_to_clipboard(self):
         if self.x is None or self.y is None:
@@ -151,7 +208,8 @@ class Linetrace(QtGui.QDialog):
             offset = float(self.le_offset.text()) * len(self.ax.lines)
 
             x, y = linetrace.get_data()
-            line = plt.Line2D(x, y + offset, color='red', **self.get_state())
+            line = plt.Line2D(x, y + offset, color='red', picker=5,
+                              **self.get_state())
 
             self.ax.add_line(line)
         elif event == 'update':

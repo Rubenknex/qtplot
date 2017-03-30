@@ -56,9 +56,21 @@ class Operation:
 
 class Linetrace:
     """ This class represents a linetrace in 2D data """
-    def __init__(self, x_pos, y_pos, x, y, z, type):
+    def __init__(self, x_pos, y_pos, x, y, z, row_numbers, type):
+        """
+        Args:
+            x_pos / y_pos: Position at which the linetrace was taken in
+                data coordinates
+
+            x / y / z: Data belonging to the selected linetrace
+
+            row_numbers: The row in the original data file to which a
+                datapoint belongs. Used to select datapoints and display
+                information
+        """
         self.x_pos, self.y_pos = x_pos, y_pos
         self.x, self.y, self.z = x, y, z
+        self.row_numbers = row_numbers
         self.type = type
 
     def get_positions(self):
@@ -327,12 +339,14 @@ class Model:
                 x = self.data2d.x[row]
                 y = self.data2d.y[row]
                 z = self.data2d.z[row]
+                row_numbers = self.data2d.row_numbers[row]
             elif type == 'vertical':
                 x = self.data2d.x[:, column]
                 y = self.data2d.y[:, column]
                 z = self.data2d.z[:, column]
+                row_numbers = self.data2d.row_numbers[:, column]
 
-            line = Linetrace(x_pos, y_pos, x, y, z, type)
+            line = Linetrace(x_pos, y_pos, x, y, z, row_numbers, type)
             self.linetraces.append(line)
 
             self.linetrace_changed.fire('add', line)
@@ -367,8 +381,10 @@ class Model:
                     self.linetrace_changed.fire('update', line)
 
     def update_linetrace(self):
+        """ Update the last linetrace that was taken """
         if len(self.linetraces) > 0:
             line = self.linetraces[-1]
 
+            # Only do this for horizontal/vertical linetraces now
             if line.type in ['horizontal', 'vertical']:
                 self.take_linetrace(line.x_pos, line.y_pos, line.type)
