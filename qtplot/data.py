@@ -28,6 +28,7 @@ class DatFile:
 
     def __init__(self, filename):
         self.filename = filename
+        self.name = os.path.split(filename)[1]
         self.timestamp = ''
 
         self.ids = []
@@ -355,6 +356,9 @@ class Data2D:
 
     def set_data(self, x, y, z):
         self.x, self.y, self.z = x, y, z
+
+    def get_names(self):
+        return self.x_name, self.y_name, self.z_name
 
     def get_x_limits(self):
         return np.nanmin(self.x), np.nanmax(self.x)

@@ -20,10 +20,8 @@ class QTPlot(QtGui.QMainWindow):
 
     TODO:
     - Subtract series resistance
-    - Clear linetrace if could not be updated
     - Linetrace formatters label
     - Arbitrary linetrace: update triangulation
-    - Qtlab settings
     - Keyboard shortcuts
     - Proper linetrace speed
     """
@@ -246,7 +244,7 @@ class QTPlot(QtGui.QMainWindow):
 
         type = {1: 'horizontal', 2: 'arbitrary', 3: 'vertical'}[event.button]
 
-        self.model.take_linetrace(x, y, type, initial_press)
+        self.model.take_linetrace(x, y, type, initial_press=initial_press)
 
     def on_canvas_move(self, event):
         """ React to a mouse move on the canvas """
@@ -255,7 +253,7 @@ class QTPlot(QtGui.QMainWindow):
 
         # From here on handlers of changes in the model
     def on_data_file_changed(self, different_file):
-        self.setWindowTitle(os.path.split(self.model.filename)[1])
+        self.setWindowTitle(self.model.data_file.name)
 
         for cb in self.cb_parameters:
             cb.clear()
@@ -314,7 +312,9 @@ class QTPlot(QtGui.QMainWindow):
         self.canvas.colormap = self.model.colormap
         self.canvas.update()
 
-    def on_linetrace_changed(self, event, line=None):
+    def on_linetrace_changed(self, event):
+        type, redraw, line = event
+
         if line is not None:
             self.canvas.set_linetrace_data(*line.get_positions())
 

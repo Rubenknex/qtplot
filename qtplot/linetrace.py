@@ -5,9 +5,10 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg, \
     NavigationToolbar2QT
 import numpy as np
 import pandas as pd
+import textwrap
 from PyQt4 import QtCore, QtGui, uic
 
-from .util import eng_format
+from .util import eng_format, FixedOrderFormatter
 
 
 class Linetrace(QtGui.QDialog):
@@ -20,6 +21,9 @@ class Linetrace(QtGui.QDialog):
         uic.loadUi(path, self)
 
         self.fig, self.ax = plt.subplots()
+
+        self.ax.xaxis.set_major_formatter(FixedOrderFormatter())
+        self.ax.yaxis.set_major_formatter(FixedOrderFormatter())
 
         self.canvas = FigureCanvasQTAgg(self.fig)
         self.canvas.mpl_connect('pick_event', self.on_pick)
@@ -200,12 +204,20 @@ class Linetrace(QtGui.QDialog):
 
         self.fig.canvas.draw()
 
-    def on_linetrace_changed(self, event, linetrace=None):
-        if event == 'add':
-            if self.cb_incremental.checkState() == QtCore.Qt.Unchecked:
-                # Delete all existing lines
-                for line in self.ax.lines:
-                    line.remove()
+    def on_linetrace_changed(self, event):
+        type, redraw, linetrace = event
+
+        if type == 'add':
+            x_label, y_label, z_label = linetrace.get_labels()
+            self.ax.set_xlabel(x_label)
+            self.ax.set_ylabel(y_label)
+
+            if self.cb_include_z.checkState() == QtCore.Qt.Checked:
+                z = linetrace.get_other_coord()
+                title = '{0}\n{1} = {2}'.format(self.model.data_file.name, z_label, eng_format(z, 1))
+
+            title = '\n'.join(textwrap.wrap(title, 40, replace_whitespace=False))
+            self.ax.set_title(title)
 
             offset = float(self.le_offset.text()) * len(self.ax.lines)
 
@@ -214,30 +226,30 @@ class Linetrace(QtGui.QDialog):
                               **self.get_state())
 
             self.ax.add_line(line)
-        elif event == 'update':
+        elif type == 'update':
             self.ax.lines[0].set_data(*linetrace.get_data())
-        elif event == 'clear':
+        elif type == 'clear':
             for line in self.ax.lines:
                 line.remove()
 
-        # Add some extra space to the plot limits
-        if self.cb_reset_on_plot.checkState() == QtCore.Qt.Checked:
-            minx, maxx, miny, maxy = self.get_plot_limits()
+        if redraw:
+            # Add some extra space to the plot limits
+            if self.cb_reset_on_plot.checkState() == QtCore.Qt.Checked:
+                minx, maxx, miny, maxy = self.get_plot_limits()
 
-            xdiff = (maxx - minx) * .05
-            ydiff = (maxy - miny) * .05
+                xdiff = (maxx - minx) * .05
+                ydiff = (maxy - miny) * .05
 
-            self.ax.axis([minx - xdiff, maxx + xdiff,
-                          miny - ydiff, maxy + ydiff])
+                self.ax.axis([minx - xdiff, maxx + xdiff,
+                              miny - ydiff, maxy + ydiff])
 
-        self.ax.set_aspect('auto')
-        self.fig.tight_layout()
+            self.ax.set_aspect('auto')
+            self.fig.tight_layout()
 
-        #self.fig.canvas.draw()
-        self.redraw_test()
+            self.fig.canvas.draw()
 
-    def redraw_test(self):
-        self.fig.canvas.draw()
+            # This results in speed up but also event handling errors
+            #self.fig.canvas.flush_events()
 
     def show_window(self):
         self.show()
