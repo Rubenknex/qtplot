@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 import numpy as np
@@ -7,6 +8,8 @@ from collections import OrderedDict
 
 from .colormap import Colormap
 from .data import DatFile, Data2D
+
+logger = logging.getLogger(__name__)
 
 
 def load_json(filename):
@@ -30,15 +33,18 @@ class DataException(Exception):
 
 class Signal:
     """ A signal that can be fired and is then handled by subscribers """
-    def __init__(self):
+    def __init__(self, name):
+        self._name = name
         self._handlers = []
 
     def connect(self, handler):
         self._handlers.append(handler)
 
-    def fire(self, *args):
+    def fire(self, **kwargs):
+        logger.info(self._name + ' ' + str(kwargs))
+
         for handler in self._handlers:
-            handler(*args)
+            handler(**kwargs)
 
 
 class Operation:
@@ -78,6 +84,10 @@ class Linetrace:
     def get_positions(self):
         """ Return datapoint positions on the 2D plot """
         return self.x, self.y
+
+    def get_slope(self):
+        if self.type == 'arbitrary':
+            return (self.y[-1] - self.y[0]) / (self.x[-1] - self.x[0])
 
     def get_data(self):
         """ Return the data to plot based on the linetrace type """
@@ -143,12 +153,12 @@ class Model:
         self.last_linetrace_row_col = (-1, -1)
 
         # Define signals that can be listened to
-        self.profile_changed = Signal()
-        self.data_file_changed = Signal()
-        self.data2d_changed = Signal()
-        self.cmap_changed = Signal()
-        self.operations_changed = Signal()
-        self.linetrace_changed = Signal()
+        self.profile_changed = Signal('profile')
+        self.data_file_changed = Signal('data_file')
+        self.data2d_changed = Signal('data2d')
+        self.cmap_changed = Signal('colormap')
+        self.operations_changed = Signal('operations')
+        self.linetrace_changed = Signal('linetrace')
 
     def init_settings(self):
         """
@@ -196,7 +206,7 @@ class Model:
         self.profile = load_json(profile_file)
         self.default_profile = self.profile.copy()
 
-        self.profile_changed.fire(self.profile)
+        self.profile_changed.fire(profile=self.profile)
 
     def save_settings(self):
         save_json(self.settings, self.settings_file)
@@ -235,7 +245,7 @@ class Model:
         self.filename = filename
         self.data_file = DatFile(filename)
 
-        self.data_file_changed.fire(different_file)
+        self.data_file_changed.fire(different_file=different_file)
 
     def refresh(self):
         if self.filename is None:
@@ -256,9 +266,13 @@ class Model:
             raise ValueError('The x/z parameters cannot be None')
 
         self.x, self.y, self.z = x, y, z
-        self.data2d = self.data_file.get_data(x, y, z)
 
-        self.data2d_changed.fire()
+        if self.data2d is None:
+            self.data2d = self.data_file.get_data(x, y, z)
+
+            self.data2d_changed.fire()
+        else:
+            self.apply_operations()
 
     def set_colormap(self, name):
         settings = self.colormap.get_settings()
@@ -306,13 +320,13 @@ class Model:
     def set_operation_parameters(self, index, parameters):
         self.operations[index].parameters = parameters
 
-        self.operations_changed.fire('values')
+        self.operations_changed.fire(event='values')
 
     def add_operation(self, name, enabled=True, **parameters):
         operation = Operation(name, **parameters)
         self.operations.append(operation)
 
-        self.operations_changed.fire('add', operation)
+        self.operations_changed.fire(event='add', op=operation)
 
     def set_operation_enabled(self, index, enabled):
         self.operations[index].enabled = enabled
@@ -324,21 +338,21 @@ class Model:
         self.operations[index] = self.operations[index + 1]
         self.operations[index + 1] = tmp
 
-        self.operations_changed.fire('swap', index)
+        self.operations_changed.fire(event='swap', index=index)
 
     def remove_operation(self, index):
         del self.operations[index]
 
-        self.operations_changed.fire('remove', index)
+        self.operations_changed.fire(event='remove', index=index)
 
     def clear_operations(self):
         self.operations = []
 
-        self.operations_changed.fire('clear')
+        self.operations_changed.fire(event='clear')
 
     def clear_linetraces(self, redraw):
         self.linetraces = []
-        self.linetrace_changed.fire(('clear', redraw, None))
+        self.linetrace_changed.fire(event='clear', redraw=redraw)
 
     def take_linetrace(self, x_pos, y_pos, type, incremental=False,
                        initial_press=True):
@@ -357,10 +371,13 @@ class Model:
             raise DataException('No parameters have been selected yet')
 
         row, column = self.data2d.get_closest_point(x_pos, y_pos)
+        last_row, last_col = self.last_linetrace_row_col
 
-        # Ignore a linetrace if it is the same as the last one
-        if not initial_press and (row, column) == self.last_linetrace_row_col:
-            return
+        # Don't update the linetrace if we selected the same one
+        if not initial_press:
+            if ((type == 'horizontal' and row == last_row) or
+               (type == 'vertical' and column == last_col)):
+                return
 
         self.last_linetrace_row_col = row, column
 
@@ -385,7 +402,7 @@ class Model:
 
             self.linetraces.append(line)
 
-            self.linetrace_changed.fire(('add', True, line))
+            self.linetrace_changed.fire(event='add', redraw=True, line=line)
         elif type == 'arbitrary':
             # For arbitrary linetraces we track the mouse start and end point
             if initial_press:
@@ -409,10 +426,12 @@ class Model:
                 # Add it to the list
                 if len(self.linetraces) == 0:
                     self.linetraces.append(line)
-                    self.linetrace_changed.fire(('add', True, line))
+                    self.linetrace_changed.fire(event='add', redraw=True,
+                                                line=line)
                 else:
                     self.linetraces[0] = line
-                    self.linetrace_changed.fire(('update', True, line))
+                    self.linetrace_changed.fire(event='update', redraw=True,
+                                                line=line)
 
     def update_linetrace(self):
         """ Update the last linetrace that was taken """
@@ -422,3 +441,6 @@ class Model:
             # Only do this for horizontal/vertical linetraces now
             if line.type in ['horizontal', 'vertical']:
                 self.take_linetrace(line.x_pos, line.y_pos, line.type)
+
+    def move_linetrace_left(self):
+        pass

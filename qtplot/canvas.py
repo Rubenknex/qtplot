@@ -252,6 +252,8 @@ class Canvas(scene.SceneCanvas):
         gloo.clear()
 
         if self.vbo is not None:
+            logger.info('Redrawing the 2D plot')
+
             # Draw first the data, then colormap, and then linecut
             cmap_texture = gloo.Texture1D(self.colormap.get_colors(),
                                           interpolation='linear')

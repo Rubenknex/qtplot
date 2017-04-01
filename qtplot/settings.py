@@ -129,7 +129,7 @@ class Settings(QtGui.QDialog):
         self.le_open_dir.setText(profile['open_directory'])
         self.le_save_dir.setText(profile['save_directory'])
 
-    def populate_settings_tree(self, filename=None):
+    def populate_settings_tree(self, different_file):
         if self.model.data_file is not None:
             settings = self.model.data_file.qtlab_settings
             widgets = []

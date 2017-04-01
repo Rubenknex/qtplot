@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 
@@ -10,6 +11,9 @@ from .model import Model
 from .linetrace import Linetrace
 from .operations import Operations
 from .settings import Settings
+from .util import eng_format
+
+logger = logging.getLogger(__name__)
 
 
 class QTPlot(QtGui.QMainWindow):
@@ -20,10 +24,11 @@ class QTPlot(QtGui.QMainWindow):
 
     TODO:
     - Subtract series resistance
-    - Linetrace formatters label
     - Arbitrary linetrace: update triangulation
     - Keyboard shortcuts
     - Proper linetrace speed
+    - Incremental linetraces
+    - Update arbitrary trace on swap axes?
     """
     def __init__(self):
         super(QTPlot, self).__init__()
@@ -49,6 +54,11 @@ class QTPlot(QtGui.QMainWindow):
         self.export = Export(self, self.model)
 
         self.tabs.addTab(self.export, 'Export')
+
+        self.l_position = QtGui.QLabel()
+        self.statusbar.addWidget(self.l_position, 1)
+        self.l_slope = QtGui.QLabel()
+        self.statusbar.addWidget(self.l_slope)
 
         self.cb_parameters = [self.cb_x, self.cb_y, self.cb_z]
         self.sliders = [self.s_cmap_min, self.s_cmap_gamma, self.s_cmap_max]
@@ -248,6 +258,17 @@ class QTPlot(QtGui.QMainWindow):
 
     def on_canvas_move(self, event):
         """ React to a mouse move on the canvas """
+        # Update the mouse position in the statusbar
+        if self.model.data2d is not None:
+            x, y = self.canvas.screen_to_data_coords((event.pos[0],
+                                                      event.pos[1]))
+
+            if not np.isnan(x) and not np.isnan(y):
+                # Show the coordinates in the statusbar
+                text = 'X: %s\tY: %s' % (eng_format(x, 1), eng_format(y, 1))
+                self.l_position.setText(text)
+
+        # If a mouse button is held down, fire the press event
         if len(event.buttons) > 0:
             self.on_canvas_press(event, initial_press=False)
 
@@ -261,7 +282,7 @@ class QTPlot(QtGui.QMainWindow):
 
         self.set_profile(self.model.profile)
 
-    def on_data2d_changed(self):
+    def on_data2d_changed(self, event=None):
         # Reset the colormap if required
         reset_cmap = self.cb_reset_on_plot.checkState() == QtCore.Qt.Checked
 
@@ -312,15 +333,25 @@ class QTPlot(QtGui.QMainWindow):
         self.canvas.colormap = self.model.colormap
         self.canvas.update()
 
-    def on_linetrace_changed(self, event):
-        type, redraw, line = event
-
+    def on_linetrace_changed(self, event, redraw=False, line=None):
         if line is not None:
+            # Let the canvas know how to draw the linetrace
             self.canvas.set_linetrace_data(*line.get_positions())
+
+            # Display the slope of the arbitrary linetrace
+            if line.type == 'arbitrary':
+                slope = line.get_slope()
+                text = 'Slope: {:.3e}\tInv: {:.3e}'.format(slope, 1 / slope)
+
+                self.l_slope.setText(text)
+            else:
+                self.l_slope.setText('')
 
 
 def main():
     """ Entry point for qtplot """
+    logging.basicConfig(level=logging.INFO)
+
     app = QtGui.QApplication(sys.argv)
 
     if len(sys.argv) > 1:

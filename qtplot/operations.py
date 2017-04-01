@@ -207,23 +207,23 @@ class Operations(QtGui.QDialog):
 
         self.model.set_operation_enabled(index, enabled)
 
-    def on_operations_changed(self, event=None, value=None):
+    def on_operations_changed(self, event=None, op=None, index=None):
         """
         Handle when something in the operation list has changed
         This is mostly to update the UI
         """
         if event == 'add':
-            item = QtGui.QListWidgetItem(value.name)
+            item = QtGui.QListWidgetItem(op.name)
 
-            if value.enabled:
+            if op.enabled:
                 item.setCheckState(QtCore.Qt.Checked)
             else:
                 item.setCheckState(QtCore.Qt.Unchecked)
 
-            widget = OperationWidget(self.operation_defaults[value.name],
+            widget = OperationWidget(self.operation_defaults[op.name],
                                      self.on_operation_changed)
 
-            value.parameters = widget.get_parameters()
+            op.parameters = widget.get_parameters()
             self.stack.addWidget(widget)
 
             self.lw_queue.addItem(item)
@@ -231,15 +231,15 @@ class Operations(QtGui.QDialog):
         elif event == 'values':
             pass
         elif event == 'swap':
-            current = self.lw_queue.takeItem(value)
-            self.lw_queue.insertItem(value + 1, current)
+            current = self.lw_queue.takeItem(index)
+            self.lw_queue.insertItem(index + 1, current)
 
-            current = self.stack.widget(value)
+            current = self.stack.widget(index)
             self.stack.removeWidget(current)
-            self.stack.insertWidget(value + 1, current)
+            self.stack.insertWidget(index + 1, current)
         elif event == 'remove':
-            self.lw_queue.takeItem(value)
-            self.stack.removeWidget(self.stack.widget(value))
+            self.lw_queue.takeItem(index)
+            self.stack.removeWidget(self.stack.widget(index))
         elif event == 'clear':
             self.lw_queue.clear()
 

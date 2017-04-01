@@ -204,33 +204,33 @@ class Linetrace(QtGui.QDialog):
 
         self.fig.canvas.draw()
 
-    def on_linetrace_changed(self, event):
-        type, redraw, linetrace = event
-
-        if type == 'add':
-            x_label, y_label, z_label = linetrace.get_labels()
+    def on_linetrace_changed(self, event, redraw=False, line=None):
+        if event == 'add':
+            x_label, y_label, z_label = line.get_labels()
             self.ax.set_xlabel(x_label)
             self.ax.set_ylabel(y_label)
 
             if self.cb_include_z.checkState() == QtCore.Qt.Checked:
-                z = linetrace.get_other_coord()
-                title = '{0}\n{1} = {2}'.format(self.model.data_file.name, z_label, eng_format(z, 1))
+                z = line.get_other_coord()
+                title = '{0}\n{1} = {2}'.format(self.model.data_file.name,
+                                                z_label, eng_format(z, 1))
 
-            title = '\n'.join(textwrap.wrap(title, 40, replace_whitespace=False))
+            title = '\n'.join(textwrap.wrap(title, 40,
+                                            replace_whitespace=False))
             self.ax.set_title(title)
 
             offset = float(self.le_offset.text()) * len(self.ax.lines)
 
-            x, y = linetrace.get_data()
-            line = plt.Line2D(x, y + offset, color='red', picker=5,
-                              **self.get_state())
+            x, y = line.get_data()
+            line2d = plt.Line2D(x, y + offset, color='red', picker=5,
+                                **self.get_state())
 
-            self.ax.add_line(line)
-        elif type == 'update':
-            self.ax.lines[0].set_data(*linetrace.get_data())
-        elif type == 'clear':
-            for line in self.ax.lines:
-                line.remove()
+            self.ax.add_line(line2d)
+        elif event == 'update':
+            self.ax.lines[0].set_data(*line.get_data())
+        elif event == 'clear':
+            for line2d in self.ax.lines:
+                line2d.remove()
 
         if redraw:
             # Add some extra space to the plot limits

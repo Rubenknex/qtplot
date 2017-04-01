@@ -1,0 +1,8 @@
+{
+	"swap_axes": "X",
+	"refresh": "Space",
+	"move_linetrace_left": "Left",
+	"move_linetrace_right": "Right",
+	"move_linetrace_up": "Up",
+	"move_linetrace_down": "Down"
+}
