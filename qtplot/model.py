@@ -49,7 +49,7 @@ class Signal:
 
 class Operation:
     """ A data operation that can be performed on the Data2D class """
-    def __init__(self, name, enabled=True, **parameters):
+    def __init__(self, name, parameters, enabled=True):
         self.name = name
         self.enabled = enabled
         self.parameters = parameters
@@ -229,7 +229,7 @@ class Model:
 
         self.profile = load_json(profile_path)
 
-        self.profile_changed.fire(self.profile)
+        self.profile_changed.fire(profile=self.profile)
 
     def save_profile(self, profile, filename):
         operations_path = os.path.join(self.operations_dir, filename)
@@ -335,7 +335,6 @@ class Model:
     def add_operation(self, name, enabled=True, **parameters):
         # This is not trivial, find a way to initially set parameters
         # for operations such as sub linecut
-        print(parameters)
         operation = Operation(name, **parameters)
         self.operations.append(operation)
 
@@ -417,7 +416,6 @@ class Model:
 
     def add_normal_linetrace(self, row, column, type, incremental=False,
                              initial_press=True):
-        print(incremental)
         if not incremental:
             self.clear_linetraces(redraw=False)
 

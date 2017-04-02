@@ -204,10 +204,12 @@ class Operations(QtGui.QDialog):
 
     def on_select_operation(self, current, previous):
         if current:
+            # Use the function documentation as description
             description = getattr(Data2D, str(current.text())).__doc__
             self.le_description.setText(description)
 
     def on_item_clicked(self, item):
+        # If an item is clicked, update it's enabled state
         index = self.lw_queue.row(item)
         enabled = item.checkState() == QtCore.Qt.Checked
 
