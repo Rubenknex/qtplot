@@ -296,6 +296,9 @@ class Model:
 
         self.cmap_changed.fire()
 
+    def run_custom_code(self, code):
+        exec(code, {'data': self.data_file})
+
     def load_operations(self, filename):
         with open(filename) as f:
             data = json.load(f)

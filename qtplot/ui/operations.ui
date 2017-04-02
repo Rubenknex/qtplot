@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>462</width>
+    <height>436</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,83 +15,108 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QListWidget" name="lw_operations"/>
-     </item>
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
-       <item>
-        <widget class="QPushButton" name="b_add">
-         <property name="text">
-          <string>Add</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="b_up">
-         <property name="text">
-          <string>Up</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="b_down">
-         <property name="text">
-          <string>Down</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="b_remove">
-         <property name="text">
-          <string>Remove</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="b_clear">
-         <property name="text">
-          <string>Clear</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="b_load">
-         <property name="text">
-          <string>Load...</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="b_save">
-         <property name="text">
-          <string>Save...</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayout_3">
-       <item>
-        <widget class="QListWidget" name="lw_queue"/>
-       </item>
-       <item>
-        <widget class="QStackedWidget" name="stack">
-         <property name="frameShape">
-          <enum>QFrame::NoFrame</enum>
-         </property>
-         <widget class="QWidget" name=""/>
-         <widget class="QWidget" name="page_4"/>
-        </widget>
-       </item>
-      </layout>
-     </item>
-    </layout>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>Custom</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_4">
+      <item>
+       <widget class="QTextEdit" name="te_custom">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Python code can be used to perform manipulations on the raw data object.&lt;/p&gt;&lt;p&gt;Example for subtracting series resistance:&lt;/p&gt;&lt;p&gt;data['V_actual'] = data['V_measure'] - 500.0 * data['I_measure']&lt;/p&gt;&lt;p&gt;Press return to execute the statement.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
-    <widget class="QLineEdit" name="le_description"/>
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>Operations</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_7">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QListWidget" name="lw_operations"/>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <widget class="QPushButton" name="b_add">
+            <property name="text">
+             <string>Add</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="b_up">
+            <property name="text">
+             <string>Up</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="b_down">
+            <property name="text">
+             <string>Down</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="b_remove">
+            <property name="text">
+             <string>Remove</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="b_clear">
+            <property name="text">
+             <string>Clear</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="b_load">
+            <property name="text">
+             <string>Load...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="b_save">
+            <property name="text">
+             <string>Save...</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <widget class="QListWidget" name="lw_queue"/>
+          </item>
+          <item>
+           <widget class="QStackedWidget" name="stack">
+            <property name="frameShape">
+             <enum>QFrame::NoFrame</enum>
+            </property>
+            <widget class="QWidget" name="widget"/>
+            <widget class="QWidget" name="page_4"/>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="le_description"/>
+      </item>
+     </layout>
+    </widget>
    </item>
   </layout>
  </widget>

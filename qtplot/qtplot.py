@@ -22,11 +22,13 @@ class QTPlot(QtGui.QMainWindow):
     serves as the connection between the views (user interface) and
     the model (data).
 
-    TODO:
+    High priority:
     - Interp grid doesn't work
     - Subtract series resistance
+        - data['new_col'] = data['V_bla'] - 350 * data['I_bla']
     - Arbitrary linetrace: update triangulation
-    - Keyboard shortcuts
+
+    Low priority:
     - Proper linetrace speed
     - Update arbitrary trace on swap axes?
     """
