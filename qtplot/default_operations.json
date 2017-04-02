@@ -30,7 +30,7 @@
 	"hist2d": {
 		"min": 0.0,
 		"max": 0.0,
-		"bins": 0
+		"bins": null
 	},
 	"interp_grid": {
 		"width": 100,
@@ -73,11 +73,11 @@
 	},
 	"sub_linecut": {
 		"type": ["horizontal", "vertical"],
-		"position": 0.0
+		"position": null
 	},
 	"sub_linecut_avg": {
 		"type": ["horizontal", "vertical"],
-		"position": 0.0,
+		"position": null,
 		"size": 3
 	},
 	"sub_plane": {

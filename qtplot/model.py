@@ -59,10 +59,13 @@ class Operation:
             func = getattr(Data2D, self.name)
             func(data2d, **self.parameters)
 
+    def __repr__(self):
+        return str(self.__dict__)
+
 
 class Linetrace:
     """ This class represents a linetrace in 2D data """
-    def __init__(self, x_pos, y_pos, x, y, z, row_numbers, type,
+    def __init__(self, row, column, x, y, z, row_numbers, type,
                  x_name='', y_name='', z_name=''):
         """
         Args:
@@ -75,7 +78,7 @@ class Linetrace:
                 datapoint belongs. Used to select datapoints and display
                 information
         """
-        self.x_pos, self.y_pos = x_pos, y_pos
+        self.row, self.column = row, column
         self.x, self.y, self.z = x, y, z
         self.row_numbers = row_numbers
         self.type = type
@@ -84,6 +87,12 @@ class Linetrace:
     def get_positions(self):
         """ Return datapoint positions on the 2D plot """
         return self.x, self.y
+
+    def get_row_or_column(self):
+        if self.type == 'horizontal':
+            return self.row
+        elif self.type == 'vertical':
+            return self.column
 
     def get_slope(self):
         if self.type == 'arbitrary':
@@ -185,12 +194,13 @@ class Model:
             if not os.path.exists(dir):
                 os.makedirs(dir)
 
-        self.settings_file = os.path.join(self.settings_dir, 'qtplot.json')
+        self.settings_file = os.path.join(self.settings_dir, 'settings.json')
 
         # Save the default settings if no file exists yet
         if not os.path.exists(self.settings_file):
-            save_json({'default_profile': 'default.json'},
-                      self.settings_file)
+            path = os.path.join(self.dir, 'default_settings.json')
+            settings = load_json(path)
+            save_json(settings, self.settings_file)
 
         # Load the settings
         self.settings = load_json(self.settings_file)
@@ -323,8 +333,27 @@ class Model:
         self.operations_changed.fire(event='values')
 
     def add_operation(self, name, enabled=True, **parameters):
+        # This is not trivial, find a way to initially set parameters
+        # for operations such as sub linecut
+        print(parameters)
         operation = Operation(name, **parameters)
         self.operations.append(operation)
+
+        # Some operations require extra logic to initialize
+        if operation.name in ['sub_linecut', 'sub_linecut_avg']:
+            if len(self.linetraces) > 0:
+                line = self.linetraces[-1]
+                pos = line.get_row_or_column()
+                operation.parameters['position'] = pos
+                operation.parameters['type'] = line.type
+        elif operation.name == 'hist2d':
+            # sqrt(n) is a reasonable bin amount to begin with
+            bins = np.round(np.sqrt(self.data2d.z.shape[0]))
+            operation.parameters['bins'] = bins
+
+            min, max = self.data2d.get_z_limits()
+            operation.parameters['min'] = min
+            operation.parameters['max'] = max
 
         self.operations_changed.fire(event='add', op=operation)
 
@@ -359,13 +388,10 @@ class Model:
         """
         Take a linetrace
 
-        Args:
-            x_pos, y_pos: Mouse position in data coordinates
-
-            type: Linetrace type (horizontal/vertical/arbitrary)
-
-            initial_press: Whether this is the initial mouse press
-                or a movement. Needed for arbitrary linetraces.
+        x_pos, y_pos: Mouse position in data coordinates
+        type: Linetrace type (horizontal/vertical/arbitrary)
+        initial_press: Whether this is the initial mouse press
+            or a movement. Needed for arbitrary linetraces.
         """
         if self.data2d is None:
             raise DataException('No parameters have been selected yet')
@@ -381,57 +407,70 @@ class Model:
 
         self.last_linetrace_row_col = row, column
 
+        # For horizontal and vertical linetraces the logic is simple
+        if type in ['horizontal', 'vertical']:
+            self.add_normal_linetrace(row, column, type, incremental,
+                                      initial_press)
+        elif type == 'arbitrary':
+            self.add_arbitrary_linetrace(x_pos, y_pos, type, incremental,
+                                         initial_press)
+
+    def add_normal_linetrace(self, row, column, type, incremental=False,
+                             initial_press=True):
+        print(incremental)
         if not incremental:
             self.clear_linetraces(redraw=False)
 
-        # For horizontal and vertical linetraces the logic is simple
-        if type in ['horizontal', 'vertical']:
-            if type == 'horizontal':
-                x = self.data2d.x[row]
-                y = self.data2d.y[row]
-                z = self.data2d.z[row]
-                row_numbers = self.data2d.row_numbers[row]
-            elif type == 'vertical':
-                x = self.data2d.x[:, column]
-                y = self.data2d.y[:, column]
-                z = self.data2d.z[:, column]
-                row_numbers = self.data2d.row_numbers[:, column]
+        if type == 'horizontal':
+            x = self.data2d.x[row]
+            y = self.data2d.y[row]
+            z = self.data2d.z[row]
+            row_numbers = self.data2d.row_numbers[row]
+        elif type == 'vertical':
+            x = self.data2d.x[:, column]
+            y = self.data2d.y[:, column]
+            z = self.data2d.z[:, column]
+            row_numbers = self.data2d.row_numbers[:, column]
 
-            line = Linetrace(x_pos, y_pos, x, y, z, row_numbers, type,
-                             *self.data2d.get_names())
+        line = Linetrace(row, column, x, y, z, row_numbers, type,
+                         *self.data2d.get_names())
 
-            self.linetraces.append(line)
+        self.linetraces.append(line)
 
-            self.linetrace_changed.fire(event='add', redraw=True, line=line)
-        elif type == 'arbitrary':
-            # For arbitrary linetraces we track the mouse start and end point
-            if initial_press:
-                # Store the starting location
-                self.linetrace_start = (x_pos, y_pos)
-                self.clear_linetraces(redraw=True)
+        self.linetrace_changed.fire(event='add', redraw=True, line=line)
+
+    def add_arbitrary_linetrace(self, x_pos, y_pos, type, incremental=False,
+                                initial_press=True):
+        if len(self.linetraces) > 1:
+            self.clear_linetraces(redraw=False)
+
+        # For arbitrary linetraces we track the mouse start and end point
+        if initial_press:
+            # Store the starting location
+            self.linetrace_start = (x_pos, y_pos)
+            self.clear_linetraces(redraw=True)
+        else:
+            # Calculate the interpolated points along the linetrace
+            x0, y0 = self.linetrace_start
+            x_points = np.linspace(x0, x_pos, 500)
+            y_points = np.linspace(y0, y_pos, 500)
+
+            points = np.column_stack((x_points, y_points))
+
+            # Here we get the actual interpolated data
+            values = self.data2d.interpolate(points)
+
+            line = Linetrace(-1, -1, x_points, y_points, values, [], type)
+
+            # Add it to the list
+            if len(self.linetraces) == 0:
+                self.linetraces.append(line)
+                self.linetrace_changed.fire(event='add', redraw=True,
+                                            line=line)
             else:
-                # Calculate the interpolated points along the linetrace
-                x0, y0 = self.linetrace_start
-                x_points = np.linspace(x0, x_pos, 500)
-                y_points = np.linspace(y0, y_pos, 500)
-
-                points = np.column_stack((x_points, y_points))
-
-                # Here we get the actual interpolated data
-                values = self.data2d.interpolate(points)
-
-                line = Linetrace(x_pos, y_pos,
-                                 x_points, y_points, values, [], type)
-
-                # Add it to the list
-                if len(self.linetraces) == 0:
-                    self.linetraces.append(line)
-                    self.linetrace_changed.fire(event='add', redraw=True,
-                                                line=line)
-                else:
-                    self.linetraces[0] = line
-                    self.linetrace_changed.fire(event='update', redraw=True,
-                                                line=line)
+                self.linetraces[0] = line
+                self.linetrace_changed.fire(event='update', redraw=True,
+                                            line=line)
 
     def update_linetrace(self):
         """ Update the last linetrace that was taken """
@@ -440,7 +479,7 @@ class Model:
 
             # Only do this for horizontal/vertical linetraces now
             if line.type in ['horizontal', 'vertical']:
-                self.take_linetrace(line.x_pos, line.y_pos, line.type)
+                self.add_normal_linetrace(line.row, line.column, line.type)
 
     def move_linetrace_left(self):
         pass

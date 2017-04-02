@@ -791,7 +791,8 @@ class Data2D:
 
     def hist2d(self, min, max, bins):
         """Convert every column into a histogram, default bin amount is sqrt(n)."""
-        hist = np.apply_along_axis(lambda x: np.histogram(x, bins=bins, range=(min, max))[0], 0, self.z)
+        hist = np.apply_along_axis(lambda x: np.histogram(x, bins=int(bins),
+                                                          range=(min, max))[0], 0, self.z)
 
         binedges = np.linspace(min, max, bins + 1)
         bincoords = (binedges[:-1] + binedges[1:]) / 2
@@ -803,7 +804,8 @@ class Data2D:
     def interp_grid(self, width, height):
         """Interpolate the data onto a uniformly spaced grid using barycentric interpolation."""
         # NOT WOKRING FOR SOME REASON
-        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
+        xmin, xmax = self.get_x_limits()
+        ymin, ymax = self.get_y_limits()
 
         x = np.linspace(xmin, xmax, width)
         y = np.linspace(ymin, ymax, height)
@@ -814,7 +816,7 @@ class Data2D:
 
     def interp_x(self, points):
         """Interpolate every row onto a uniformly spaced grid."""
-        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
+        xmin, xmax = self.get_x_limits()
 
         x = np.linspace(xmin, xmax, points)
 
@@ -832,7 +834,7 @@ class Data2D:
 
     def interp_y(self, points):
         """Interpolate every column onto a uniformly spaced grid."""
-        xmin, xmax, ymin, ymax, _, _ = self.get_limits()
+        ymin, ymax = self.get_y_limits()
 
         y = np.linspace(ymin, ymax, points)[np.newaxis].T
 
@@ -907,12 +909,12 @@ class Data2D:
 
     def sub_linecut(self, type, position):
         """Subtract a horizontal/vertical linecut from every row/column."""
+        position = int(position)
+
         if type == 'horizontal':
-            x, y, row_numbers, index = self.get_row_at(position)
-            y = np.tile(self.z[index,:], (self.z.shape[0],1))
+            y = np.tile(self.z[position,:], (self.z.shape[0],1))
         elif type == 'vertical':
-            x, y, row_numbers, index = self.get_column_at(position)
-            y = np.tile(self.z[:,index][:,np.newaxis], (1, self.z.shape[1]))
+            y = np.tile(self.z[:,position][:,np.newaxis], (1, self.z.shape[1]))
 
         self.z -= y
 

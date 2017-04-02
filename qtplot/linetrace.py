@@ -76,6 +76,9 @@ class Linetrace(QtGui.QDialog):
         self.cb_markerstyle.setCurrentIndex(idx)
         self.le_markersize.setText(str(profile['markersize']))
 
+    def get_incremental(self):
+        return self.cb_incremental.checkState() == QtCore.Qt.Checked
+
     def get_plot_limits(self):
         if len(self.model.linetraces) > 0:
             x, y = self.model.linetraces[-1].get_data()
@@ -197,12 +200,7 @@ class Linetrace(QtGui.QDialog):
         self.tw_data.setHidden(not self.tw_data.isHidden())
 
     def on_clear(self):
-        while len(self.ax.lines) > 0:
-            self.ax.lines.pop(0)
-
-        self.model.linetraces = []
-
-        self.fig.canvas.draw()
+        self.model.clear_linetraces(redraw=True)
 
     def on_linetrace_changed(self, event, redraw=False, line=None):
         if event == 'add':
@@ -229,8 +227,8 @@ class Linetrace(QtGui.QDialog):
         elif event == 'update':
             self.ax.lines[0].set_data(*line.get_data())
         elif event == 'clear':
-            for line2d in self.ax.lines:
-                line2d.remove()
+            while len(self.ax.lines) > 0:
+                self.ax.lines[-1].remove()
 
         if redraw:
             # Add some extra space to the plot limits

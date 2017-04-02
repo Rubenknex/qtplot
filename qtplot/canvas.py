@@ -221,29 +221,6 @@ class Canvas(scene.SceneCanvas):
 
         return dx, dy
 
-    def on_mouse_move(self, event):
-        """
-        if self.data is not None:
-            sw, sh = self.size
-            sx, sy = event.pos
-
-            # If we are within the plot window
-            if 0 <= sx < sw and 0 <= sy < sh:
-                x, y = self.screen_to_data_coords((event.pos[0], event.pos[1]))
-
-                if not np.isnan(x) and not np.isnan(y):
-                    # Show the coordinates in the statusbar
-                    text = 'X: %s\tY: %s' % (eng_format(x, 1),
-                                             eng_format(y, 1))
-                    #self.parent.l_position.setText(text)
-
-                    # If a mouse button was pressed, try to redraw linecut
-                    if len(event.buttons) > 0:
-                        self.draw_linecut(event)
-        """
-        # Notify controller
-        pass
-
     def on_resize(self, event):
         width, height = event.physical_size
         gloo.set_viewport(0, 0, width, height)

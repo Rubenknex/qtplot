@@ -23,11 +23,11 @@ class QTPlot(QtGui.QMainWindow):
     the model (data).
 
     TODO:
+    - Interp grid doesn't work
     - Subtract series resistance
     - Arbitrary linetrace: update triangulation
     - Keyboard shortcuts
     - Proper linetrace speed
-    - Incremental linetraces
     - Update arbitrary trace on swap axes?
     """
     def __init__(self):
@@ -67,6 +67,8 @@ class QTPlot(QtGui.QMainWindow):
 
         self.model.init_settings()
 
+        self.set_keyboard_shortcuts(self.model.settings['shortcuts'])
+
         self.settings.initialize()
 
     def bind(self):
@@ -103,6 +105,17 @@ class QTPlot(QtGui.QMainWindow):
         self.model.data2d_changed.connect(self.on_data2d_changed)
         self.model.cmap_changed.connect(self.on_cmap_changed)
         self.model.linetrace_changed.connect(self.on_linetrace_changed)
+
+    def set_keyboard_shortcuts(self, shortcuts):
+        """ Set up the keyboard shortcuts """
+        # We have to set the shortcuts for every window separately
+        for parent in [self, self.linetrace, self.settings, self.operations]:
+            for key, value in shortcuts.items():
+                try:
+                    func = getattr(self.model, key)
+                    QtGui.QShortcut(QtGui.QKeySequence(value), parent, func)
+                except AttributeError:
+                    print('Could not find shortcut function:', key)
 
     def get_profile(self):
         """ Create the dict that holds the current qtplot settings """
@@ -189,6 +202,9 @@ class QTPlot(QtGui.QMainWindow):
 
     def on_save(self):
         """ Save the current data """
+        if self.data2d is None:
+            return
+
         save_directory = self.model.profile['save_directory']
 
         filters = ('QTLab data format (*.dat);;'
@@ -254,7 +270,9 @@ class QTPlot(QtGui.QMainWindow):
 
         type = {1: 'horizontal', 2: 'arbitrary', 3: 'vertical'}[event.button]
 
-        self.model.take_linetrace(x, y, type, initial_press=initial_press)
+        incremental = self.linetrace.get_incremental()
+        self.model.take_linetrace(x, y, type, incremental=incremental,
+                                  initial_press=initial_press)
 
     def on_canvas_move(self, event):
         """ React to a mouse move on the canvas """

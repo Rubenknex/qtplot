@@ -30,7 +30,7 @@ class OperationWidget(QtGui.QWidget):
                 layout.addWidget(checkbox, height, 2)
 
                 self.widgets[parameter] = checkbox
-            elif type(value) is int or type(value) is float:
+            elif type(value) in [int, float] or value is None:
                 lineedit = QtGui.QLineEdit(str(value))
                 lineedit.setValidator(QtGui.QDoubleValidator())
                 layout.addWidget(QtGui.QLabel(parameter), height, 1)
@@ -46,7 +46,16 @@ class OperationWidget(QtGui.QWidget):
 
                 self.widgets[parameter] = combobox
 
+            """
             self.types[parameter] = type(value)
+
+            if value is None:
+                self.types[parameter] = float
+            else:
+                self.types[parameter] = type(value)
+            """
+
+            self.types[parameter] = float if value is None else type(value)
 
             height += 1
 
@@ -138,9 +147,6 @@ class Operations(QtGui.QDialog):
 
         self.lw_operations.addItems(sorted(self.operation_defaults.keys()))
 
-    def get_operation(self):
-        return str(self.lw_operations.currentItem().text())
-
     def get_current_parameters(self):
         index = self.stack.currentIndex()
         params = self.stack.currentWidget().get_parameters()
@@ -153,7 +159,7 @@ class Operations(QtGui.QDialog):
         self.model.set_operation_parameters(index, params)
 
     def on_add(self):
-        name = self.get_operation()
+        name = str(self.lw_operations.currentItem().text())
 
         self.model.add_operation(name)
 
@@ -223,6 +229,10 @@ class Operations(QtGui.QDialog):
             widget = OperationWidget(self.operation_defaults[op.name],
                                      self.on_operation_changed)
 
+            # First update the widget with any parameters that are set
+            widget.set_parameters(op.parameters)
+
+            # Get all parameters from the widget
             op.parameters = widget.get_parameters()
             self.stack.addWidget(widget)
 

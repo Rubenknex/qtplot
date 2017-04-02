@@ -1,0 +1,11 @@
+{
+	"default_profile": "default.json",
+	"shortcuts": {
+		"swap_axes": "x",
+		"refresh": "Space",
+		"move_linetrace_left": "a",
+		"move_linetrace_right": "d",
+		"move_linetrace_up": "w",
+		"move_linetrace_down": "s"
+	}
+}
