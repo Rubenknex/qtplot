@@ -482,4 +482,29 @@ class Model:
                 self.add_normal_linetrace(line.row, line.column, line.type)
 
     def move_linetrace_left(self):
-        pass
+        if len(self.linetraces) > 0:
+            line = self.linetraces[-1]
+
+            if line.type == 'vertical':
+                self.add_normal_linetrace(line.row, line.column - 1, line.type)
+
+    def move_linetrace_right(self):
+        if len(self.linetraces) > 0:
+            line = self.linetraces[-1]
+
+            if line.type == 'vertical':
+                self.add_normal_linetrace(line.row, line.column + 1, line.type)
+
+    def move_linetrace_up(self):
+        if len(self.linetraces) > 0:
+            line = self.linetraces[-1]
+
+            if line.type == 'horizontal':
+                self.add_normal_linetrace(line.row + 1, line.column, line.type)
+
+    def move_linetrace_down(self):
+        if len(self.linetraces) > 0:
+            line = self.linetraces[-1]
+
+            if line.type == 'horizontal':
+                self.add_normal_linetrace(line.row - 1, line.column, line.type)
