@@ -49,7 +49,7 @@ class Signal:
 
 class Operation:
     """ A data operation that can be performed on the Data2D class """
-    def __init__(self, name, parameters, enabled=True):
+    def __init__(self, name, parameters={}, enabled=True):
         self.name = name
         self.enabled = enabled
         self.parameters = parameters

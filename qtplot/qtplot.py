@@ -371,7 +371,7 @@ class QTPlot(QtGui.QMainWindow):
 
 def main():
     """ Entry point for qtplot """
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.WARNING)
 
     app = QtGui.QApplication(sys.argv)
 
