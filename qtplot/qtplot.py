@@ -25,6 +25,7 @@ class QTPlot(QtGui.QMainWindow):
     High priority:
     - Interp grid doesn't work
     - Subtract series resistance
+        - make this work with easier syntax
         - data['new_col'] = data['V_bla'] - 350 * data['I_bla']
     - Arbitrary linetrace: update triangulation
 
@@ -298,7 +299,7 @@ class QTPlot(QtGui.QMainWindow):
 
         for cb in self.cb_parameters:
             cb.clear()
-            cb.addItems([''] + self.model.data_file.ids)
+            cb.addItems([''] + self.model.data_file.columns)
 
         self.set_profile(self.model.profile)
 

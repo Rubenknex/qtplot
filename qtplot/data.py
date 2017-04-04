@@ -31,8 +31,7 @@ class DatFile:
         self.name = os.path.split(filename)[1]
         self.timestamp = ''
 
-        self.ids = []
-        self.labels = []
+        self.columns = []
         self.sizes = {}
         self.shape = ()
         self.ndim = 0
@@ -54,13 +53,12 @@ class DatFile:
                     elif line.startswith('#\tname'):
                         name = line.split(': ', 1)[1]
 
-                        self.ids.append(name)
-                        self.labels.append(name)
+                        self.columns.append(name)
                     elif line.startswith('#\tsize'):
                         size = int(line.split(': ', 1)[1])
 
                         if size > 1:
-                            self.sizes[self.ids[-1]] = size
+                            self.sizes[self.columns[-1]] = size
 
                         self.shape = self.shape + (size,)
 
@@ -71,7 +69,7 @@ class DatFile:
                         break
             else:
                 logger.info('Loading QCoDeS file %s' % filename)
-                self.ids = first_line.split()[1:]
+                self.columns = first_line.split()[1:]
 
                 column_labels = f.readline().strip()[2:]
                 self.labels = [s[1:-1] for s in column_labels.split('\t')]
@@ -81,8 +79,8 @@ class DatFile:
 
                 self.ndim = len(self.shape)
 
-        self.data = read_table(filename, comment='#', sep='\t',
-                               header=None).values
+        self.df = pd.read_table(filename, engine='c', sep='\t',
+                                comment='#', names=self.columns)
 
         self.load_qtlab_settings(filename)
 
@@ -125,21 +123,21 @@ class DatFile:
             logger.warning('Could not find settings file %s' % settings_file_name)
 
     def get_column(self, name):
-        if name in self.ids:
-            return self.data[:, self.ids.index(name)]
+        if name in self.columns:
+            return self.df[name]
 
     def set_column(self, name, values):
-        if name in self.ids:
-            self.data[:, self.ids.index(name)] = values
+        # TODO: easier syntax to add column in custom operations
+        if name in self.columns:
+            self.df[name] = values
         else:
-            self.ids.append(name)
-            self.labels.append(name)
+            self.columns.append(name)
 
-            self.data = np.hstack((self.data, values[:, np.newaxis]))
+            self.df[name] = values
 
     def get_row_info(self, row):
         # Return a dict of all parameter-value pairs in the row
-        return OrderedDict(zip(self.ids, self.data[row]))
+        return OrderedDict(zip(self.columns, self.df.iloc[[row]]))
 
     def get_data(self, x_name, y_name, z_name):
         """
@@ -172,14 +170,14 @@ class DatFile:
 
         # Retrieve the setpoint data, start with 0 for y
         x_setpoints = self.get_column(setpoint_columns[0])
-        y_setpoints = np.zeros(self.data.shape[0])
+        y_setpoints = np.zeros(self.df.shape[0])
 
         # The row numbers from the original .dat file
-        row_numbers = np.arange(self.data.shape[0])
+        row_numbers = np.arange(self.df.shape[0])
 
         # Retrieve the x, y, and z data
         x_data = self.get_column(x_name)
-        y_data = np.zeros(self.data.shape[0])
+        y_data = np.zeros(self.df.shape[0])
         z_data = self.get_column(z_name)
 
         # Retrieve y setpoints and data if present
