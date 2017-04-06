@@ -33,7 +33,7 @@ class QTPlot(QtGui.QMainWindow):
     - Proper linetrace speed
     - Update arbitrary trace on swap axes?
     """
-    def __init__(self):
+    def __init__(self, filename=None):
         super(QTPlot, self).__init__()
 
         self.model = Model()
@@ -73,6 +73,9 @@ class QTPlot(QtGui.QMainWindow):
         self.set_keyboard_shortcuts(self.model.settings['shortcuts'])
 
         self.settings.initialize()
+
+        if filename is not None:
+            self.model.load_data_file(filename)
 
     def bind(self):
         """ Set up connections for GUI and model events """
@@ -301,7 +304,7 @@ class QTPlot(QtGui.QMainWindow):
             cb.clear()
             cb.addItems([''] + self.model.data_file.columns)
 
-        self.set_profile(self.model.profile)
+        self.model.load_default_profile()
 
     def on_data2d_changed(self, event=None):
         # Reset the colormap if required
@@ -378,6 +381,6 @@ def main():
     if len(sys.argv) > 1:
         c = QTPlot(filename=sys.argv[1])
     else:
-        c = QTPlot()
+        c = QTPlot(filename='Dev4_127.dat')
 
     sys.exit(app.exec_())

@@ -137,7 +137,7 @@ class DatFile:
 
     def get_row_info(self, row):
         # Return a dict of all parameter-value pairs in the row
-        return OrderedDict(zip(self.columns, self.df.iloc[[row]]))
+        return OrderedDict(zip(self.columns, self.df.iloc[row]))
 
     def get_data(self, x_name, y_name, z_name):
         """

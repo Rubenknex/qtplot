@@ -108,6 +108,7 @@ class Linetrace(QtGui.QDialog):
             # Fill the treeview with data
             self.tw_data.clear()
             widgets = []
+
             for name, value in data.items():
                 if name == 'N':
                     val = str(value)

@@ -221,6 +221,9 @@ class Model:
     def save_settings(self):
         save_json(self.settings, self.settings_file)
 
+    def load_default_profile(self):
+        self.load_profile(self.settings['default_profile'])
+
     def load_profile(self, filename):
         profile_path = os.path.join(self.profiles_dir, filename)
         operations_path = os.path.join(self.operations_dir, filename)
@@ -279,6 +282,7 @@ class Model:
 
         if self.data2d is None:
             self.data2d = self.data_file.get_data(x, y, z)
+            self.apply_operations()
 
             self.data2d_changed.fire()
         else:
