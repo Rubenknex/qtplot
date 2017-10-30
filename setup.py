@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='qtplot',
-      version='0.1.0.dev22',
+      version='0.1.0.dev23',
       description='Data plotting and analysis tool',
       url='https://github.com/Rubenknex/qtplot',
       author='Ruben van Gulik',
