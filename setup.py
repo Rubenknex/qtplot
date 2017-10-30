@@ -16,7 +16,7 @@ setup(name='qtplot',
       install_requires=[
         'QtPy',
         'pyopengl',
-        'vispy',
+        'vispy==0.4.0',
       ],
       package_data={
         '': ['*.npy']
