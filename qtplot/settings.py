@@ -136,6 +136,7 @@ class Settings(QtGui.QDialog):
         self.le_save_directory.setText(self.main.profile_settings['save_directory'])
 
     def fill_tree(self):
+        """
         if self.main.dat_file is not None:
             settings = self.main.dat_file.qtlab_settings
             widgets = []
@@ -154,6 +155,7 @@ class Settings(QtGui.QDialog):
                 widgets.append(parent)
 
             self.tree.insertTopLevelItems(0, widgets)
+        """
 
     def on_open_browse(self, event):
         directory = str(QtGui.QFileDialog.getExistingDirectory(self, "Select Directory"))
