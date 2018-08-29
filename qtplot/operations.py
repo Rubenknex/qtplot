@@ -120,6 +120,7 @@ class Operations(QtGui.QDialog):
 
     def init_ui(self):
         self.setWindowTitle("Operations")
+        self.setWindowFlags(QtCore.Qt.Tool)
 
         # The format of an operation entry is as follows:
         # 'name': [function, [param1, param2]]

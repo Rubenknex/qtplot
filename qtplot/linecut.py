@@ -49,6 +49,8 @@ class Linecut(QtGui.QDialog):
 
     def init_ui(self):
         self.setWindowTitle("Linecut")
+        # Don't show this window in the taskbar
+        self.setWindowFlags(QtCore.Qt.Tool)
 
         self.canvas = FigureCanvasQTAgg(self.fig)
         self.canvas.mpl_connect('pick_event', self.on_pick)
