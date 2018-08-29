@@ -85,7 +85,7 @@ varying float v_value;
 
 void main()
 {
-    float normalized = clamp((v_value-z_min)/(z_max-z_min), 0.0, 1.0);
+    float normalized = clamp((v_value-z_min)/(z_max-z_min), 0.01, 0.99);
     gl_FragColor = texture1D(u_colormap, normalized);
 }
 """
