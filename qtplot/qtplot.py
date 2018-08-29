@@ -583,12 +583,10 @@ class QTPlot(QtGui.QMainWindow):
     def get_parameter_names(self):
         if self.dat_file is not None:
             # return list(self.dat_file.df.columns.values)
-            return self.dat_file.ids
+            return sorted(self.dat_file.ids)
         elif self.data_set is not None:
-            # Sort in some kind of order?
-            # Make property of DataSetLite?
-            # TODO: Use full names/labels
-            return list(self.data_set.arrays)
+            # qcodes data set
+            return sorted(list(self.data_set.arrays))
         else:
             return []
 
