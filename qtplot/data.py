@@ -5,8 +5,6 @@ from collections import OrderedDict
 import numpy as np
 from scipy import ndimage, interpolate, io
 from scipy.spatial import qhull
-from pandas.io.api import read_table
-import pandas as pd
 import json, codecs
 
 from .util import FixedOrderFormatter, eng_format
@@ -64,6 +62,12 @@ class DatFile:
         
 
     def load_qtlab_data(self, filename):
+        try:
+            from pandas.io.api import read_table
+        except ImportError:
+            logger.error('The pandas module was not found, it is needed to read QTLab datasets')
+
+
         with open(filename, 'r') as f:
             first_line = f.readline().rstrip('\n\t\r')
 
