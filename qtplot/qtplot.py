@@ -372,8 +372,8 @@ class QTPlot(QtGui.QMainWindow):
 
         self.setAcceptDrops(True)
 
-        self.linecut.show()
-        self.operations.show()
+        #self.linecut.show()
+        #self.operations.show()
         self.show()
 
     def update_ui(self, reset=True, opening_state=False):

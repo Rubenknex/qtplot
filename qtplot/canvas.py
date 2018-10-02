@@ -338,7 +338,10 @@ class Canvas(scene.SceneCanvas):
             # Display slope and inverse slope in status bar
             dx = x - x_start
             dy = y - y_start
-            text = 'Slope: {:.3e}\tInv: {:.3e}'.format(dy / dx, dx / dy)
+            text = 'dx = {}\tdy = {}\tdy/dx = {}\tdx/dy =  {}'.format(eng_format(dx, 2),
+                eng_format(dy, 2),
+                eng_format(dy / dx, 2),
+                eng_format(dx / dy, 2))
 
             self.parent.l_slope.setText(text)
 
