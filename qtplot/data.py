@@ -25,7 +25,7 @@ class DatFile:
         self.shape = ()
         self.ndim = 0
 
-        _, ext = os.path.splitext(filename)
+        base, ext = os.path.splitext(filename)
 
         if ext == '.dat':
             self.load_qtlab_data(self.filename)
@@ -57,9 +57,40 @@ class DatFile:
                 data.append(datafile['data'][key])
 
             self.data = np.array(data).T
+
+        elif ext == '.jsonl':
+            try:
+                import pandas as pd
+            except ImportError:
+                logger.error('The pandas module was not found, it is needed to read .jsonl datasets')
+
+            df = pd.DataFrame(list(map(lambda x: json.loads(x) if len(x)>0 else {}, codecs.open(filename).read().split('\n'))))
+
+            data = []
+
+            for column in df.columns:
+                #if column == 'Datetime':
+                #    continue
+
+                self.ids.append(column)
+                self.labels.append(column)
+
+                # The columns with the index are used to determine the grid dimensions
+                if column.startswith('_index'):
+                    size = np.max(df[column].values) - np.min(df[column].values)
+
+                    self.shape = self.shape + (size,)
+
+                    if size > 1:
+                        self.sizes[column] = size
+
+                        # Count the number of non-length-1 coordinates
+                        self.ndim += 1
+
+            self.data = df.values
         else:
             logger.error('Unknown file format: %s' % filename)
-        
+
 
     def load_qtlab_data(self, filename):
         try:

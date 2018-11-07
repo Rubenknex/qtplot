@@ -654,7 +654,7 @@ class QTPlot(QtGui.QMainWindow):
     def on_load_dat(self, event):
         open_directory = self.profile_settings['open_directory']
         filename = str(QtGui.QFileDialog.getOpenFileName(directory=open_directory,
-                                                         filter='*.dat *.json'))
+                                                         filter='*.dat *.json *.jsonl'))
 
         if filename != "":
             self.load_dat_file(filename)
